@@ -185,6 +185,21 @@ details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
 /* FOOTER */
 footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
 
+
+/* ─── Nav overlap fixes (auto-patched) ─── */
+html { scroll-padding-top: 90px; }
+section[id] { scroll-margin-top: 90px; }
+.page-layout { padding-top: 100px !important; }
+.toc-sidebar { top: 100px !important; max-height: calc(100vh - 120px) !important; }
+@media (max-width: 760px) {
+  .nav-links { display: none !important; }
+  nav { padding: 0 1rem !important; }
+  .nav-cta { padding: 6px 12px !important; font-size: 0.78rem !important; }
+  .page-layout { padding: 90px 1rem 4rem !important; }
+}
+@media (max-width: 600px) {
+  .page-layout { padding-top: 90px !important; }
+}
 </style>
 </head>
 <body>

@@ -196,6 +196,21 @@ footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2re
 .part-link:hover { color: var(--accent); }
 .part-read { font-size: 0.78rem; color: var(--muted2); font-family: var(--mono); }
 .tool-chip { display: inline-block; background: rgba(129,140,248,0.08); border: 1px solid rgba(129,140,248,0.2); color: var(--accent2); padding: 4px 12px; border-radius: 100px; font-size: 0.78rem; font-weight: 500; margin: 4px 6px 4px 0; font-family: var(--mono); }
+
+/* ─── Nav overlap fixes (auto-patched) ─── */
+html { scroll-padding-top: 90px; }
+section[id] { scroll-margin-top: 90px; }
+.page-layout { padding-top: 100px !important; }
+.toc-sidebar { top: 100px !important; max-height: calc(100vh - 120px) !important; }
+@media (max-width: 760px) {
+  .nav-links { display: none !important; }
+  nav { padding: 0 1rem !important; }
+  .nav-cta { padding: 6px 12px !important; font-size: 0.78rem !important; }
+  .page-layout { padding: 90px 1rem 4rem !important; }
+}
+@media (max-width: 600px) {
+  .page-layout { padding-top: 90px !important; }
+}
 </style>
 </style>
 </head>

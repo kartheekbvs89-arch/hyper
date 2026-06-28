@@ -228,6 +228,21 @@ footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2re
 /* Add a "Start this module" CTA in each module header */
 .module-cta { font-size: 0.72rem; color: var(--accent); font-family: var(--mono); padding: 4px 10px; background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.2); border-radius: 6px; margin-left: auto; text-decoration: none; white-space: nowrap; }
 .module-cta:hover { background: rgba(56,189,248,0.15); }
+
+/* ─── Nav overlap fixes (auto-patched) ─── */
+html { scroll-padding-top: 90px; }
+section[id] { scroll-margin-top: 90px; }
+.page-layout { padding-top: 100px !important; }
+.toc-sidebar { top: 100px !important; max-height: calc(100vh - 120px) !important; }
+@media (max-width: 760px) {
+  .nav-links { display: none !important; }
+  nav { padding: 0 1rem !important; }
+  .nav-cta { padding: 6px 12px !important; font-size: 0.78rem !important; }
+  .page-layout { padding: 90px 1rem 4rem !important; }
+}
+@media (max-width: 600px) {
+  .page-layout { padding-top: 90px !important; }
+}
 </style>
 </head>
 <body>
