@@ -186,19 +186,26 @@ details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
 footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
 
 
-/* ─── Nav overlap fixes (auto-patched) ─── */
-html { scroll-padding-top: 90px; }
-section[id] { scroll-margin-top: 90px; }
-.page-layout { padding-top: 100px !important; }
-.toc-sidebar { top: 100px !important; max-height: calc(100vh - 120px) !important; }
-@media (max-width: 760px) {
+/* ─── Nav overlap fixes v2 (auto-patched) ─── */
+html { scroll-padding-top: 100px !important; }
+section[id] { scroll-margin-top: 100px !important; }
+.article-body h2, .article-body h3 { scroll-margin-top: 100px !important; }
+nav { height: 60px !important; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+.page-layout { padding-top: 120px !important; }
+.toc-sidebar { top: 120px !important; max-height: calc(100vh - 140px) !important; }
+.breadcrumb { padding-top: 0 !important; }
+.article-header { padding-top: 0 !important; }
+
+/* Mobile: keep nav at 60px by hiding link list early */
+@media (max-width: 900px) {
   .nav-links { display: none !important; }
   nav { padding: 0 1rem !important; }
   .nav-cta { padding: 6px 12px !important; font-size: 0.78rem !important; }
-  .page-layout { padding: 90px 1rem 4rem !important; }
+  .page-layout { padding: 110px 1rem 4rem !important; }
+  .toc-sidebar { top: 110px !important; }
 }
 @media (max-width: 600px) {
-  .page-layout { padding-top: 90px !important; }
+  .page-layout { padding-top: 100px !important; }
 }
 </style>
 </head>
