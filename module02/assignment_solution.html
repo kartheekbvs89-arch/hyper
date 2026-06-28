@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assignment 02 Solution — HyperTune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<style>
+
+:root {
+  --bg: #070b14; --bg2: #0c1220; --bg3: #111827;
+  --card: #131d2e; --card2: #1a2640;
+  --border: rgba(99,179,237,0.12); --border2: rgba(99,179,237,0.22);
+  --accent: #38bdf8; --accent2: #818cf8; --accent3: #34d399;
+  --accent4: #f59e0b; --accent5: #f472b6;
+  --text: #f0f6fc; --muted: #8899aa; --muted2: #64748b;
+  --code-bg: #0d1117;
+  --ff: 'Inter', sans-serif; --mono: 'JetBrains Mono', monospace;
+  --display: 'Sora', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,11,20,0.85);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:var(--display);font-weight:800;font-size:1.25rem;color:var(--accent);letter-spacing:-0.03em;text-decoration:none}
+.logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#000;padding:7px 18px;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85}
+
+/* LAYOUT */
+.page-layout { display: grid; grid-template-columns: 280px 1fr; gap: 3rem; max-width: 1200px; margin: 0 auto; padding: 5rem 2rem 5rem; padding-top: 80px; }
+@media(max-width: 900px) { .page-layout { grid-template-columns: 1fr; } .toc-sidebar { display: none; } }
+
+/* TOC SIDEBAR */
+.toc-sidebar { position: sticky; top: 80px; height: fit-content; max-height: calc(100vh - 100px); overflow-y: auto; }
+.toc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.75rem; }
+.toc-nav { display: flex; flex-direction: column; gap: 2px; }
+.toc-link { color: var(--muted); font-size: 0.82rem; text-decoration: none; padding: 4px 10px; border-left: 2px solid transparent; transition: all 0.15s; border-radius: 0 4px 4px 0; }
+.toc-link:hover, .toc-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(56,189,248,0.05); }
+.toc-link.toc-sub { font-size: 0.78rem; padding-left: 22px; }
+
+/* ARTICLE BODY */
+.article-body { min-width: 0; }
+.breadcrumb { font-size: 0.78rem; color: var(--muted2); margin-bottom: 1.5rem; }
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--accent); }
+.module-badge { display: inline-block; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: var(--accent); padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 1rem; }
+.article-title { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
+.article-meta { font-size: 0.83rem; color: var(--muted); margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+
+/* OUTLINE BOX */
+.outline-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 3rem; }
+.outline-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.75rem; color: var(--text); }
+.outline-list { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.85rem; }
+.outline-list a { color: var(--accent); text-decoration: none; }
+.outline-list a:hover { text-decoration: underline; }
+.outline-list li { margin: 4px 0; }
+.outline-list ul { margin: 4px 0; padding-left: 1rem; }
+
+/* ARTICLE PROSE */
+.article-body h2 { font-family: var(--display); font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; margin: 3rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); scroll-margin-top: 80px; }
+.article-body h3 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 80px; }
+.article-body h4 { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.article-body p { margin-bottom: 1.25rem; color: var(--muted); font-size: 0.97rem; line-height: 1.85; }
+.article-body strong { color: var(--text); font-weight: 600; }
+.article-body em { color: var(--accent3); font-style: italic; }
+.article-body ul, .article-body ol { margin: 0 0 1.25rem 1.5rem; color: var(--muted); font-size: 0.95rem; }
+.article-body li { margin-bottom: 6px; line-height: 1.75; }
+.article-body code { font-family: var(--mono); font-size: 0.82em; background: rgba(56,189,248,0.08); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
+.article-body a { color: var(--accent2); text-decoration: none; }
+.article-body a:hover { text-decoration: underline; }
+
+/* CODE BLOCKS */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+.code-block-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot.r { background: #ff5f57; } .code-dot.y { background: #ffbd2e; } .code-dot.g { background: #28c840; }
+.code-filename { font-family: var(--mono); font-size: 0.73rem; color: var(--muted2); margin-left: 8px; }
+.code-block pre { padding: 1.5rem; overflow-x: auto; margin: 0; font-family: var(--mono); font-size: 0.82rem; line-height: 1.8; color: #e2e8f0; }
+/* Syntax colors */
+.kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; }
+.num { color: #f78c6c; } .cm { color: #546e7a; font-style: italic; }
+.cls { color: #ffcb6b; } .imp { color: #89ddff; } .op { color: #89ddff; }
+
+/* CALLOUT BOXES */
+.callout { display: flex; gap: 1rem; border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; border-width: 1px; border-style: solid; }
+.callout-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+.callout-body { font-size: 0.88rem; line-height: 1.75; }
+.callout-body strong { font-weight: 600; }
+.callout-title { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+.callout.note { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.22); color: var(--muted); }
+.callout.note .callout-title, .callout.note strong { color: var(--accent); }
+.callout.warning { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.22); color: var(--muted); }
+.callout.warning .callout-title, .callout.warning strong { color: var(--accent4); }
+.callout.tip { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); color: var(--muted); }
+.callout.tip .callout-title, .callout.tip strong { color: var(--accent3); }
+.callout.important { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.22); color: var(--muted); }
+.callout.important .callout-title, .callout.important strong { color: var(--accent5); }
+
+/* MATH DISPLAY */
+.math-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.75rem; margin: 1.25rem 0; overflow-x: auto; font-size: 1.05rem; text-align: center; }
+.math-label { font-size: 0.72rem; color: var(--muted2); font-family: var(--mono); margin-top: 0.5rem; text-align: right; }
+
+/* INLINE FIGURE / DIAGRAM */
+.figure { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; margin: 2rem 0; text-align: center; }
+.figure-caption { font-size: 0.8rem; color: var(--muted2); margin-top: 1rem; font-style: italic; }
+
+/* DATA TABLE */
+.data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.85rem; }
+.data-table th { padding: 10px 14px; background: var(--card2); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); text-align: left; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(99,179,237,0.03); }
+
+/* SUMMARY BOX */
+.summary-box { background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(129,140,248,0.07)); border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 1.75rem 2rem; margin: 3rem 0 2rem; }
+.summary-box h3 { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+.summary-box ul { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.88rem; }
+.summary-box li { margin-bottom: 6px; line-height: 1.7; }
+
+/* RESOURCE LIST */
+.resource-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.resource-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.resource-list li::before { content: '\2192'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.resource-list a { color: var(--accent2); }
+
+/* PREV/NEXT NAV */
+.page-nav { display: flex; justify-content: space-between; gap: 1rem; padding: 2rem; max-width: 1200px; margin: 0 auto; border-top: 1px solid var(--border); }
+.page-nav-btn { display: flex; flex-direction: column; gap: 4px; padding: 1rem 1.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; transition: all 0.2s; max-width: 45%; }
+.page-nav-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.page-nav-btn .nav-dir { font-size: 0.72rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; }
+.page-nav-btn .nav-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.page-nav-btn.next { text-align: right; margin-left: auto; }
+
+/* QUIZ/EXERCISE BOX */
+.exercise-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin: 2rem 0; }
+.exercise-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent4); margin-bottom: 0.5rem; }
+.exercise-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; }
+.exercise-body { font-size: 0.88rem; color: var(--muted); line-height: 1.75; }
+
+/* QUIZ BOX */
+.quiz-box { background: rgba(129,140,248,0.06); border: 1px solid rgba(129,140,248,0.22); border-radius: 14px; padding: 1.5rem; margin: 1.5rem 0; }
+.quiz-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.5rem; }
+.quiz-question { font-size: 0.93rem; color: var(--text); margin-bottom: 0.75rem; font-weight: 500; }
+.quiz-answer { margin-top: 0.5rem; }
+.quiz-answer summary { cursor: pointer; font-size: 0.82rem; color: var(--accent2); font-weight: 600; }
+.quiz-answer p { margin-top: 0.5rem; font-size: 0.86rem; color: var(--muted); }
+
+/* CELL (for assignment files - jupyter style) */
+.jupyter-cell { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin: 1.5rem 0; overflow: hidden; }
+.cell-header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted2); font-family: var(--mono); }
+.cell-input-label { color: var(--accent4); font-weight: 600; }
+.cell-body { padding: 1rem 1.25rem; }
+.jupyter-cell pre { padding: 1rem 1.25rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; background: var(--code-bg); margin: 0; }
+.cell-prompt { color: var(--accent3); font-weight: 700; }
+
+/* GRADING RUBRIC */
+.rubric-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+.rubric-table th { background: var(--card2); padding: 10px 14px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); }
+.rubric-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+
+/* DETAILS (collapsible hints) */
+details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; }
+details summary { cursor: pointer; font-size: 0.85rem; color: var(--accent2); font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
+
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">Hyper<span>Tune</span></a>
+    <ul class="nav-links">
+
+    </ul>
+    <a href="../index.html#curriculum" class="nav-cta">Start Learning</a>
+  </div>
+</nav>
+<div class="page-layout">
+  <aside class="toc-sidebar">
+    <div class="toc-label">On this page</div>
+    <nav class="toc-nav">
+<a href="#intro" class="toc-link">Solution Walkthrough</a>
+<a href="#sol-task1" class="toc-link">Task 1 — Pipeline</a>
+<a href="#sol-task2" class="toc-link">Task 2 — Coarse</a>
+<a href="#sol-task3" class="toc-link">Task 3 — Fine</a>
+<a href="#sol-task4" class="toc-link">Task 4 — Heatmap</a>
+<a href="#sol-task5" class="toc-link">Task 5 — Stability</a>
+<a href="#resources" class="toc-link">Resources</a>
+    </nav>
+  </aside>
+  <article class="article-body">
+    <div class="breadcrumb"><a href="../index.html">HyperTune</a> › <a href="intro.html">Module 02</a> › Assignment 02 Solution</div>
+    <div class="article-header">
+      <div class="module-badge">Module 02 · Assignment Solution</div>
+      <h1 class="article-title">Assignment 02 — Solution Walkthrough</h1>
+      <div class="article-meta">Solution · Difficulty: ★★★☆☆ · Run time: ~25 minutes</div>
+    </div>
+    <div class="outline-box">
+      <div class="outline-title">📋 Article Outline</div>
+      <ol class="outline-list">
+
+<li><a href="#intro">Solution Walkthrough</a></li>
+<li><a href="#sol-task1">Task 1 — Build the Pipeline</a></li>
+<li><a href="#sol-task2">Task 2 — Coarse Grid Search</a></li>
+<li><a href="#sol-task3">Task 3 — Fine Grid</a></li>
+<li><a href="#sol-task4">Task 4 — Heatmap</a></li>
+<li><a href="#sol-task5">Task 5 — Stability Analysis</a></li>
+<li><a href="#resources">Useful Resources</a></li>
+      </ol>
+    </div>
+
+<section id="intro">
+  <h2>Solution Walkthrough</h2>
+  <p>Below is a reference solution for Assignment 02. It is organized as a sequence of cells matching the assignment tasks.</p>
+  <div class="callout warning"><div class="callout-icon">⚠️</div><div class="callout-body"><div class="callout-title">Use ethically</div><p>Do not submit this solution as your own work. Use it to unstick yourself or to compare your approach after attempting the task.</p></div></div>
+</section>
+
+<section id="sol-task1">
+  <h2>Task 1 — Build the Pipeline</h2>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── sol_task1_pipeline.py ─────────────────────────────────────────────────────
+import tempfile
+from pathlib import Path
+from joblib import Memory
+from sklearn.compose import ColumnTransformer, make_column_selector
+from sklearn.datasets import fetch_openml
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder
+
+X, y = fetch_openml(name=&quot;adult&quot;, version=2, as_frame=True, return_X_y=True)
+
+cat_cols = X.select_dtypes(include=[&quot;category&quot;, &quot;object&quot;]).columns.tolist()
+num_cols = X.select_dtypes(exclude=[&quot;category&quot;, &quot;object&quot;]).columns.tolist()
+
+cache_dir = Path(tempfile.gettempdir()) / &quot;hypertune_adult_cache&quot;
+cache_dir.mkdir(exist_ok=True)
+memory = Memory(location=str(cache_dir), verbose=0)
+
+preprocess = ColumnTransformer([
+    (&quot;cat&quot;, Pipeline([
+        (&quot;imputer&quot;, SimpleImputer(strategy=&quot;most_frequent&quot;)),
+        (&quot;onehot&quot;, OneHotEncoder(handle_unknown=&quot;ignore&quot;, min_frequency=0.01)),
+    ]), cat_cols),
+    (&quot;num&quot;, SimpleImputer(strategy=&quot;median&quot;), num_cols),
+])
+
+pipe = Pipeline([
+    (&quot;preprocess&quot;, preprocess),
+    (&quot;rf&quot;, RandomForestClassifier(n_estimators=300, n_jobs=1, random_state=42)),
+], memory=memory)
+print(pipe)
+</pre></div>
+</section>
+
+<section id="sol-task2">
+  <h2>Task 2 — Coarse Grid Search</h2>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── sol_task2_coarse.py ───────────────────────────────────────────────────────
+import pandas as pd
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
+
+coarse_grid = {
+    &quot;rf__max_depth&quot;:        [4, 8, 12, 16],
+    &quot;rf__min_samples_leaf&quot;: [1, 4, 16, 64],
+    &quot;rf__max_features&quot;:     [&quot;sqrt&quot;, &quot;log2&quot;, 0.5],
+}
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+coarse = GridSearchCV(pipe, param_grid=coarse_grid, cv=cv,
+                      scoring=&quot;accuracy&quot;, n_jobs=-1, return_train_score=True)
+coarse.fit(X, y)
+print(f&quot;Coarse best: {coarse.best_params_}  acc = {coarse.best_score_:.4f}&quot;)
+
+df = pd.DataFrame(coarse.cv_results_)
+top5 = df.nlargest(5, &quot;mean_test_score&quot;)[
+    [&quot;params&quot;, &quot;mean_test_score&quot;, &quot;std_test_score&quot;, &quot;mean_fit_time&quot;]
+]
+print(top5.to_string(index=False))
+</pre></div>
+  <p>Typical output: best around <code>max_depth=16, min_samples_leaf=4, max_features='sqrt'</code> with CV accuracy ~0.865.</p>
+</section>
+
+<section id="sol-task3">
+  <h2>Task 3 — Fine Grid</h2>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── sol_task3_fine.py ─────────────────────────────────────────────────────────
+import numpy as np
+best = coarse.best_params_
+fine_grid = {
+    &quot;rf__max_depth&quot;:        list(range(best[&quot;rf__max_depth&quot;] - 2, best[&quot;rf__max_depth&quot;] + 3)),
+    &quot;rf__min_samples_leaf&quot;: [max(1, best[&quot;rf__min_samples_leaf&quot;] // 2),
+                             best[&quot;rf__min_samples_leaf&quot;],
+                             best[&quot;rf__min_samples_leaf&quot;] * 2],
+    &quot;rf__max_features&quot;:     [best[&quot;rf__max_features&quot;]],
+}
+fine = GridSearchCV(pipe, param_grid=fine_grid, cv=cv,
+                    scoring=&quot;accuracy&quot;, n_jobs=-1, return_train_score=True)
+fine.fit(X, y)
+print(f&quot;Fine best: {fine.best_params_}  acc = {fine.best_score_:.4f}&quot;)
+print(f&quot;Coarse best was: {coarse.best_score_:.4f}&quot;)
+</pre></div>
+</section>
+
+<section id="sol-task4">
+  <h2>Task 4 — Heatmap</h2>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── sol_task4_heatmap.py ──────────────────────────────────────────────────────
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+df = pd.DataFrame(fine.cv_results_)
+pivot = df.pivot_table(index=&quot;param_rf__max_depth&quot;,
+                       columns=&quot;param_rf__min_samples_leaf&quot;,
+                       values=&quot;mean_test_score&quot;)
+plt.figure(figsize=(8, 5), constrained_layout=True)
+sns.heatmap(pivot, annot=True, fmt=&quot;.4f&quot;, cmap=&quot;viridis&quot;,
+            cbar_kws={&quot;label&quot;: &quot;CV accuracy&quot;})
+plt.title(&quot;Fine grid: RandomForest on Adult Census&quot;)
+plt.savefig(&quot;assignment02_heatmap.png&quot;, dpi=120)
+plt.show()
+</pre></div>
+</section>
+
+<section id="sol-task5">
+  <h2>Task 5 — Stability Analysis</h2>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── sol_task5_stability.py ────────────────────────────────────────────────────
+import numpy as np
+import matplotlib.pyplot as plt
+
+df = pd.DataFrame(fine.cv_results_)
+df[&quot;lower&quot;] = df[&quot;mean_test_score&quot;] - df[&quot;std_test_score&quot;]
+top8 = df.nlargest(8, &quot;mean_test_score&quot;).reset_index(drop=True)
+
+split_cols = [c for c in df.columns if c.startswith(&quot;split&quot;) and c.endswith(&quot;test_score&quot;)]
+fig, ax = plt.subplots(figsize=(10, 5), constrained_layout=True)
+ax.boxplot([top8[c].values for c in split_cols], labels=[f&quot;#{i+1}&quot; for i in range(len(top8))])
+ax.set_ylabel(&quot;Per-fold accuracy&quot;)
+ax.set_title(&quot;Stability of top 8 fine-grid configurations&quot;)
+plt.savefig(&quot;assignment02_stability.png&quot;, dpi=120)
+plt.show()
+
+# Rank by (mean - std) vs by mean
+df[&quot;rank_by_mean&quot;] = df[&quot;mean_test_score&quot;].rank(ascending=False).astype(int)
+df[&quot;rank_by_lower&quot;] = df[&quot;lower&quot;].rank(ascending=False).astype(int)
+compare = df.nsmallest(8, &quot;rank_by_mean&quot;)[
+    [&quot;params&quot;, &quot;mean_test_score&quot;, &quot;std_test_score&quot;, &quot;lower&quot;,
+     &quot;rank_by_mean&quot;, &quot;rank_by_lower&quot;]
+]
+print(compare.to_string(index=False))
+</pre></div>
+  <p>Often the top config by mean is rank 3 or 4 by stability. This is the kind of insight that production tuning should consider — picking the slightly-lower-mean but much-more-stable configuration is usually the right call for deployment.</p>
+</section>
+
+<div class="summary-box"><h3>🎯 What This Assignment Teaches</h3><ul><li>Coarse-to-fine is dramatically cheaper than one big grid and usually finds a better optimum.</li><li><code>cv_results_</code> is your primary analysis tool — convert to pandas and slice.</li><li>Heatmaps make 2D interactions visible; box plots make stability visible.</li><li>Ranking by (mean - std) often changes the top pick compared to ranking by mean alone.</li><li><code>joblib.Memory</code> makes a real difference for pipelines with expensive transformers.</li></ul></div>
+
+<section id="resources"><h2>Useful Resources</h2><ul class="resource-list"><li><a href="https://scikit-learn.org/stable/modules/generated/sklearn.pipeline.Pipeline.html">scikit-learn Pipeline documentation</a></li><li><a href="https://arxiv.org/abs/1804.03515">Probst et al. (2019) — Hyperparameters and Tuning Strategies for Random Forest</a></li><li><a href="https://bookdown.org/max_FESL/">Kuhn &amp; Johnson — Applied Predictive Modeling, chapter 4 (Over-Fitting and Model Tuning)</a></li></ul></section>
+
+  </article>
+</div>
+<div class="page-nav"><a href="assignment_task.html" class="page-nav-btn prev"><span class="nav-dir">← Previous</span><span class="nav-title">Assignment 02</span></a><a href="../module03/intro.html" class="page-nav-btn next"><span class="nav-dir">Next →</span><span class="nav-title">Module 03 — Random Search</span></a></div>
+<footer>
+  <div class="container">
+    <div style="font-size:1.5rem;font-weight:800;font-family:var(--display);color:var(--accent);margin-bottom:0.5rem">HyperTune</div>
+    <p style="color:var(--muted2);font-size:0.85rem;max-width:500px;margin:0 auto">The complete hyperparameter tuning reference for ML &amp; DL engineers. Covers scikit-learn, XGBoost, LightGBM, PyTorch, Optuna, Ray Tune, and beyond — from first principles to production.</p>
+    <div style="margin-top:2rem;font-size:0.78rem;color:var(--muted2)">Built for learning · Python 3.10+ · scikit-learn 1.4+ · Optuna 3.0+</div>
+  </div>
+</footer>
+<script>
+(function() {
+  const links = Array.from(document.querySelectorAll('.toc-link'));
+  const sections = links
+    .map(l => document.querySelector(l.getAttribute('href')))
+    .filter(Boolean);
+  if (!('IntersectionObserver' in window) || sections.length === 0) return;
+  const setActive = id => {
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+  };
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  sections.forEach(s => observer.observe(s));
+})();
+</script>
+</body>
+</html>

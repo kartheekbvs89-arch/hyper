@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assignment 01 — Diagnosing Hyperparameter Effects — HyperTune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<style>
+
+:root {
+  --bg: #070b14; --bg2: #0c1220; --bg3: #111827;
+  --card: #131d2e; --card2: #1a2640;
+  --border: rgba(99,179,237,0.12); --border2: rgba(99,179,237,0.22);
+  --accent: #38bdf8; --accent2: #818cf8; --accent3: #34d399;
+  --accent4: #f59e0b; --accent5: #f472b6;
+  --text: #f0f6fc; --muted: #8899aa; --muted2: #64748b;
+  --code-bg: #0d1117;
+  --ff: 'Inter', sans-serif; --mono: 'JetBrains Mono', monospace;
+  --display: 'Sora', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,11,20,0.85);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:var(--display);font-weight:800;font-size:1.25rem;color:var(--accent);letter-spacing:-0.03em;text-decoration:none}
+.logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#000;padding:7px 18px;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85}
+
+/* LAYOUT */
+.page-layout { display: grid; grid-template-columns: 280px 1fr; gap: 3rem; max-width: 1200px; margin: 0 auto; padding: 5rem 2rem 5rem; padding-top: 80px; }
+@media(max-width: 900px) { .page-layout { grid-template-columns: 1fr; } .toc-sidebar { display: none; } }
+
+/* TOC SIDEBAR */
+.toc-sidebar { position: sticky; top: 80px; height: fit-content; max-height: calc(100vh - 100px); overflow-y: auto; }
+.toc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.75rem; }
+.toc-nav { display: flex; flex-direction: column; gap: 2px; }
+.toc-link { color: var(--muted); font-size: 0.82rem; text-decoration: none; padding: 4px 10px; border-left: 2px solid transparent; transition: all 0.15s; border-radius: 0 4px 4px 0; }
+.toc-link:hover, .toc-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(56,189,248,0.05); }
+.toc-link.toc-sub { font-size: 0.78rem; padding-left: 22px; }
+
+/* ARTICLE BODY */
+.article-body { min-width: 0; }
+.breadcrumb { font-size: 0.78rem; color: var(--muted2); margin-bottom: 1.5rem; }
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--accent); }
+.module-badge { display: inline-block; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: var(--accent); padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 1rem; }
+.article-title { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
+.article-meta { font-size: 0.83rem; color: var(--muted); margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+
+/* OUTLINE BOX */
+.outline-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 3rem; }
+.outline-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.75rem; color: var(--text); }
+.outline-list { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.85rem; }
+.outline-list a { color: var(--accent); text-decoration: none; }
+.outline-list a:hover { text-decoration: underline; }
+.outline-list li { margin: 4px 0; }
+.outline-list ul { margin: 4px 0; padding-left: 1rem; }
+
+/* ARTICLE PROSE */
+.article-body h2 { font-family: var(--display); font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; margin: 3rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); scroll-margin-top: 80px; }
+.article-body h3 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 80px; }
+.article-body h4 { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.article-body p { margin-bottom: 1.25rem; color: var(--muted); font-size: 0.97rem; line-height: 1.85; }
+.article-body strong { color: var(--text); font-weight: 600; }
+.article-body em { color: var(--accent3); font-style: italic; }
+.article-body ul, .article-body ol { margin: 0 0 1.25rem 1.5rem; color: var(--muted); font-size: 0.95rem; }
+.article-body li { margin-bottom: 6px; line-height: 1.75; }
+.article-body code { font-family: var(--mono); font-size: 0.82em; background: rgba(56,189,248,0.08); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
+.article-body a { color: var(--accent2); text-decoration: none; }
+.article-body a:hover { text-decoration: underline; }
+
+/* CODE BLOCKS */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+.code-block-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot.r { background: #ff5f57; } .code-dot.y { background: #ffbd2e; } .code-dot.g { background: #28c840; }
+.code-filename { font-family: var(--mono); font-size: 0.73rem; color: var(--muted2); margin-left: 8px; }
+.code-block pre { padding: 1.5rem; overflow-x: auto; margin: 0; font-family: var(--mono); font-size: 0.82rem; line-height: 1.8; color: #e2e8f0; }
+/* Syntax colors */
+.kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; }
+.num { color: #f78c6c; } .cm { color: #546e7a; font-style: italic; }
+.cls { color: #ffcb6b; } .imp { color: #89ddff; } .op { color: #89ddff; }
+
+/* CALLOUT BOXES */
+.callout { display: flex; gap: 1rem; border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; border-width: 1px; border-style: solid; }
+.callout-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+.callout-body { font-size: 0.88rem; line-height: 1.75; }
+.callout-body strong { font-weight: 600; }
+.callout-title { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+.callout.note { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.22); color: var(--muted); }
+.callout.note .callout-title, .callout.note strong { color: var(--accent); }
+.callout.warning { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.22); color: var(--muted); }
+.callout.warning .callout-title, .callout.warning strong { color: var(--accent4); }
+.callout.tip { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); color: var(--muted); }
+.callout.tip .callout-title, .callout.tip strong { color: var(--accent3); }
+.callout.important { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.22); color: var(--muted); }
+.callout.important .callout-title, .callout.important strong { color: var(--accent5); }
+
+/* MATH DISPLAY */
+.math-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.75rem; margin: 1.25rem 0; overflow-x: auto; font-size: 1.05rem; text-align: center; }
+.math-label { font-size: 0.72rem; color: var(--muted2); font-family: var(--mono); margin-top: 0.5rem; text-align: right; }
+
+/* INLINE FIGURE / DIAGRAM */
+.figure { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; margin: 2rem 0; text-align: center; }
+.figure-caption { font-size: 0.8rem; color: var(--muted2); margin-top: 1rem; font-style: italic; }
+
+/* DATA TABLE */
+.data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.85rem; }
+.data-table th { padding: 10px 14px; background: var(--card2); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); text-align: left; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(99,179,237,0.03); }
+
+/* SUMMARY BOX */
+.summary-box { background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(129,140,248,0.07)); border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 1.75rem 2rem; margin: 3rem 0 2rem; }
+.summary-box h3 { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+.summary-box ul { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.88rem; }
+.summary-box li { margin-bottom: 6px; line-height: 1.7; }
+
+/* RESOURCE LIST */
+.resource-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.resource-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.resource-list li::before { content: '\2192'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.resource-list a { color: var(--accent2); }
+
+/* PREV/NEXT NAV */
+.page-nav { display: flex; justify-content: space-between; gap: 1rem; padding: 2rem; max-width: 1200px; margin: 0 auto; border-top: 1px solid var(--border); }
+.page-nav-btn { display: flex; flex-direction: column; gap: 4px; padding: 1rem 1.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; transition: all 0.2s; max-width: 45%; }
+.page-nav-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.page-nav-btn .nav-dir { font-size: 0.72rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; }
+.page-nav-btn .nav-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.page-nav-btn.next { text-align: right; margin-left: auto; }
+
+/* QUIZ/EXERCISE BOX */
+.exercise-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin: 2rem 0; }
+.exercise-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent4); margin-bottom: 0.5rem; }
+.exercise-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; }
+.exercise-body { font-size: 0.88rem; color: var(--muted); line-height: 1.75; }
+
+/* QUIZ BOX */
+.quiz-box { background: rgba(129,140,248,0.06); border: 1px solid rgba(129,140,248,0.22); border-radius: 14px; padding: 1.5rem; margin: 1.5rem 0; }
+.quiz-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.5rem; }
+.quiz-question { font-size: 0.93rem; color: var(--text); margin-bottom: 0.75rem; font-weight: 500; }
+.quiz-answer { margin-top: 0.5rem; }
+.quiz-answer summary { cursor: pointer; font-size: 0.82rem; color: var(--accent2); font-weight: 600; }
+.quiz-answer p { margin-top: 0.5rem; font-size: 0.86rem; color: var(--muted); }
+
+/* CELL (for assignment files - jupyter style) */
+.jupyter-cell { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin: 1.5rem 0; overflow: hidden; }
+.cell-header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted2); font-family: var(--mono); }
+.cell-input-label { color: var(--accent4); font-weight: 600; }
+.cell-body { padding: 1rem 1.25rem; }
+.jupyter-cell pre { padding: 1rem 1.25rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; background: var(--code-bg); margin: 0; }
+.cell-prompt { color: var(--accent3); font-weight: 700; }
+
+/* GRADING RUBRIC */
+.rubric-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+.rubric-table th { background: var(--card2); padding: 10px 14px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); }
+.rubric-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+
+/* DETAILS (collapsible hints) */
+details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; }
+details summary { cursor: pointer; font-size: 0.85rem; color: var(--accent2); font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
+
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">Hyper<span>Tune</span></a>
+    <ul class="nav-links">
+
+    </ul>
+    <a href="../index.html#curriculum" class="nav-cta">Start Learning</a>
+  </div>
+</nav>
+<div class="page-layout">
+  <aside class="toc-sidebar">
+    <div class="toc-label">On this page</div>
+    <nav class="toc-nav">
+<a href="#overview" class="toc-link">Overview</a>
+<a href="#dataset" class="toc-link">Dataset</a>
+<a href="#task1" class="toc-link">Task 1 — Decision Tree Sweep</a>
+<a href="#task2" class="toc-link">Task 2 — KNN Sweep</a>
+<a href="#task3" class="toc-link">Task 3 — Bias-Variance Decomposition</a>
+<a href="#task4" class="toc-link">Task 4 (Bonus) — TimeSeriesSplit</a>
+<a href="#rubric" class="toc-link">Grading Rubric</a>
+<a href="#submit" class="toc-link">Submission</a>
+<a href="#resources" class="toc-link">Resources</a>
+    </nav>
+  </aside>
+  <article class="article-body">
+    <div class="breadcrumb"><a href="../index.html">HyperTune</a> › <a href="intro.html">Module 01</a> › Assignment 01</div>
+    <div class="article-header">
+      <div class="module-badge">Module 01 · Assignment</div>
+      <h1 class="article-title">Assignment 01 — Diagnosing Hyperparameter Effects on Bias and Variance</h1>
+      <div class="article-meta">Difficulty: ★★☆☆☆ · Est. time: 2–3 hours · Dataset: sklearn.datasets.load_digits</div>
+    </div>
+    <div class="outline-box">
+      <div class="outline-title">📋 Article Outline</div>
+      <ol class="outline-list">
+
+<li><a href="#overview">Assignment Overview</a></li>
+<li><a href="#dataset">Dataset</a></li>
+<li><a href="#task1">Task 1 — Decision Tree max_depth Sweep</a></li>
+<li><a href="#task2">Task 2 — KNN n_neighbors Sweep</a></li>
+<li><a href="#task3">Task 3 — Numerical Bias-Variance Decomposition</a></li>
+<li><a href="#task4">Task 4 (Bonus) — TimeSeriesSplit</a></li>
+<li><a href="#rubric">Grading Rubric</a></li>
+<li><a href="#submit">Submission Instructions</a></li>
+<li><a href="#resources">Resources</a></li>
+      </ol>
+    </div>
+
+<section id="overview">
+  <h2>Assignment Overview</h2>
+  <p>In this assignment you will empirically reproduce every key claim from Module 01 by sweeping two hyperparameters of two simple models on the <code>load_digits</code> dataset, identifying the underfitting/sweet-spot/overfitting zones on the resulting curves, and computing a numerical bias-variance decomposition using bootstrap resampling. The bonus task introduces <code>TimeSeriesSplit</code> and asks you to explain why the resulting curves differ from the standard k-fold versions.</p>
+  <p>The assignment is designed to take 2–3 hours if you are comfortable with numpy, pandas, and matplotlib. If you find yourself spending more than 4 hours, re-read the part 2 and part 3 articles — most stuck points come from a shaky grasp of the bias-variance math or the CV loop structure, not from the code itself.</p>
+</section>
+
+<section id="dataset">
+  <h2>Dataset</h2>
+  <p>We use <code>sklearn.datasets.load_digits</code> — the classic 8×8 handwritten digits dataset, 1,797 samples, 64 features (pixel intensities 0–16), 10 classes (digits 0–9). It is small enough to run every experiment in seconds, large enough that CV estimates are reasonably stable, and rich enough that the bias-variance U-curve is clearly visible.</p>
+  <div class="jupyter-cell">
+  <div class="cell-header"><span class="cell-input-label">In [1]:</span> <span style="color:var(--muted2)">python</span></div>
+  <pre><span class="cell-prompt">&gt;&gt;&gt;</span> # Load and basic EDA
+from sklearn.datasets import load_digits
+import numpy as np
+import matplotlib.pyplot as plt
+
+X, y = load_digits(return_X_y=True)
+print(f&quot;X.shape = {X.shape}, y.shape = {y.shape}&quot;)
+print(f&quot;classes = {np.unique(y)}, class counts = {np.bincount(y)}&quot;)
+print(f&quot;feature range = [{X.min()}, {X.max()}]&quot;)
+
+# Plot a few examples
+fig, axes = plt.subplots(2, 5, figsize=(10, 4))
+for i, ax in enumerate(axes.ravel()):
+    ax.imshow(X[i].reshape(8, 8), cmap=&#x27;gray_r&#x27;)
+    ax.set_title(f&#x27;label={y[i]}&#x27;)
+    ax.axis(&#x27;off&#x27;)
+plt.tight_layout()
+plt.show()</pre>
+</div>
+</section>
+
+<section id="task1">
+  <h2>Task 1 — Decision Tree <code>max_depth</code> Sweep</h2>
+  <p>Sweep <code>max_depth</code> from 1 to 30. For each value, compute (a) train accuracy when fit on the full dataset and (b) 5-fold CV accuracy. Plot both curves on the same axes. On the plot, identify and color three zones: underfitting (where train accuracy is still climbing fast), sweet spot (highest CV accuracy), and overfitting (where the train-CV gap is widening while CV is flat or declining).</p>
+  <details><summary>Hint: which functions to use</summary>
+    <p>Use <code>DecisionTreeClassifier(max_depth=d, random_state=42)</code>, <code>model.fit(X, y).score(X, y)</code> for train accuracy, and <code>cross_val_score(model, X, y, cv=StratifiedKFold(5, shuffle=True, random_state=42), scoring='accuracy')</code> for CV accuracy. Use <code>plt.axvspan(..., alpha=0.2, color=...)</code> to color the three zones.</p>
+  </details>
+  <div class="jupyter-cell">
+  <div class="cell-header"><span class="cell-input-label">In [2]:</span> <span style="color:var(--muted2)">python</span></div>
+  <pre><span class="cell-prompt">&gt;&gt;&gt;</span> # YOUR CODE HERE
+# Steps:
+# 1. Loop max_depth in range(1, 31).
+# 2. Fit DecisionTreeClassifier on full X, y. Record train_acc.
+# 3. Run 5-fold StratifiedKFold CV. Record mean and std of CV accuracy.
+# 4. Plot train_acc and cv_mean (with ±std band) vs max_depth.
+# 5. Identify the three zones and annotate the plot.
+
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import StratifiedKFold, cross_val_score
+
+# YOUR CODE HERE
+pass</pre>
+</div>
+  <p><strong>Expected output:</strong> A figure with two curves (train and CV accuracy) on the y-axis and <code>max_depth</code> on the x-axis. Train accuracy should reach 1.0 by depth ~10. CV accuracy should peak around depth 6–10 and slowly decline. The train-CV gap should grow from near 0 at depth 1 to 0.05+ at depth 30.</p>
+</section>
+
+<section id="task2">
+  <h2>Task 2 — KNN <code>n_neighbors</code> Sweep</h2>
+  <p>Repeat Task 1 with <code>KNeighborsClassifier</code> and <code>n_neighbors</code> from 1 to 50. Note that the direction of the bias-variance curve is <em>reversed</em> compared to <code>max_depth</code>: <code>n_neighbors=1</code> is the most flexible (each query point uses only its nearest neighbor, which is itself in training), and large <code>n_neighbors</code> is the least flexible (each prediction is a majority vote over a wide neighborhood).</p>
+  <div class="jupyter-cell">
+  <div class="cell-header"><span class="cell-input-label">In [3]:</span> <span style="color:var(--muted2)">python</span></div>
+  <pre><span class="cell-prompt">&gt;&gt;&gt;</span> # YOUR CODE HERE
+# Sweep n_neighbors from 1 to 50. Same plot structure as Task 1.
+# Identify the three zones again — they will be on opposite ends of the x-axis.
+
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
+
+# YOUR CODE HERE
+pass</pre>
+</div>
+  <p><strong>Expected output:</strong> A figure with train accuracy at 1.0 for <code>n_neighbors=1</code> (perfect memorization), declining as <code>n_neighbors</code> grows. CV accuracy should peak around <code>n_neighbors=3–7</code> and slowly decline. The train-CV gap should be widest at <code>n_neighbors=1</code> and shrink as <code>n_neighbors</code> grows.</p>
+</section>
+
+<section id="task3">
+  <h2>Task 3 — Numerical Bias-Variance Decomposition</h2>
+  <p>Implement the bootstrap-based bias-variance decomposition from Part 2 of the module. Use <code>max_depth ∈ {2, 10, 30}</code> on <code>DecisionTreeRegressor</code> trained to predict a synthetic <code>sin(2πx)</code> function. Run $B=200$ bootstrap resamples for each depth and report $\text{bias}^2$, variance, and total error.</p>
+  <details><summary>Hint: regression setup</summary>
+    <p>Use <code>np.random.default_rng(seed)</code> to draw <code>n_train=50</code> training points uniformly from [0,1]. Add Gaussian noise <code>sigma=0.3</code>. For each of B bootstrap resamples, sample with replacement from the training set, fit a <code>DecisionTreeRegressor(max_depth=d, random_state=b)</code>, and predict on a fixed test grid (200 points on [0,1], no noise). Average predictions across B resamples to get the mean prediction; compute bias² and variance as in equation 1 from Part 2.</p>
+  </details>
+  <div class="jupyter-cell">
+  <div class="cell-header"><span class="cell-input-label">In [4]:</span> <span style="color:var(--muted2)">python</span></div>
+  <pre><span class="cell-prompt">&gt;&gt;&gt;</span> # YOUR CODE HERE
+# Implement bootstrap bias-variance decomposition.
+
+import numpy as np
+from sklearn.tree import DecisionTreeRegressor
+
+def true_f(x): return np.sin(2 * np.pi * x)
+
+# YOUR CODE HERE
+# - Set up: n_train=50, n_test=200, B=200, sigma=0.3
+# - Loop over max_depth in [2, 10, 30]:
+#     For b in range(B):
+#       X_tr = rng.uniform(0,1,n_train); y_tr = true_f(X_tr) + rng.normal(0,sigma,n_train)
+#       Fit DecisionTreeRegressor(max_depth=d, random_state=b)
+#       Predict on fixed X_test
+#     Compute bias², variance, total = bias² + variance + sigma²
+# - Print results in a table.</pre>
+</div>
+  <p><strong>Expected output:</strong> A table like:</p>
+  <table class="data-table"><thead><tr><th>max_depth</th><th>bias²</th><th>variance</th><th>noise σ²</th><th>total</th></tr></thead><tbody><tr><td>2</td><td>~0.20</td><td>~0.02</td><td>0.09</td><td>~0.31</td></tr><tr><td>10</td><td>~0.02</td><td>~0.10</td><td>0.09</td><td>~0.21</td></tr><tr><td>30</td><td>~0.01</td><td>~0.25</td><td>0.09</td><td>~0.35</td></tr></tbody></table>
+  <p>The sweet spot is depth 10, where bias² has come down but variance hasn't yet exploded. The actual numbers will vary slightly with the random seed but the qualitative pattern should be unmistakable.</p>
+</section>
+
+<section id="task4">
+  <h2>Task 4 (Bonus) — TimeSeriesSplit on a Randomly-Shuffled Dataset</h2>
+  <p>Repeat Task 1 but use <code>TimeSeriesSplit(n_splits=5)</code> instead of <code>StratifiedKFold</code>. The digits dataset is not temporal, so the difference won't be a leakage effect — instead, you should observe that <code>TimeSeriesSplit</code>'s folds have unequal training set sizes (the first fold trains on only 1/6 of the data; the last fold trains on 5/6), which systematically biases early folds toward underfitting.</p>
+  <p>Write a 4–5 sentence explanation of: (a) why the CV accuracy curve looks different with <code>TimeSeriesSplit</code> vs <code>StratifiedKFold</code>, (b) whether the sweet-spot <code>max_depth</code> shifts, and (c) whether you would expect this effect to be larger or smaller on a true time series where the data distribution drifts over time.</p>
+  <div class="jupyter-cell">
+  <div class="cell-header"><span class="cell-input-label">In [5]:</span> <span style="color:var(--muted2)">python</span></div>
+  <pre><span class="cell-prompt">&gt;&gt;&gt;</span> # YOUR CODE HERE
+# Repeat Task 1 with TimeSeriesSplit. Write your explanation in a markdown cell.
+
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import TimeSeriesSplit, cross_val_score
+
+# YOUR CODE HERE
+pass</pre>
+</div>
+</section>
+
+<section id="rubric">
+  <h2>Grading Rubric</h2>
+  <table class="rubric-table">
+    <thead><tr><th>Task</th><th>Points</th><th>Criteria</th></tr></thead>
+    <tbody>
+      <tr><td>Task 1 — Decision Tree sweep</td><td>25</td><td>Correct curve shape, both train and CV plotted, three zones clearly labeled.</td></tr>
+      <tr><td>Task 2 — KNN sweep</td><td>20</td><td>Correct curve shape, recognition that the bias-variance direction is reversed.</td></tr>
+      <tr><td>Task 3 — Bias-variance decomposition</td><td>35</td><td>Numerically correct bias² and variance for all 3 depths; total error matches sum; sweet spot identified.</td></tr>
+      <tr><td>Task 4 — TimeSeriesSplit bonus</td><td>20</td><td>Code runs, explanation addresses all three sub-questions with correct reasoning.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="submit">
+  <h2>Submission Instructions</h2>
+  <p>Save your notebook as <code>assignment_01_[your_name].ipynb</code> and submit it via your course platform. Make sure every code cell runs from top to bottom without errors in a fresh kernel. If you got stuck on a task, submit what you have and write a paragraph at the end explaining where you got stuck — partial credit is available for honest attempts.</p>
+  <div class="callout tip"><div class="callout-icon">💡</div><div class="callout-body"><div class="callout-title">Stuck? Re-read the articles.</div><p>90% of stuck points on this assignment come from a shaky grasp of the underlying concepts, not from the code itself. If Task 3 feels mysterious, re-read Part 2 sections 2 and 7. If Task 4 feels hand-wavy, re-read Part 3 section 5 on TimeSeriesSplit.</p></div></div>
+</section>
+
+<section id="resources"><h2>Useful Resources</h2><ul class="resource-list"><li><a href="https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_digits.html">load_digits — scikit-learn documentation</a></li><li><a href="https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.StratifiedKFold.html">StratifiedKFold documentation</a></li><li><a href="https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html">TimeSeriesSplit documentation</a></li><li><a href="https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.cross_val_score.html">cross_val_score documentation</a></li></ul></section>
+
+  </article>
+</div>
+<div class="page-nav"><a href="part3_cross_validation.html" class="page-nav-btn prev"><span class="nav-dir">← Previous</span><span class="nav-title">Cross-Validation</span></a><a href="assignment_solution.html" class="page-nav-btn next"><span class="nav-dir">Next →</span><span class="nav-title">Assignment 01 Solution</span></a></div>
+<footer>
+  <div class="container">
+    <div style="font-size:1.5rem;font-weight:800;font-family:var(--display);color:var(--accent);margin-bottom:0.5rem">HyperTune</div>
+    <p style="color:var(--muted2);font-size:0.85rem;max-width:500px;margin:0 auto">The complete hyperparameter tuning reference for ML &amp; DL engineers. Covers scikit-learn, XGBoost, LightGBM, PyTorch, Optuna, Ray Tune, and beyond — from first principles to production.</p>
+    <div style="margin-top:2rem;font-size:0.78rem;color:var(--muted2)">Built for learning · Python 3.10+ · scikit-learn 1.4+ · Optuna 3.0+</div>
+  </div>
+</footer>
+<script>
+(function() {
+  const links = Array.from(document.querySelectorAll('.toc-link'));
+  const sections = links
+    .map(l => document.querySelector(l.getAttribute('href')))
+    .filter(Boolean);
+  if (!('IntersectionObserver' in window) || sections.length === 0) return;
+  const setActive = id => {
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+  };
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  sections.forEach(s => observer.observe(s));
+})();
+</script>
+</body>
+</html>

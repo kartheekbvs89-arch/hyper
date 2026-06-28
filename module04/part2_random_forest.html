@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Random Forest Hyperparameters — HyperTune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<style>
+
+:root {
+  --bg: #070b14; --bg2: #0c1220; --bg3: #111827;
+  --card: #131d2e; --card2: #1a2640;
+  --border: rgba(99,179,237,0.12); --border2: rgba(99,179,237,0.22);
+  --accent: #38bdf8; --accent2: #818cf8; --accent3: #34d399;
+  --accent4: #f59e0b; --accent5: #f472b6;
+  --text: #f0f6fc; --muted: #8899aa; --muted2: #64748b;
+  --code-bg: #0d1117;
+  --ff: 'Inter', sans-serif; --mono: 'JetBrains Mono', monospace;
+  --display: 'Sora', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,11,20,0.85);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:var(--display);font-weight:800;font-size:1.25rem;color:var(--accent);letter-spacing:-0.03em;text-decoration:none}
+.logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#000;padding:7px 18px;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85}
+
+/* LAYOUT */
+.page-layout { display: grid; grid-template-columns: 280px 1fr; gap: 3rem; max-width: 1200px; margin: 0 auto; padding: 5rem 2rem 5rem; padding-top: 80px; }
+@media(max-width: 900px) { .page-layout { grid-template-columns: 1fr; } .toc-sidebar { display: none; } }
+
+/* TOC SIDEBAR */
+.toc-sidebar { position: sticky; top: 80px; height: fit-content; max-height: calc(100vh - 100px); overflow-y: auto; }
+.toc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.75rem; }
+.toc-nav { display: flex; flex-direction: column; gap: 2px; }
+.toc-link { color: var(--muted); font-size: 0.82rem; text-decoration: none; padding: 4px 10px; border-left: 2px solid transparent; transition: all 0.15s; border-radius: 0 4px 4px 0; }
+.toc-link:hover, .toc-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(56,189,248,0.05); }
+.toc-link.toc-sub { font-size: 0.78rem; padding-left: 22px; }
+
+/* ARTICLE BODY */
+.article-body { min-width: 0; }
+.breadcrumb { font-size: 0.78rem; color: var(--muted2); margin-bottom: 1.5rem; }
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--accent); }
+.module-badge { display: inline-block; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: var(--accent); padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 1rem; }
+.article-title { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
+.article-meta { font-size: 0.83rem; color: var(--muted); margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+
+/* OUTLINE BOX */
+.outline-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 3rem; }
+.outline-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.75rem; color: var(--text); }
+.outline-list { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.85rem; }
+.outline-list a { color: var(--accent); text-decoration: none; }
+.outline-list a:hover { text-decoration: underline; }
+.outline-list li { margin: 4px 0; }
+.outline-list ul { margin: 4px 0; padding-left: 1rem; }
+
+/* ARTICLE PROSE */
+.article-body h2 { font-family: var(--display); font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; margin: 3rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); scroll-margin-top: 80px; }
+.article-body h3 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 80px; }
+.article-body h4 { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.article-body p { margin-bottom: 1.25rem; color: var(--muted); font-size: 0.97rem; line-height: 1.85; }
+.article-body strong { color: var(--text); font-weight: 600; }
+.article-body em { color: var(--accent3); font-style: italic; }
+.article-body ul, .article-body ol { margin: 0 0 1.25rem 1.5rem; color: var(--muted); font-size: 0.95rem; }
+.article-body li { margin-bottom: 6px; line-height: 1.75; }
+.article-body code { font-family: var(--mono); font-size: 0.82em; background: rgba(56,189,248,0.08); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
+.article-body a { color: var(--accent2); text-decoration: none; }
+.article-body a:hover { text-decoration: underline; }
+
+/* CODE BLOCKS */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+.code-block-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot.r { background: #ff5f57; } .code-dot.y { background: #ffbd2e; } .code-dot.g { background: #28c840; }
+.code-filename { font-family: var(--mono); font-size: 0.73rem; color: var(--muted2); margin-left: 8px; }
+.code-block pre { padding: 1.5rem; overflow-x: auto; margin: 0; font-family: var(--mono); font-size: 0.82rem; line-height: 1.8; color: #e2e8f0; }
+/* Syntax colors */
+.kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; }
+.num { color: #f78c6c; } .cm { color: #546e7a; font-style: italic; }
+.cls { color: #ffcb6b; } .imp { color: #89ddff; } .op { color: #89ddff; }
+
+/* CALLOUT BOXES */
+.callout { display: flex; gap: 1rem; border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; border-width: 1px; border-style: solid; }
+.callout-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+.callout-body { font-size: 0.88rem; line-height: 1.75; }
+.callout-body strong { font-weight: 600; }
+.callout-title { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+.callout.note { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.22); color: var(--muted); }
+.callout.note .callout-title, .callout.note strong { color: var(--accent); }
+.callout.warning { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.22); color: var(--muted); }
+.callout.warning .callout-title, .callout.warning strong { color: var(--accent4); }
+.callout.tip { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); color: var(--muted); }
+.callout.tip .callout-title, .callout.tip strong { color: var(--accent3); }
+.callout.important { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.22); color: var(--muted); }
+.callout.important .callout-title, .callout.important strong { color: var(--accent5); }
+
+/* MATH DISPLAY */
+.math-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.75rem; margin: 1.25rem 0; overflow-x: auto; font-size: 1.05rem; text-align: center; }
+.math-label { font-size: 0.72rem; color: var(--muted2); font-family: var(--mono); margin-top: 0.5rem; text-align: right; }
+
+/* INLINE FIGURE / DIAGRAM */
+.figure { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; margin: 2rem 0; text-align: center; }
+.figure-caption { font-size: 0.8rem; color: var(--muted2); margin-top: 1rem; font-style: italic; }
+
+/* DATA TABLE */
+.data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.85rem; }
+.data-table th { padding: 10px 14px; background: var(--card2); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); text-align: left; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(99,179,237,0.03); }
+
+/* SUMMARY BOX */
+.summary-box { background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(129,140,248,0.07)); border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 1.75rem 2rem; margin: 3rem 0 2rem; }
+.summary-box h3 { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+.summary-box ul { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.88rem; }
+.summary-box li { margin-bottom: 6px; line-height: 1.7; }
+
+/* RESOURCE LIST */
+.resource-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.resource-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.resource-list li::before { content: '\2192'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.resource-list a { color: var(--accent2); }
+
+/* PREV/NEXT NAV */
+.page-nav { display: flex; justify-content: space-between; gap: 1rem; padding: 2rem; max-width: 1200px; margin: 0 auto; border-top: 1px solid var(--border); }
+.page-nav-btn { display: flex; flex-direction: column; gap: 4px; padding: 1rem 1.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; transition: all 0.2s; max-width: 45%; }
+.page-nav-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.page-nav-btn .nav-dir { font-size: 0.72rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; }
+.page-nav-btn .nav-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.page-nav-btn.next { text-align: right; margin-left: auto; }
+
+/* QUIZ/EXERCISE BOX */
+.exercise-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin: 2rem 0; }
+.exercise-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent4); margin-bottom: 0.5rem; }
+.exercise-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; }
+.exercise-body { font-size: 0.88rem; color: var(--muted); line-height: 1.75; }
+
+/* QUIZ BOX */
+.quiz-box { background: rgba(129,140,248,0.06); border: 1px solid rgba(129,140,248,0.22); border-radius: 14px; padding: 1.5rem; margin: 1.5rem 0; }
+.quiz-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.5rem; }
+.quiz-question { font-size: 0.93rem; color: var(--text); margin-bottom: 0.75rem; font-weight: 500; }
+.quiz-answer { margin-top: 0.5rem; }
+.quiz-answer summary { cursor: pointer; font-size: 0.82rem; color: var(--accent2); font-weight: 600; }
+.quiz-answer p { margin-top: 0.5rem; font-size: 0.86rem; color: var(--muted); }
+
+/* CELL (for assignment files - jupyter style) */
+.jupyter-cell { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin: 1.5rem 0; overflow: hidden; }
+.cell-header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted2); font-family: var(--mono); }
+.cell-input-label { color: var(--accent4); font-weight: 600; }
+.cell-body { padding: 1rem 1.25rem; }
+.jupyter-cell pre { padding: 1rem 1.25rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; background: var(--code-bg); margin: 0; }
+.cell-prompt { color: var(--accent3); font-weight: 700; }
+
+/* GRADING RUBRIC */
+.rubric-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+.rubric-table th { background: var(--card2); padding: 10px 14px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); }
+.rubric-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+
+/* DETAILS (collapsible hints) */
+details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; }
+details summary { cursor: pointer; font-size: 0.85rem; color: var(--accent2); font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
+
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">Hyper<span>Tune</span></a>
+    <ul class="nav-links">
+
+    </ul>
+    <a href="../index.html#curriculum" class="nav-cta">Start Learning</a>
+  </div>
+</nav>
+<div class="page-layout">
+  <aside class="toc-sidebar">
+    <div class="toc-label">On this page</div>
+    <nav class="toc-nav">
+<a href="#section-1" class="toc-link">1. From One Tree to a Forest</a>
+<a href="#section-2" class="toc-link">2. n_estimators</a>
+<a href="#section-3" class="toc-link">3. max_features</a>
+<a href="#section-4" class="toc-link">4. bootstrap, max_samples, oob_score</a>
+<a href="#section-5" class="toc-link">5. Per-Tree HPs &amp; n_jobs</a>
+<a href="#section-6" class="toc-link">6. Bias-Variance in Bagging</a>
+<a href="#section-7" class="toc-link">7. Feature vs Permutation Importance</a>
+<a href="#section-8" class="toc-link">8. Full Tuning Example</a>
+<a href="#resources" class="toc-link">Useful Resources</a>
+    </nav>
+  </aside>
+  <article class="article-body">
+    <div class="breadcrumb"><a href="../index.html">HyperTune</a> › <a href="intro.html">Module 04</a> › Random Forest Hyperparameters</div>
+    <div class="article-header">
+      <div class="module-badge">Module 04 · Model Type Deep Dive</div>
+      <h1 class="article-title">Random Forest Hyperparameters: The Complete Tuning Reference</h1>
+      <div class="article-meta">Part of the <strong>HyperTune</strong> open course · Estimated read time: 20 min · Python 3.10+ · scikit-learn 1.4+</div>
+    </div>
+    <div class="outline-box">
+      <div class="outline-title">📋 Article Outline</div>
+      <ol class="outline-list">
+
+<li><a href="#section-1">1. From One Tree to a Forest</a></li>
+<li><a href="#section-2">2. n_estimators: More Trees, Lower Variance</a></li>
+<li><a href="#section-3">3. max_features: The Key Ensemble Hyperparameter</a></li>
+<li><a href="#section-4">4. bootstrap, max_samples, and oob_score</a></li>
+<li><a href="#section-5">5. Per-Tree Hyperparameters and n_jobs</a></li>
+<li><a href="#section-6">6. Bias-Variance: What Bagging Does and Does Not Do</a></li>
+<li><a href="#section-7">7. feature_importances_ vs Permutation Importance</a></li>
+<li><a href="#section-8">8. Full Tuning Example with RandomizedSearchCV</a></li>
+<li><a href="#resources">Useful Resources</a></li>
+      </ol>
+    </div>
+<section id="section-1">
+  <h2>1. From One Tree to a Forest</h2>
+  <p>A random forest is a bagging ensemble of decision trees. Where a single decision tree is grown once on the full training set and predicts via a single recursive partition, a random forest grows hundreds of trees, each on a bootstrap resample of the training set, and averages their predictions. The averaging is what gives the forest its power: it does not reduce bias — the average tree in a random forest has the same bias as a single decision tree — but it dramatically reduces variance, because the trees are only weakly correlated with each other thanks to the bootstrap resampling and the per-split feature subsampling.</p>
+  <p>This means the hyperparameters of a random forest split cleanly into two categories. First, there are the <em>ensemble-level</em> hyperparameters: <code>n_estimators</code>, <code>max_features</code>, <code>bootstrap</code>, <code>max_samples</code>, <code>oob_score</code>. These control how the ensemble is constructed from its base learners. Second, there are the <em>per-tree</em> hyperparameters: <code>max_depth</code>, <code>min_samples_split</code>, <code>min_samples_leaf</code>, <code>max_leaf_nodes</code>. These are passed straight through to each <code>DecisionTreeClassifier</code> inside the forest, and their semantics are identical to what we covered in Part 1.</p>
+  <p>If you have not read the Decision Tree article yet, go back and read at least the sections on <code>max_depth</code> and <code>min_samples_leaf</code> before continuing. Everything there applies here too — the only difference is that you are tuning the bias of a single tree, while the ensemble mechanism takes care of the variance. The result is that you can usually afford slightly deeper trees in a forest than you would as a single model, because the variance penalty is muted by averaging.</p>
+</section>
+<section id="section-2">
+  <h2>2. <code>n_estimators</code>: More Trees, Lower Variance</h2>
+  <p><code>n_estimators</code> is the number of trees in the forest. Its effect on the bias-variance tradeoff is unusual: adding more trees <em>reduces variance without changing bias</em>. Each tree has the same expected prediction (averaged over bootstrap samples), so averaging more of them just shrinks the variance of the average. The variance reduction scales roughly as $1/n$ if the trees were independent, but in practice the trees are correlated (because they share training data and consider overlapping feature subsets), so the reduction is more like $\rho/n + (1-\rho)/n$ where $\rho$ is the average pairwise correlation between trees. The key point: <strong>adding trees never hurts</strong>, but the marginal benefit shrinks rapidly.</p>
+  <p>Empirically, the OOB error of a random forest drops fast for the first 50–100 trees, then enters a long plateau where each additional tree produces a negligible improvement. By 300–500 trees, the OOB error is essentially converged, and adding more trees is just wasted compute. The exception is when <code>max_features</code> is set very low, which decorrelates the trees and lets you benefit from more of them — but even then, 1000 trees is rarely worth the cost over 500.</p>
+<div class="figure">
+<svg viewBox="0 0 640 360" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:Inter;">
+  <text x="320" y="22" text-anchor="middle" fill="#8899aa" font-size="13" font-weight="600">OOB error vs n_estimators (breast_cancer, max_features='sqrt')</text>
+
+  <!-- axes -->
+  <line x1="60" y1="300" x2="600" y2="300" stroke="#8899aa" stroke-width="1.5"/>
+  <line x1="60" y1="40" x2="60" y2="300" stroke="#8899aa" stroke-width="1.5"/>
+
+  <!-- y-axis ticks -->
+  <text x="52" y="50" text-anchor="end" fill="#64748b" font-size="10">0.10</text>
+  <text x="52" y="120" text-anchor="end" fill="#64748b" font-size="10">0.08</text>
+  <text x="52" y="190" text-anchor="end" fill="#64748b" font-size="10">0.06</text>
+  <text x="52" y="260" text-anchor="end" fill="#64748b" font-size="10">0.04</text>
+  <text x="20" y="170" text-anchor="middle" fill="#8899aa" font-size="12" transform="rotate(-90 20 170)">OOB error</text>
+
+  <!-- x-axis ticks -->
+  <text x="60" y="318" text-anchor="middle" fill="#64748b" font-size="10">10</text>
+  <text x="170" y="318" text-anchor="middle" fill="#64748b" font-size="10">100</text>
+  <text x="330" y="318" text-anchor="middle" fill="#64748b" font-size="10">300</text>
+  <text x="500" y="318" text-anchor="middle" fill="#64748b" font-size="10">500</text>
+  <text x="600" y="318" text-anchor="middle" fill="#64748b" font-size="10">600</text>
+  <text x="330" y="345" text-anchor="middle" fill="#8899aa" font-size="12">n_estimators</text>
+
+  <!-- OOB error curve: starts high, drops fast, plateaus -->
+  <path d="M 60 80 L 75 130 L 95 175 L 120 200 L 150 215 L 200 222 L 260 226 L 330 228 L 410 229 L 500 229 L 600 229"
+        stroke="#38bdf8" stroke-width="2.5" fill="none"/>
+
+  <!-- converged marker -->
+  <line x1="260" y1="40" x2="260" y2="300" stroke="#34d399" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="270" y="60" fill="#34d399" font-size="11" font-weight="700">Converged (~250 trees)</text>
+
+  <!-- annotation: diminishing returns -->
+  <text x="450" y="245" fill="#f59e0b" font-size="11" font-weight="600">Diminishing returns</text>
+  <text x="450" y="258" fill="#64748b" font-size="10">each extra tree adds &lt;0.001</text>
+
+  <!-- single-tree baseline -->
+  <line x1="60" y1="80" x2="600" y2="80" stroke="#f472b6" stroke-width="1" stroke-dasharray="3 3"/>
+  <text x="600" y="76" text-anchor="end" fill="#f472b6" font-size="11" font-weight="600">single tree (~0.10)</text>
+</svg>
+<div class="figure-caption">Figure 1 — OOB error vs n_estimators on breast_cancer with max_features=&#x27;sqrt&#x27;. The error drops rapidly for the first ~50 trees, then enters a long plateau. 300–500 trees is the practical sweet spot; beyond that, marginal gains are smaller than the run-to-run noise in the OOB estimate itself.</div></div>
+  <p>The standard recommendation is to start with <code>n_estimators=100</code> for development and quick experiments, then raise it to 300–500 for your final model. Going beyond 500 is rarely worth the additional compute unless you have a specific reason (very low <code>max_features</code>, very large dataset, requirement for very stable feature importances). The plot below shows the typical OOB convergence curve and lets you read off the inflection point.</p>
+<div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">oob_convergence.py</span></div><pre># ─── oob_convergence.py ───────────────────────────────────────────────────────
+# Plot OOB error as a function of n_estimators to visualize the convergence
+# behavior and pick a sensible tree count for production. Also demonstrates
+# the effect of max_features on convergence speed.
+
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import load_breast_cancer
+from sklearn.ensemble import RandomForestClassifier
+
+X, y = load_breast_cancer(return_X_y=True)
+
+# Tree counts to evaluate
+tree_counts = [10, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1000]
+
+plt.figure(figsize=(9, 5.5), constrained_layout=True)
+
+for max_feat in [&quot;sqrt&quot;, 0.3, None]:
+    oob_errors = []
+    for n in tree_counts:
+        rf = RandomForestClassifier(
+            n_estimators=n,
+            max_features=max_feat,
+            oob_score=True,
+            n_jobs=-1,
+            random_state=42,
+        )
+        rf.fit(X, y)
+        oob_errors.append(1.0 - rf.oob_score_)
+    plt.plot(tree_counts, oob_errors, &quot;o-&quot;, label=f&quot;max_features={max_feat!r}&quot;)
+
+plt.xlabel(&quot;n_estimators&quot;, fontsize=12)
+plt.ylabel(&quot;OOB error&quot;, fontsize=12)
+plt.title(&quot;OOB error vs n_estimators (breast_cancer)&quot;, fontsize=13)
+plt.legend()
+plt.grid(alpha=0.2)
+plt.xscale(&quot;log&quot;)
+plt.savefig(&quot;oob_convergence.png&quot;, dpi=120)
+plt.show()
+
+# Report the marginal improvement of going from 300 to 1000 trees
+rf300 = RandomForestClassifier(n_estimators=300, max_features=&quot;sqrt&quot;,
+                                oob_score=True, n_jobs=-1, random_state=42).fit(X, y)
+rf1000 = RandomForestClassifier(n_estimators=1000, max_features=&quot;sqrt&quot;,
+                                 oob_score=True, n_jobs=-1, random_state=42).fit(X, y)
+print(f&quot;OOB error @ 300 trees:  {1 - rf300.oob_score_:.4f}&quot;)
+print(f&quot;OOB error @ 1000 trees: {1 - rf1000.oob_score_:.4f}&quot;)
+print(f&quot;Marginal gain (700 extra trees): {(1 - rf1000.oob_score_) - (1 - rf300.oob_score_):+.4f}&quot;)
+</pre></div>
+  <p>When you run this, you will see the OOB error drop by a few percent as you go from 10 to 100 trees, then flatten out. The marginal gain of going from 300 to 1000 trees is typically less than 0.005 — well within the noise of the OOB estimate itself. This is why the practical advice is to stop at 300–500: you are spending 3x the compute for less than half a percentage point of accuracy.</p>
+<div class="callout tip"><div class="callout-icon">💡</div><div class="callout-body"><div class="callout-title">Set n_estimators last, set it generously</div><p>During development, use <code>n_estimators=100</code> so your search loop is fast. Once you have fixed the other hyperparameters, retrain with <code>n_estimators=500</code> for your final model. Because <code>n_estimators</code> monotonically reduces variance without affecting bias, you can always add more trees at the end without re-tuning anything else.</p></div></div>
+</section>
+<section id="section-3">
+  <h2>3. <code>max_features</code>: The Key Random Forest Hyperparameter</h2>
+  <p>If <code>n_estimators</code> is the most-tuned random forest hyperparameter, <code>max_features</code> is the most <em>important</em>. It controls how many features each tree considers at every split, and it is what makes random forests different from plain bagging. Without <code>max_features</code>, every tree in the ensemble would consider the same features at every split, pick the same splits, and produce nearly identical trees — averaging them would do almost nothing to reduce variance.</p>
+  <p>By limiting each split to a random subset of features, <code>max_features</code> forces the trees to be different. Even if one feature is overwhelmingly the most informative, only a fraction of trees will be allowed to split on it at the root; the rest will have to find alternative splits on other features. This decorrelates the trees, which is what gives the averaging its variance-reduction power.</p>
+  <p>The scikit-learn defaults are sensible starting points: <code>max_features='sqrt'</code> for classification (so each split considers $\sqrt{d}$ features, where $d$ is the total feature count) and <code>max_features=d/3</code> for regression. Empirical work has shown these to be near-optimal across many datasets, but the exact best value can vary — usually you want to search over <code>['sqrt', 'log2', 0.3, 0.5, 0.7]</code> and pick the winner. Lower values decorrelate the trees more (which lets you benefit from more estimators) at the cost of higher per-tree bias; higher values let each tree fit the data better but increase correlation.</p>
+<div class="callout important"><div class="callout-icon">🔥</div><div class="callout-body"><div class="callout-title">max_features and n_estimators interact</div><p>Lower <code>max_features</code> decorrelates trees, which means the variance reduction from averaging is larger — but only if you have <em>enough trees</em> to average over. With <code>max_features='sqrt'</code> and 50 trees, you may underperform <code>max_features=None</code> with 50 trees because the per-tree bias increase outweighs the decorrelation benefit. With 500 trees, <code>max_features='sqrt'</code> almost always wins. Always co-tune these two.</p></div></div>
+</section>
+<section id="section-4">
+  <h2>4. <code>bootstrap</code>, <code>max_samples</code>, and <code>oob_score</code></h2>
+  <p>Three more ensemble-level knobs control how the bootstrap resampling works. <code>bootstrap=True</code> (the default) means each tree is trained on a random sample of the training data drawn with replacement, of size equal to the training set. <code>bootstrap=False</code> means each tree sees the full training set — this is rarely useful because it removes most of the variance-reduction benefit of bagging, but it can be appropriate when you have a very large dataset and want each tree to see a different deterministic subsample.</p>
+  <p><code>max_samples</code> controls the size of the bootstrap sample. The default <code>None</code> means each sample is the same size as the training set (which, because sampling is with replacement, contains about 63% unique samples and 37% duplicates). You can set it to a float like 0.5 to draw half-size samples, which speeds up training and further decorrelates the trees at the cost of higher per-tree bias. This is a less-commonly-tuned hyperparameter but worth knowing about.</p>
+  <p><code>oob_score=True</code> is one of the most underused features of random forests. Because each tree is trained on a bootstrap sample, about 37% of training samples are <em>out-of-bag</em> for that tree — they were not selected in the resample. We can use these OOB samples as a free validation set: for each training sample, predict it using only the trees that did not see it during training, and average those predictions. The resulting OOB score is an unbiased estimate of generalization error, computed without any explicit held-out set or cross-validation loop.</p>
+<div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">oob_demo.py</span></div><pre># ─── oob_demo.py ──────────────────────────────────────────────────────────────
+# Demonstrate that OOB score is a free, unbiased validation estimate.
+# Compare OOB score against 5-fold CV and held-out test set on breast_cancer.
+
+import numpy as np
+from sklearn.datasets import load_breast_cancer
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold
+
+X, y = load_breast_cancer(return_X_y=True)
+X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2,
+                                           stratify=y, random_state=42)
+
+rf = RandomForestClassifier(
+    n_estimators=300, max_features=&quot;sqrt&quot;,
+    oob_score=True, n_jobs=-1, random_state=42,
+)
+rf.fit(X_tr, y_tr)
+
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+cv_scores = cross_val_score(rf, X_tr, y_tr, cv=cv, scoring=&quot;accuracy&quot;, n_jobs=-1)
+
+print(f&quot;OOB accuracy:   {rf.oob_score_:.4f}   (free, computed during fit)&quot;)
+print(f&quot;5-fold CV acc:  {cv_scores.mean():.4f} ± {cv_scores.std():.4f}  (5 extra fits)&quot;)
+print(f&quot;Test accuracy:  {rf.score(X_te, y_te):.4f}  (held-out set)&quot;)
+</pre></div>
+  <p>The three numbers should be within a percent or two of each other. The OOB score is essentially a free 5-fold CV estimate — it costs nothing during training and is computed automatically. Use it during hyperparameter search to get a reliable validation estimate without paying for cross-validation. The only caveat is that OOB is specific to bagging ensembles; for gradient boosting or other models you still need CV.</p>
+</section>
+<section id="section-5">
+  <h2>5. Per-Tree Hyperparameters and <code>n_jobs</code></h2>
+  <p>Every per-tree hyperparameter from Part 1 — <code>max_depth</code>, <code>min_samples_split</code>, <code>min_samples_leaf</code>, <code>max_leaf_nodes</code>, <code>min_impurity_decrease</code>, <code>criterion</code> — is passed through to each tree inside the forest. The semantics are identical to the single-tree case; the only difference is that you are now tuning the <em>bias</em> of the per-tree learners, while the ensemble mechanism handles the variance. In practice, this means you can usually afford slightly more flexible trees in a forest than you would as a single model.</p>
+  <p>A common pattern is to leave <code>max_depth=None</code> (let trees grow to their natural depth) and rely on <code>min_samples_leaf</code> to control complexity. This works well because the variance penalty of deep trees is largely absorbed by the ensemble averaging. Another pattern is to set <code>max_depth</code> explicitly to keep individual trees small and fast, which is useful when you need to fit thousands of trees on a large dataset.</p>
+  <p><code>n_jobs</code> is not really a model hyperparameter — it controls how many CPU cores to use for fitting and predicting. Set <code>n_jobs=-1</code> to use all available cores. Because the trees in a forest are independent, training parallelizes essentially perfectly: a 300-tree forest on 8 cores takes roughly the same wall-clock time as a 38-tree forest on 1 core. There is no reason not to use <code>n_jobs=-1</code> in essentially every situation.</p>
+</section>
+<section id="section-6">
+  <h2>6. Bias-Variance: What Bagging Does and Does Not Do</h2>
+  <p>It is worth being precise about what bagging — the technique underlying random forests — actually does to bias and variance. The folklore is that "random forests reduce variance without affecting bias." This is correct, with one important qualification: the bias being referred to is the bias of the <em>base learner</em> (a single decision tree), and that bias is the same as the bias of a single decision tree trained on the full training set.</p>
+  <p>The math: let $\hat{f}_1, \ldots, \hat{f}_B$ be the predictions of $B$ trees, each trained on a bootstrap sample. The forest prediction is $\hat{f}_{\text{RF}} = \frac{1}{B} \sum_b \hat{f}_b$. The bias of this average is $\mathbb{E}[\hat{f}_{\text{RF}}] - f = \mathbb{E}[\hat{f}_1] - f$ (the bias of a single tree), because expectation is linear. The variance is $\text{Var}(\hat{f}_{\text{RF}}) = \rho \sigma^2 + (1-\rho) \sigma^2 / B$, where $\sigma^2$ is the variance of a single tree and $\rho$ is the average pairwise correlation. As $B$ grows, the second term vanishes, but the first term (proportional to correlation) does not. This is why <code>max_features</code> matters so much: it reduces $\rho$, which is the only term that survives as $B \to \infty$.</p>
+<div class="math-block">$$ \text{Var}(\hat{f}_{\text{RF}}) = \rho \, \sigma^2 + \frac{1 - \rho}{B} \, \sigma^2 $$ <div class="math-label">Eq. 1 — Variance of a bagged ensemble. The first term is the irreducible correlation floor; the second term vanishes as B → ∞.</div></div>
+  <p>The practical implication: <strong>bagging cannot fix a high-bias base learner</strong>. If your single decision trees are underfitting (because <code>max_depth</code> is too small or <code>min_samples_leaf</code> is too large), adding more of them to a forest will not help — you will just average a bunch of underfit models. To fix high bias, you have to make the per-tree learners more flexible (raise <code>max_depth</code>, lower <code>min_samples_leaf</code>). Once the per-tree bias is reasonable, the ensemble takes care of the variance.</p>
+<div class="quiz-box">
+  <div class="quiz-label">🧠 Quick Check</div>
+  <p class="quiz-question">Your random forest has n_estimators=500, max_features=&#x27;sqrt&#x27;, max_depth=3, and gets 75% test accuracy on a complex dataset. Adding 500 more trees brings test accuracy to 75.1%. What is the most likely problem, and what is the fix?</p>
+  <details class="quiz-answer">
+    <summary>Show Answer</summary>
+    <p>The model is high-bias: max_depth=3 is too restrictive for the underlying structure, so each tree in the forest is underfitting. Adding more trees does not fix bias (Eq. 1 shows that bias is determined by the per-tree bias, not the ensemble size). Fix: raise max_depth (try 8, 12, None), lower min_samples_leaf, and/or raise max_features. Once per-tree accuracy is reasonable, the ensemble can do its job.</p>
+  </details>
+</div>
+</section>
+<section id="section-7">
+  <h2>7. <code>feature_importances_</code> vs Permutation Importance</h2>
+  <p>Random forests expose a built-in <code>feature_importances_</code> attribute that ranks features by their total impurity decrease across all trees. This is convenient and fast, but it has well-known biases: it inflates the importance of high-cardinality features (because they offer more split points), it underestimates the importance of features that are correlated with other features (because the importance gets split between them), and it is computed on training data, so it can overstate the importance of features that the model is overfitting to.</p>
+  <p>Permutation importance, by contrast, measures how much the validation score drops when a feature's values are randomly shuffled. It is model-agnostic, works on any scoring metric, and reflects how much the model <em>actually relies</em> on each feature at prediction time. The cost is one extra prediction pass per feature (plus the original prediction), so it is slower than the built-in impurity-based measure but still practical for moderate feature counts.</p>
+<div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">feature_importance_comparison.py</span></div><pre># ─── feature_importance_comparison.py ─────────────────────────────────────────
+# Compare impurity-based feature_importances_ with permutation importance
+# on breast_cancer. The two rankings often disagree, and permutation
+# importance is the more trustworthy measure for understanding model behavior.
+
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.datasets import load_breast_cancer
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.inspection import permutation_importance
+
+cancer = load_breast_cancer()
+X, y = cancer.data, cancer.target
+feature_names = cancer.feature_names
+
+X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2,
+                                           stratify=y, random_state=42)
+
+rf = RandomForestClassifier(n_estimators=300, max_features=&quot;sqrt&quot;,
+                             n_jobs=-1, random_state=42)
+rf.fit(X_tr, y_tr)
+
+# ─── 1. Impurity-based (built-in, fast, biased toward high-cardinality features) ─
+imp_imp = pd.Series(rf.feature_importances_, index=feature_names,
+                    name=&quot;impurity&quot;).sort_values(ascending=False)
+
+# ─── 2. Permutation importance on the test set ─────────────────────────────────
+perm = permutation_importance(rf, X_te, y_te, n_repeats=10,
+                              random_state=42, n_jobs=-1, scoring=&quot;accuracy&quot;)
+perm_imp = pd.Series(perm.importances_mean, index=feature_names,
+                     name=&quot;permutation&quot;).sort_values(ascending=False)
+
+# ─── 3. Compare side by side ───────────────────────────────────────────────────
+comparison = pd.DataFrame({&quot;impurity&quot;: imp_imp, &quot;permutation&quot;: perm_imp}).fillna(0)
+comparison = comparison.sort_values(&quot;permutation&quot;, ascending=False).head(10)
+print(comparison.round(4))
+
+# ─── 4. Plot ───────────────────────────────────────────────────────────────────
+fig, ax = plt.subplots(figsize=(9, 6), constrained_layout=True)
+y_pos = np.arange(len(comparison))
+width = 0.4
+ax.barh(y_pos - width/2, comparison[&quot;impurity&quot;], width,
+        color=&quot;#38bdf8&quot;, label=&quot;Impurity (training)&quot;)
+ax.barh(y_pos + width/2, comparison[&quot;permutation&quot;], width,
+        color=&quot;#f472b6&quot;, label=&quot;Permutation (test)&quot;)
+ax.set_yticks(y_pos)
+ax.set_yticklabels(comparison.index, fontsize=9)
+ax.invert_yaxis()
+ax.set_xlabel(&quot;Importance&quot;)
+ax.set_title(&quot;Top-10 features: impurity vs permutation importance&quot;)
+ax.legend()
+plt.savefig(&quot;feature_importance_comparison.png&quot;, dpi=120)
+plt.show()
+</pre></div>
+  <p>The two rankings will overlap on the top few features (usually "worst radius" and "worst concave points" dominate on breast_cancer under both measures) but diverge on the long tail. Features that the impurity measure rates highly but that permutation importance rates lowly are usually ones the model is overfitting to in training but cannot actually use at test time. Features that permutation importance rates highly but that impurity importance misses are usually ones whose importance was diluted across correlated features in the impurity calculation.</p>
+</section>
+<section id="section-8">
+  <h2>8. Full Tuning Example with RandomizedSearchCV</h2>
+  <p>Let us put it all together with a complete tuning pipeline on breast_cancer. We will use <code>RandomizedSearchCV</code> because the random forest hyperparameter space has both discrete (<code>max_features</code>) and continuous (<code>min_samples_split</code> as a fraction) dimensions, and random search handles mixed spaces more naturally than grid search.</p>
+<div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">rf_tuning.py</span></div><pre># ─── rf_tuning.py ─────────────────────────────────────────────────────────────
+# Full RandomizedSearchCV pipeline for a RandomForestClassifier on
+# breast_cancer. Uses OOB-style validation via StratifiedKFold, sweeps
+# all the key hyperparameters, and reports the best configuration.
+
+import numpy as np
+from scipy.stats import randint
+from sklearn.datasets import load_breast_cancer
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import (train_test_split, RandomizedSearchCV,
+                                       StratifiedKFold)
+
+X, y = load_breast_cancer(return_X_y=True)
+X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2,
+                                           stratify=y, random_state=42)
+
+rf = RandomForestClassifier(n_jobs=-1, random_state=42, class_weight=&quot;balanced&quot;)
+
+# Search space — modest number of dimensions, focused on the high-leverage knobs
+param_dist = {
+    &quot;n_estimators&quot;:      [100, 200, 300, 500],
+    &quot;max_features&quot;:      [&quot;sqrt&quot;, &quot;log2&quot;, 0.3, 0.5, 0.7, None],
+    &quot;max_depth&quot;:         [4, 6, 8, 12, 16, None],
+    &quot;min_samples_split&quot;: randint(2, 30),
+    &quot;min_samples_leaf&quot;:  randint(1, 15),
+    &quot;bootstrap&quot;:         [True, False],
+}
+
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+search = RandomizedSearchCV(
+    estimator=rf,
+    param_distributions=param_dist,
+    n_iter=60,
+    cv=cv,
+    scoring=&quot;roc_auc&quot;,
+    n_jobs=-1,
+    random_state=42,
+    verbose=1,
+)
+search.fit(X_tr, y_tr)
+
+print(f&quot;\nBest params: {search.best_params_}&quot;)
+print(f&quot;Best CV ROC-AUC: {search.best_score_:.4f}&quot;)
+print(f&quot;Test ROC-AUC:    {search.score(X_te, y_te):.4f}&quot;)
+</pre></div>
+  <p>Typical best params on breast_cancer land around <code>n_estimators=300</code>, <code>max_features='sqrt'</code> or 0.3, <code>max_depth=None</code> (let trees grow naturally), <code>min_samples_leaf=1–4</code>. Test ROC-AUC is usually around 0.99 — breast_cancer is a relatively easy dataset for tree ensembles. The same pipeline works for harder datasets; just expect the optimal hyperparameters to shift toward deeper trees and smaller <code>min_samples_leaf</code> when the data has more complex structure.</p>
+<div class="callout note"><div class="callout-icon">📌</div><div class="callout-body"><div class="callout-title">The bias-variance tradeoff is a property of the base learner, not the ensemble</div><p>When tuning a random forest, focus your search budget on the per-tree hyperparameters (max_depth, min_samples_leaf) first, because they control bias. Once the per-tree bias is reasonable, set <code>n_estimators=500</code> and <code>max_features='sqrt'</code> as a near-optimal default. Spend remaining budget on a small sweep over max_features and min_samples_leaf; do not waste it on n_estimators (which is essentially monotone-improving) or on bootstrap/max_samples (which rarely move the needle).</p></div></div>
+</section>
+<div class="summary-box"><h3>Key Takeaways — Random Forest Hyperparameters</h3><ul><li><strong><code>n_estimators</code> reduces variance without affecting bias</strong>: more is always at least as good, with diminishing returns past 300–500 trees.</li><li><strong><code>max_features</code> is the key ensemble hyperparameter</strong>: <code>'sqrt'</code> for classification, 1/3 for regression, are sensible defaults.</li><li><strong><code>oob_score=True</code> is free validation</strong>: an unbiased estimate of generalization error computed during training, no CV needed.</li><li><strong>Bagging does not fix high bias</strong>: if per-tree learners underfit, the forest will underfit too — make trees more flexible first.</li><li><strong>Permutation importance > impurity importance</strong> for understanding what the model actually relies on at prediction time.</li></ul></div>
+<section id="resources"><h2>Useful Resources</h2><ul class="resource-list"><li><a href="https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html">scikit-learn RandomForestClassifier documentation</a></li><li><a href="https://link.springer.com/article/10.1023/A:1010933404324">Breiman (2001) — Random Forests</a></li><li><a href="https://hastie.su.domains/ElemStatLearn/">Elements of Statistical Learning — Chapter 15 (Random Forests)</a></li><li><a href="https://scikit-learn.org/stable/modules/generated/sklearn.inspection.permutation_importance.html">scikit-learn permutation_importance documentation</a></li><li><a href="https://arxiv.org/abs/1407.7502">Louppe (2014) — Understanding Variable Importances in Forests of Randomized Trees</a></li><li><a href="https://arxiv.org/abs/1804.03515">Probst, Wright, Boulesteix (2019) — Hyperparameters and Tuning Strategies for Random Forest</a></li><li><a href="https://www.youtube.com/watch?v=J4Wdy0Wc_xQ">StatQuest — Random Forests (video)</a></li></ul></section>
+  </article>
+</div>
+<div class="page-nav"><a href="part1_decision_trees.html" class="page-nav-btn prev"><span class="nav-dir">← Previous</span><span class="nav-title">Decision Tree Hyperparameters</span></a><a href="part3_xgboost_lightgbm.html" class="page-nav-btn next"><span class="nav-dir">Next →</span><span class="nav-title">XGBoost and LightGBM</span></a></div>
+<footer>
+  <div class="container">
+    <div style="font-size:1.5rem;font-weight:800;font-family:var(--display);color:var(--accent);margin-bottom:0.5rem">HyperTune</div>
+    <p style="color:var(--muted2);font-size:0.85rem;max-width:500px;margin:0 auto">The complete hyperparameter tuning reference for ML &amp; DL engineers. Covers scikit-learn, XGBoost, LightGBM, PyTorch, Optuna, Ray Tune, and beyond — from first principles to production.</p>
+    <div style="margin-top:2rem;font-size:0.78rem;color:var(--muted2)">Built for learning · Python 3.10+ · scikit-learn 1.4+ · Optuna 3.0+</div>
+  </div>
+</footer>
+<script>
+(function() {
+  const links = Array.from(document.querySelectorAll('.toc-link'));
+  const sections = links
+    .map(l => document.querySelector(l.getAttribute('href')))
+    .filter(Boolean);
+  if (!('IntersectionObserver' in window) || sections.length === 0) return;
+  const setActive = id => {
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+  };
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  sections.forEach(s => observer.observe(s));
+})();
+</script>
+</body>
+</html>

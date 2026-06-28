@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assignment 08 Solution — HyperTune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<style>
+
+:root {
+  --bg: #070b14; --bg2: #0c1220; --bg3: #111827;
+  --card: #131d2e; --card2: #1a2640;
+  --border: rgba(99,179,237,0.12); --border2: rgba(99,179,237,0.22);
+  --accent: #38bdf8; --accent2: #818cf8; --accent3: #34d399;
+  --accent4: #f59e0b; --accent5: #f472b6;
+  --text: #f0f6fc; --muted: #8899aa; --muted2: #64748b;
+  --code-bg: #0d1117;
+  --ff: 'Inter', sans-serif; --mono: 'JetBrains Mono', monospace;
+  --display: 'Sora', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,11,20,0.85);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:var(--display);font-weight:800;font-size:1.25rem;color:var(--accent);letter-spacing:-0.03em;text-decoration:none}
+.logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#000;padding:7px 18px;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85}
+
+/* LAYOUT */
+.page-layout { display: grid; grid-template-columns: 280px 1fr; gap: 3rem; max-width: 1200px; margin: 0 auto; padding: 5rem 2rem 5rem; padding-top: 80px; }
+@media(max-width: 900px) { .page-layout { grid-template-columns: 1fr; } .toc-sidebar { display: none; } }
+
+/* TOC SIDEBAR */
+.toc-sidebar { position: sticky; top: 80px; height: fit-content; max-height: calc(100vh - 100px); overflow-y: auto; }
+.toc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.75rem; }
+.toc-nav { display: flex; flex-direction: column; gap: 2px; }
+.toc-link { color: var(--muted); font-size: 0.82rem; text-decoration: none; padding: 4px 10px; border-left: 2px solid transparent; transition: all 0.15s; border-radius: 0 4px 4px 0; }
+.toc-link:hover, .toc-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(56,189,248,0.05); }
+.toc-link.toc-sub { font-size: 0.78rem; padding-left: 22px; }
+
+/* ARTICLE BODY */
+.article-body { min-width: 0; }
+.breadcrumb { font-size: 0.78rem; color: var(--muted2); margin-bottom: 1.5rem; }
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--accent); }
+.module-badge { display: inline-block; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: var(--accent); padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 1rem; }
+.article-title { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
+.article-meta { font-size: 0.83rem; color: var(--muted); margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+
+/* OUTLINE BOX */
+.outline-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 3rem; }
+.outline-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.75rem; color: var(--text); }
+.outline-list { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.85rem; }
+.outline-list a { color: var(--accent); text-decoration: none; }
+.outline-list a:hover { text-decoration: underline; }
+.outline-list li { margin: 4px 0; }
+.outline-list ul { margin: 4px 0; padding-left: 1rem; }
+
+/* ARTICLE PROSE */
+.article-body h2 { font-family: var(--display); font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; margin: 3rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); scroll-margin-top: 80px; }
+.article-body h3 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 80px; }
+.article-body h4 { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.article-body p { margin-bottom: 1.25rem; color: var(--muted); font-size: 0.97rem; line-height: 1.85; }
+.article-body strong { color: var(--text); font-weight: 600; }
+.article-body em { color: var(--accent3); font-style: italic; }
+.article-body ul, .article-body ol { margin: 0 0 1.25rem 1.5rem; color: var(--muted); font-size: 0.95rem; }
+.article-body li { margin-bottom: 6px; line-height: 1.75; }
+.article-body code { font-family: var(--mono); font-size: 0.82em; background: rgba(56,189,248,0.08); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
+.article-body a { color: var(--accent2); text-decoration: none; }
+.article-body a:hover { text-decoration: underline; }
+
+/* CODE BLOCKS */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+.code-block-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot.r { background: #ff5f57; } .code-dot.y { background: #ffbd2e; } .code-dot.g { background: #28c840; }
+.code-filename { font-family: var(--mono); font-size: 0.73rem; color: var(--muted2); margin-left: 8px; }
+.code-block pre { padding: 1.5rem; overflow-x: auto; margin: 0; font-family: var(--mono); font-size: 0.82rem; line-height: 1.8; color: #e2e8f0; }
+/* Syntax colors */
+.kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; }
+.num { color: #f78c6c; } .cm { color: #546e7a; font-style: italic; }
+.cls { color: #ffcb6b; } .imp { color: #89ddff; } .op { color: #89ddff; }
+
+/* CALLOUT BOXES */
+.callout { display: flex; gap: 1rem; border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; border-width: 1px; border-style: solid; }
+.callout-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+.callout-body { font-size: 0.88rem; line-height: 1.75; }
+.callout-body strong { font-weight: 600; }
+.callout-title { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+.callout.note { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.22); color: var(--muted); }
+.callout.note .callout-title, .callout.note strong { color: var(--accent); }
+.callout.warning { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.22); color: var(--muted); }
+.callout.warning .callout-title, .callout.warning strong { color: var(--accent4); }
+.callout.tip { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); color: var(--muted); }
+.callout.tip .callout-title, .callout.tip strong { color: var(--accent3); }
+.callout.important { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.22); color: var(--muted); }
+.callout.important .callout-title, .callout.important strong { color: var(--accent5); }
+
+/* MATH DISPLAY */
+.math-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.75rem; margin: 1.25rem 0; overflow-x: auto; font-size: 1.05rem; text-align: center; }
+.math-label { font-size: 0.72rem; color: var(--muted2); font-family: var(--mono); margin-top: 0.5rem; text-align: right; }
+
+/* INLINE FIGURE / DIAGRAM */
+.figure { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; margin: 2rem 0; text-align: center; }
+.figure-caption { font-size: 0.8rem; color: var(--muted2); margin-top: 1rem; font-style: italic; }
+
+/* DATA TABLE */
+.data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.85rem; }
+.data-table th { padding: 10px 14px; background: var(--card2); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); text-align: left; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(99,179,237,0.03); }
+
+/* SUMMARY BOX */
+.summary-box { background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(129,140,248,0.07)); border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 1.75rem 2rem; margin: 3rem 0 2rem; }
+.summary-box h3 { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+.summary-box ul { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.88rem; }
+.summary-box li { margin-bottom: 6px; line-height: 1.7; }
+
+/* RESOURCE LIST */
+.resource-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.resource-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.resource-list li::before { content: '\2192'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.resource-list a { color: var(--accent2); }
+
+/* PREV/NEXT NAV */
+.page-nav { display: flex; justify-content: space-between; gap: 1rem; padding: 2rem; max-width: 1200px; margin: 0 auto; border-top: 1px solid var(--border); }
+.page-nav-btn { display: flex; flex-direction: column; gap: 4px; padding: 1rem 1.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; transition: all 0.2s; max-width: 45%; }
+.page-nav-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.page-nav-btn .nav-dir { font-size: 0.72rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; }
+.page-nav-btn .nav-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.page-nav-btn.next { text-align: right; margin-left: auto; }
+
+/* QUIZ/EXERCISE BOX */
+.exercise-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin: 2rem 0; }
+.exercise-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent4); margin-bottom: 0.5rem; }
+.exercise-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; }
+.exercise-body { font-size: 0.88rem; color: var(--muted); line-height: 1.75; }
+
+/* QUIZ BOX */
+.quiz-box { background: rgba(129,140,248,0.06); border: 1px solid rgba(129,140,248,0.22); border-radius: 14px; padding: 1.5rem; margin: 1.5rem 0; }
+.quiz-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.5rem; }
+.quiz-question { font-size: 0.93rem; color: var(--text); margin-bottom: 0.75rem; font-weight: 500; }
+.quiz-answer { margin-top: 0.5rem; }
+.quiz-answer summary { cursor: pointer; font-size: 0.82rem; color: var(--accent2); font-weight: 600; }
+.quiz-answer p { margin-top: 0.5rem; font-size: 0.86rem; color: var(--muted); }
+
+/* CELL (for assignment files - jupyter style) */
+.jupyter-cell { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin: 1.5rem 0; overflow: hidden; }
+.cell-header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted2); font-family: var(--mono); }
+.cell-input-label { color: var(--accent4); font-weight: 600; }
+.cell-body { padding: 1rem 1.25rem; }
+.jupyter-cell pre { padding: 1rem 1.25rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; background: var(--code-bg); margin: 0; }
+.cell-prompt { color: var(--accent3); font-weight: 700; }
+
+/* GRADING RUBRIC */
+.rubric-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+.rubric-table th { background: var(--card2); padding: 10px 14px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); }
+.rubric-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+
+/* DETAILS (collapsible hints) */
+details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; }
+details summary { cursor: pointer; font-size: 0.85rem; color: var(--accent2); font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
+
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">Hyper<span>Tune</span></a>
+    <ul class="nav-links">
+
+    </ul>
+    <a href="../index.html#curriculum" class="nav-cta">Start Learning</a>
+  </div>
+</nav>
+<div class="page-layout">
+  <aside class="toc-sidebar">
+    <div class="toc-label">On this page</div>
+    <nav class="toc-nav">
+<a href="#intro" class="toc-link">Solution Walkthrough</a>
+<a href="#sol-task1" class="toc-link">Task 1 — Build the CNN</a>
+<a href="#sol-task2" class="toc-link">Task 2 — Train Under 5 Schedules</a>
+<a href="#sol-task3" class="toc-link">Task 3 — Plot Val Accuracy + LR</a>
+<a href="#sol-task4" class="toc-link">Task 4 — 3-Seed Stability</a>
+<a href="#sol-task5" class="toc-link">Task 5 — Warmup Sweep</a>
+<a href="#resources" class="toc-link">Resources</a>
+    </nav>
+  </aside>
+  <article class="article-body">
+    <div class="breadcrumb"><a href="../index.html">HyperTune</a> › <a href="intro.html">Module 08</a> › Assignment 08 Solution</div>
+    <div class="article-header">
+      <div class="module-badge">Module 08 · Assignment Solution</div>
+      <h1 class="article-title">Assignment 08 — Solution Walkthrough</h1>
+      <div class="article-meta">Solution · Difficulty: ★★★☆☆ · Run time: ~10 minutes total (Fashion-MNIST on CPU)</div>
+    </div>
+    <div class="outline-box">
+      <div class="outline-title">📋 Article Outline</div>
+      <ol class="outline-list">
+
+<li><a href="#intro">Solution Walkthrough</a></li>
+<li><a href="#sol-task1">Task 1 — Build the CNN</a></li>
+<li><a href="#sol-task2">Task 2 — Train Under Five Schedules</a></li>
+<li><a href="#sol-task3">Task 3 — Plot Val Accuracy + LR Trajectory</a></li>
+<li><a href="#sol-task4">Task 4 — 3-Seed Stability Comparison</a></li>
+<li><a href="#sol-task5">Task 5 (Bonus) — Warmup Duration Sweep</a></li>
+<li><a href="#resources">Useful Resources</a></li>
+      </ol>
+    </div>
+
+<section id="intro">
+  <h2>Solution Walkthrough</h2>
+  <p>Below are reference solutions for every task in Assignment 08. The solutions use Fashion-MNIST for speed — each schedule trains in ~5–10 minutes on CPU. On a GPU the full notebook completes in under 5 minutes. Use the same code with CIFAR-10 (swap the dataset and adjust the input channels from 1 to 3) and you will get qualitatively similar schedule comparisons at higher absolute accuracy.</p>
+  <div class="callout warning"><div class="callout-icon">⚠️</div><div class="callout-body"><div class="callout-title">Use the solution ethically</div><p>If you are taking this course for credit, do not submit this solution as your own work. Use it to unstick yourself when you are blocked, or to compare your approach after you have attempted the task. The numerical accuracies below are typical; your exact numbers will vary with PyTorch version, hardware, and random seed, but the qualitative patterns (One Cycle fastest, cosine/SGDR best final, fixed LR worst) should be reproducible.</p></div></div>
+</section>
+
+<section id="sol-task1">
+  <h2>Task 1 — Build the CNN</h2>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">sol_task1_cnn.py</span></div><pre># ─── sol_task1_cnn.py ──────────────────────────────────────────────────────────
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader
+from torchvision import datasets, transforms
+import time
+
+DEVICE = &quot;cuda&quot; if torch.cuda.is_available() else &quot;cpu&quot;
+
+# ─── Data ─────────────────────────────────────────────────────────────────────
+transform = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize((0.2860,), (0.3530,)),   # Fashion-MNIST mean/std
+])
+train_ds = datasets.FashionMNIST(&quot;./data&quot;, train=True,  download=True, transform=transform)
+test_ds  = datasets.FashionMNIST(&quot;./data&quot;, train=False, download=True, transform=transform)
+train_loader = DataLoader(train_ds, batch_size=128, shuffle=True,  num_workers=2)
+test_loader  = DataLoader(test_ds,  batch_size=256, shuffle=False, num_workers=2)
+
+# ─── Model ────────────────────────────────────────────────────────────────────
+class SmallCNN(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.features = nn.Sequential(
+            nn.Conv2d(1, 32, 3, padding=1), nn.BatchNorm2d(32), nn.ReLU(),
+            nn.MaxPool2d(2),                                   # 28 -&gt; 14
+            nn.Conv2d(32, 64, 3, padding=1), nn.BatchNorm2d(64), nn.ReLU(),
+            nn.MaxPool2d(2),                                   # 14 -&gt; 7
+        )
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(64 * 7 * 7, 128), nn.ReLU(), nn.Dropout(0.3),
+            nn.Linear(128, 10),
+        )
+    def forward(self, x):
+        return self.classifier(self.features(x))
+
+def train_one_epoch(model, loader, optimizer, criterion, device):
+    model.train()
+    total_loss, total_n = 0.0, 0
+    for X, y in loader:
+        X, y = X.to(device), y.to(device)
+        optimizer.zero_grad()
+        out = model(X)
+        loss = criterion(out, y)
+        loss.backward()
+        optimizer.step()
+        total_loss += loss.item() * len(y)
+        total_n += len(y)
+    return total_loss / total_n
+
+@torch.no_grad()
+def evaluate(model, loader, criterion, device):
+    model.eval()
+    total_loss, correct, total = 0.0, 0, 0
+    for X, y in loader:
+        X, y = X.to(device), y.to(device)
+        out = model(X)
+        total_loss += criterion(out, y).item() * len(y)
+        correct  += (out.argmax(1) == y).sum().item()
+        total    += len(y)
+    return total_loss / total, correct / total
+
+# ─── Sanity check ─────────────────────────────────────────────────────────────
+torch.manual_seed(0)
+model = SmallCNN().to(DEVICE)
+opt = optim.Adam(model.parameters(), lr=1e-3)
+crit = nn.CrossEntropyLoss()
+loss = train_one_epoch(model, train_loader, opt, crit, DEVICE)
+val_loss, val_acc = evaluate(model, test_loader, crit, DEVICE)
+print(f&quot;After 1 epoch: train_loss={loss:.4f}, val_loss={val_loss:.4f}, val_acc={val_acc:.4f}&quot;)
+</pre></div>
+  <p>After 1 epoch with Adam at <code>lr=1e-3</code>, you should see val accuracy around 0.85 on Fashion-MNIST. If you see below 0.75, check (a) BatchNorm is present and in train mode during training, (b) CrossEntropyLoss is used (not NLLLoss with raw logits), (c) the data normalization constants match Fashion-MNIST's mean/std.</p>
+</section>
+
+<section id="sol-task2">
+  <h2>Task 2 — Train Under Five Schedules</h2>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">sol_task2_schedules.py</span></div><pre># ─── sol_task2_schedules.py ────────────────────────────────────────────────────
+import copy
+EPOCHS = 20
+
+def make_scheduler(name, optimizer, epochs=EPOCHS, steps_per_epoch=len(train_loader)):
+    if name == &quot;fixed&quot;:
+        return None
+    if name == &quot;step&quot;:
+        return optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
+    if name == &quot;cosine&quot;:
+        return optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=1e-5)
+    if name == &quot;sgdr&quot;:
+        return optim.lr_scheduler.CosineAnnealingWarmRestarts(
+            optimizer, T_0=5, T_mult=1, eta_min=1e-5
+        )
+    if name == &quot;onecycle&quot;:
+        return optim.lr_scheduler.OneCycleLR(
+            optimizer, max_lr=3e-3,
+            total_steps=epochs * steps_per_epoch,
+            pct_start=0.3, anneal_strategy=&quot;cos&quot;,
+        )
+    raise ValueError(name)
+
+def train_with_schedule(schedule_name, epochs=EPOCHS, seed=0):
+    torch.manual_seed(seed)
+    model = SmallCNN().to(DEVICE)
+    optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    scheduler = make_scheduler(schedule_name, optimizer, epochs)
+    crit = nn.CrossEntropyLoss()
+
+    val_accs, lr_track = [], []
+    for ep in range(epochs):
+        # OneCycleLR steps per-batch; others per-epoch.
+        per_batch = schedule_name == &quot;onecycle&quot;
+        if per_batch:
+            model.train()
+            for X, y in train_loader:
+                X, y = X.to(DEVICE), y.to(DEVICE)
+                optimizer.zero_grad()
+                loss = crit(model(X), y)
+                loss.backward()
+                optimizer.step()
+                scheduler.step()
+        else:
+            train_one_epoch(model, train_loader, optimizer, crit, DEVICE)
+        val_loss, val_acc = evaluate(model, test_loader, crit, DEVICE)
+        val_accs.append(val_acc)
+        lr_track.append(optimizer.param_groups[0][&quot;lr&quot;])
+        if not per_batch and scheduler is not None:
+            scheduler.step()
+    return val_accs, lr_track
+
+# ─── Run all 5 schedules ──────────────────────────────────────────────────────
+results = {}
+for name in [&quot;fixed&quot;, &quot;step&quot;, &quot;cosine&quot;, &quot;sgdr&quot;, &quot;onecycle&quot;]:
+    t0 = time.perf_counter()
+    val_accs, lr_track = train_with_schedule(name, seed=0)
+    dt = time.perf_counter() - t0
+    results[name] = (val_accs, lr_track)
+    print(f&quot;{name:10s}  final_val_acc={val_accs[-1]:.4f}  ({dt:.1f}s)&quot;)
+</pre></div>
+  <p>Typical output: <code>fixed</code> ends at ~0.890, <code>step</code> at ~0.900, <code>cosine</code> at ~0.910, <code>sgdr</code> at ~0.908, <code>onecycle</code> at ~0.912. The key thing to notice is the <em>trajectory</em>: <code>onecycle</code> rises fastest (it's at 0.88+ by epoch 5), <code>cosine</code> and <code>sgdr</code> rise steadily, <code>step</code> has visible plateaus at the step boundaries, <code>fixed</code> plateaus early and never refines.</p>
+</section>
+
+<section id="sol-task3">
+  <h2>Task 3 — Plot Val Accuracy + LR Trajectory</h2>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">sol_task3_plot.py</span></div><pre># ─── sol_task3_plot.py ─────────────────────────────────────────────────────────
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5), constrained_layout=True)
+colors = {&quot;fixed&quot;:&quot;#64748b&quot;, &quot;step&quot;:&quot;#f59e0b&quot;, &quot;cosine&quot;:&quot;#f472b6&quot;,
+          &quot;sgdr&quot;:&quot;#38bdf8&quot;, &quot;onecycle&quot;:&quot;#a78bfa&quot;}
+
+for name, (val_accs, lr_track) in results.items():
+    c = colors[name]
+    ax1.plot(val_accs, &quot;-o&quot;, color=c, label=f&quot;{name} (final={val_accs[-1]:.3f})&quot;, markersize=4)
+    ax2.plot(lr_track, &quot;-o&quot;, color=c, label=name, markersize=4)
+
+ax1.set_xlabel(&quot;Epoch&quot;); ax1.set_ylabel(&quot;Val accuracy&quot;)
+ax1.set_title(&quot;Validation accuracy vs epoch&quot;)
+ax1.legend(loc=&quot;lower right&quot;, fontsize=9); ax1.grid(alpha=0.2)
+
+ax2.set_xlabel(&quot;Epoch&quot;); ax2.set_ylabel(&quot;Learning rate&quot;)
+ax2.set_title(&quot;LR schedule vs epoch&quot;)
+ax2.legend(loc=&quot;upper right&quot;, fontsize=9); ax2.grid(alpha=0.2)
+
+plt.savefig(&quot;assignment08_schedule_comparison.png&quot;, dpi=120)
+plt.show()
+</pre></div>
+  <p>The left panel should show 5 curves that separate visibly by epoch 5 and converge within ~2% of each other by the end. The right panel should show the 5 LR shapes from Figure 1 of the article. The visual correlation is the key insight: schedules that keep the LR higher early (One Cycle) make faster early progress; schedules that anneal smoothly to near-zero (cosine, One Cycle) end with better fine-grained convergence than schedules that stop at a higher floor (fixed, step).</p>
+</section>
+
+<section id="sol-task4">
+  <h2>Task 4 — 3-Seed Stability Comparison</h2>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">sol_task4_stability.py</span></div><pre># ─── sol_task4_stability.py ────────────────────────────────────────────────────
+import numpy as np
+import pandas as pd
+
+rows = []
+THRESH = 0.88
+for name in [&quot;fixed&quot;, &quot;step&quot;, &quot;cosine&quot;, &quot;sgdr&quot;, &quot;onecycle&quot;]:
+    finals, peaks, epochs_to_thresh = [], [], []
+    for seed in [0, 1, 2]:
+        val_accs, _ = train_with_schedule(name, seed=seed)
+        finals.append(val_accs[-1])
+        peaks.append(max(val_accs))
+        crossed = next((i for i, v in enumerate(val_accs) if v &gt;= THRESH), None)
+        epochs_to_thresh.append(crossed if crossed is not None else -1)
+    rows.append({
+        &quot;schedule&quot;:      name,
+        &quot;mean_final&quot;:    np.mean(finals),
+        &quot;std_final&quot;:     np.std(finals),
+        &quot;mean_peak&quot;:     np.mean(peaks),
+        &quot;mean_epochs_to_88%&quot;: float(np.mean([e for e in epochs_to_thresh if e &gt;= 0])
+                                    if any(e &gt;= 0 for e in epochs_to_thresh) else -1),
+    })
+df = pd.DataFrame(rows)
+print(df.to_string(index=False))
+</pre></div>
+  <p>Typical comparison table:</p>
+  <table class="data-table">
+    <thead><tr><th>schedule</th><th>mean_final</th><th>std_final</th><th>mean_peak</th><th>mean_epochs_to_88%</th></tr></thead>
+    <tbody>
+      <tr><td>fixed</td><td>0.891</td><td>0.004</td><td>0.894</td><td>8.0</td></tr>
+      <tr><td>step</td><td>0.902</td><td>0.003</td><td>0.906</td><td>6.7</td></tr>
+      <tr><td>cosine</td><td>0.911</td><td>0.002</td><td>0.913</td><td>5.3</td></tr>
+      <tr><td>sgdr</td><td>0.909</td><td>0.003</td><td>0.912</td><td>5.3</td></tr>
+      <tr><td>onecycle</td><td>0.913</td><td>0.002</td><td>0.914</td><td>4.0</td></tr>
+    </tbody>
+  </table>
+  <p>Three observations: (1) <strong>One Cycle is fastest</strong> — it crosses 88% by epoch 4 because the rising-LR phase lets the optimizer cover ground quickly. (2) <strong>Cosine and One Cycle are tied for best final</strong> — the difference is within noise. (3) <strong>Fixed LR has the highest variance</strong> — without annealing, the model ends up at a sharper minimum whose exact location depends on the seed. Schedules that anneal smoothly to near-zero (cosine, One Cycle) consistently find flatter minima that generalize more reliably.</p>
+</section>
+
+<section id="sol-task5">
+  <h2>Task 5 (Bonus) — Warmup Duration Sweep</h2>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">sol_task5_warmup_sweep.py</span></div><pre># ─── sol_task5_warmup_sweep.py ─────────────────────────────────────────────────
+import math
+from torch.optim.lr_scheduler import LambdaLR
+
+def get_warmup_cosine(optimizer, warmup_epochs, total_epochs, base_lr=1e-3, min_lr_ratio=1e-2):
+    def lr_lambda(epoch):
+        if epoch &lt; warmup_epochs:
+            return float(epoch) / float(max(1, warmup_epochs))
+        progress = float(epoch - warmup_epochs) / float(max(1, total_epochs - warmup_epochs))
+        cos = 0.5 * (1.0 + math.cos(math.pi * progress))
+        return min_lr_ratio + (1.0 - min_lr_ratio) * cos
+    return LambdaLR(optimizer, lr_lambda=lr_lambda)
+
+def train_warmup_cosine(warmup_epochs, epochs=EPOCHS, seed=0):
+    torch.manual_seed(seed)
+    model = SmallCNN().to(DEVICE)
+    optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    scheduler = get_warmup_cosine(optimizer, warmup_epochs, epochs)
+    crit = nn.CrossEntropyLoss()
+    val_accs = []
+    for ep in range(epochs):
+        train_one_epoch(model, train_loader, optimizer, crit, DEVICE)
+        _, va = evaluate(model, test_loader, crit, DEVICE)
+        val_accs.append(va)
+        scheduler.step()
+    return val_accs
+
+# ─── Sweep warmup durations ──────────────────────────────────────────────────
+plt.figure(figsize=(9, 5), constrained_layout=True)
+for w in [0, 1, 5, 10]:
+    va = train_warmup_cosine(w, seed=0)
+    plt.plot(va, &quot;-o&quot;, label=f&quot;warmup={w} (final={va[-1]:.3f})&quot;, markersize=4)
+plt.xlabel(&quot;Epoch&quot;); plt.ylabel(&quot;Val accuracy&quot;)
+plt.title(&quot;Warmup duration sweep (cosine decay, 20 epochs)&quot;)
+plt.legend(loc=&quot;lower right&quot;, fontsize=10); plt.grid(alpha=0.2)
+plt.savefig(&quot;assignment08_warmup_sweep.png&quot;, dpi=120)
+plt.show()
+</pre></div>
+  <h3>Explanation</h3>
+  <p>Typical result: warmup of 0–1 epochs gives the best final accuracy on Fashion-MNIST; warmup of 5 epochs is slightly worse (the model spends 5 epochs making slow progress at low LR); warmup of 10 epochs is clearly worse (half of training is wasted on the warmup ramp). This makes sense because Fashion-MNIST is a relatively easy dataset where Adam's variance estimate converges quickly — there is no need for the long warmup that Transformers require.</p>
+  <p>The general rule: warmup is most valuable when (a) the model is unstable at the start (Transformers, large batch sizes, RL), (b) the optimizer's variance estimate needs time to converge (Adam at high LR, fresh models with random initialization). On stable problems with well-conditioned models (CNNs on Fashion-MNIST, ResNet on ImageNet with BatchNorm), warmup of 0–1 epoch is fine; long warmup actively hurts because it delays the productive training phase. This is why BERT uses 10k warmup steps out of 1M (1%) but ResNet uses no warmup at all — different model families have different stability properties.</p>
+</section>
+
+<div class="summary-box"><h3>🎯 What This Assignment Teaches</h3><ul><li>The schedule <em>shape</em>, not just the average LR, determines final accuracy — cosine annealing and One Cycle reach 1–3% higher accuracy than fixed LR in the same number of epochs.</li><li><strong>One Cycle is fastest</strong> to converge: the rising-LR phase lets the optimizer make large early progress, and the cosine anneal refines to a good minimum.</li><li><strong>Cosine annealing is the safe default</strong> for CNNs — single parameter (<code>T_max</code>), no LR finder needed, near-optimal across most tasks.</li><li>Schedule choice has lower variance across seeds than fixed LR — annealing to near-zero finds flatter minima that generalize more reliably.</li><li><strong>Warmup duration</strong> should match the model's stability needs: 0–1 epoch for CNNs with BatchNorm, 1–10% of total for Transformers.</li><li>The qualitative ranking (One Cycle ≈ cosine &gt; step &gt; fixed) is robust across datasets and seeds; the absolute numbers vary, but the ordering is reliable.</li></ul></div>
+
+<section id="resources"><h2>Useful Resources</h2><ul class="resource-list"><li><a href="https://arxiv.org/abs/1708.07120">Smith &amp; Topin (2017) — Super-Convergence paper (the original schedule sweep)</a></li><li><a href="https://arxiv.org/abs/1608.03983">Loshchilov &amp; Hutter (2017) — SGDR paper</a></li><li><a href="https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate">PyTorch — torch.optim.lr_scheduler reference</a></li><li><a href="https://huggingface.co/docs/transformers/main_classes/optimizer_schedules">HuggingFace — schedule implementations (reference code)</a></li><li><a href="https://docs.fast.ai/callback.schedule.html#learner.lr_find">fast.ai — LR Finder documentation (Smith&#x27;s LR range test in practice)</a></li></ul></section>
+
+  </article>
+</div>
+<div class="page-nav"><a href="assignment_task.html" class="page-nav-btn prev"><span class="nav-dir">← Previous</span><span class="nav-title">Assignment 08</span></a><a href="../module09/intro.html" class="page-nav-btn next"><span class="nav-dir">Next →</span><span class="nav-title">Module 09 — AutoML &amp; NAS</span></a></div>
+<footer>
+  <div class="container">
+    <div style="font-size:1.5rem;font-weight:800;font-family:var(--display);color:var(--accent);margin-bottom:0.5rem">HyperTune</div>
+    <p style="color:var(--muted2);font-size:0.85rem;max-width:500px;margin:0 auto">The complete hyperparameter tuning reference for ML &amp; DL engineers. Covers scikit-learn, XGBoost, LightGBM, PyTorch, Optuna, Ray Tune, and beyond — from first principles to production.</p>
+    <div style="margin-top:2rem;font-size:0.78rem;color:var(--muted2)">Built for learning · Python 3.10+ · scikit-learn 1.4+ · Optuna 3.0+</div>
+  </div>
+</footer>
+<script>
+(function() {
+  const links = Array.from(document.querySelectorAll('.toc-link'));
+  const sections = links
+    .map(l => document.querySelector(l.getAttribute('href')))
+    .filter(Boolean);
+  if (!('IntersectionObserver' in window) || sections.length === 0) return;
+  const setActive = id => {
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+  };
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  sections.forEach(s => observer.observe(s));
+})();
+</script>
+</body>
+</html>

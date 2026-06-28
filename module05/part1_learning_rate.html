@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Learning Rate — HyperTune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<style>
+
+:root {
+  --bg: #070b14; --bg2: #0c1220; --bg3: #111827;
+  --card: #131d2e; --card2: #1a2640;
+  --border: rgba(99,179,237,0.12); --border2: rgba(99,179,237,0.22);
+  --accent: #38bdf8; --accent2: #818cf8; --accent3: #34d399;
+  --accent4: #f59e0b; --accent5: #f472b6;
+  --text: #f0f6fc; --muted: #8899aa; --muted2: #64748b;
+  --code-bg: #0d1117;
+  --ff: 'Inter', sans-serif; --mono: 'JetBrains Mono', monospace;
+  --display: 'Sora', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,11,20,0.85);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:var(--display);font-weight:800;font-size:1.25rem;color:var(--accent);letter-spacing:-0.03em;text-decoration:none}
+.logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#000;padding:7px 18px;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85}
+
+/* LAYOUT */
+.page-layout { display: grid; grid-template-columns: 280px 1fr; gap: 3rem; max-width: 1200px; margin: 0 auto; padding: 5rem 2rem 5rem; padding-top: 80px; }
+@media(max-width: 900px) { .page-layout { grid-template-columns: 1fr; } .toc-sidebar { display: none; } }
+
+/* TOC SIDEBAR */
+.toc-sidebar { position: sticky; top: 80px; height: fit-content; max-height: calc(100vh - 100px); overflow-y: auto; }
+.toc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.75rem; }
+.toc-nav { display: flex; flex-direction: column; gap: 2px; }
+.toc-link { color: var(--muted); font-size: 0.82rem; text-decoration: none; padding: 4px 10px; border-left: 2px solid transparent; transition: all 0.15s; border-radius: 0 4px 4px 0; }
+.toc-link:hover, .toc-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(56,189,248,0.05); }
+.toc-link.toc-sub { font-size: 0.78rem; padding-left: 22px; }
+
+/* ARTICLE BODY */
+.article-body { min-width: 0; }
+.breadcrumb { font-size: 0.78rem; color: var(--muted2); margin-bottom: 1.5rem; }
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--accent); }
+.module-badge { display: inline-block; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: var(--accent); padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 1rem; }
+.article-title { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
+.article-meta { font-size: 0.83rem; color: var(--muted); margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+
+/* OUTLINE BOX */
+.outline-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 3rem; }
+.outline-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.75rem; color: var(--text); }
+.outline-list { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.85rem; }
+.outline-list a { color: var(--accent); text-decoration: none; }
+.outline-list a:hover { text-decoration: underline; }
+.outline-list li { margin: 4px 0; }
+.outline-list ul { margin: 4px 0; padding-left: 1rem; }
+
+/* ARTICLE PROSE */
+.article-body h2 { font-family: var(--display); font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; margin: 3rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); scroll-margin-top: 80px; }
+.article-body h3 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 80px; }
+.article-body h4 { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.article-body p { margin-bottom: 1.25rem; color: var(--muted); font-size: 0.97rem; line-height: 1.85; }
+.article-body strong { color: var(--text); font-weight: 600; }
+.article-body em { color: var(--accent3); font-style: italic; }
+.article-body ul, .article-body ol { margin: 0 0 1.25rem 1.5rem; color: var(--muted); font-size: 0.95rem; }
+.article-body li { margin-bottom: 6px; line-height: 1.75; }
+.article-body code { font-family: var(--mono); font-size: 0.82em; background: rgba(56,189,248,0.08); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
+.article-body a { color: var(--accent2); text-decoration: none; }
+.article-body a:hover { text-decoration: underline; }
+
+/* CODE BLOCKS */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+.code-block-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot.r { background: #ff5f57; } .code-dot.y { background: #ffbd2e; } .code-dot.g { background: #28c840; }
+.code-filename { font-family: var(--mono); font-size: 0.73rem; color: var(--muted2); margin-left: 8px; }
+.code-block pre { padding: 1.5rem; overflow-x: auto; margin: 0; font-family: var(--mono); font-size: 0.82rem; line-height: 1.8; color: #e2e8f0; }
+/* Syntax colors */
+.kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; }
+.num { color: #f78c6c; } .cm { color: #546e7a; font-style: italic; }
+.cls { color: #ffcb6b; } .imp { color: #89ddff; } .op { color: #89ddff; }
+
+/* CALLOUT BOXES */
+.callout { display: flex; gap: 1rem; border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; border-width: 1px; border-style: solid; }
+.callout-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+.callout-body { font-size: 0.88rem; line-height: 1.75; }
+.callout-body strong { font-weight: 600; }
+.callout-title { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+.callout.note { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.22); color: var(--muted); }
+.callout.note .callout-title, .callout.note strong { color: var(--accent); }
+.callout.warning { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.22); color: var(--muted); }
+.callout.warning .callout-title, .callout.warning strong { color: var(--accent4); }
+.callout.tip { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); color: var(--muted); }
+.callout.tip .callout-title, .callout.tip strong { color: var(--accent3); }
+.callout.important { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.22); color: var(--muted); }
+.callout.important .callout-title, .callout.important strong { color: var(--accent5); }
+
+/* MATH DISPLAY */
+.math-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.75rem; margin: 1.25rem 0; overflow-x: auto; font-size: 1.05rem; text-align: center; }
+.math-label { font-size: 0.72rem; color: var(--muted2); font-family: var(--mono); margin-top: 0.5rem; text-align: right; }
+
+/* INLINE FIGURE / DIAGRAM */
+.figure { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; margin: 2rem 0; text-align: center; }
+.figure-caption { font-size: 0.8rem; color: var(--muted2); margin-top: 1rem; font-style: italic; }
+
+/* DATA TABLE */
+.data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.85rem; }
+.data-table th { padding: 10px 14px; background: var(--card2); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); text-align: left; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(99,179,237,0.03); }
+
+/* SUMMARY BOX */
+.summary-box { background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(129,140,248,0.07)); border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 1.75rem 2rem; margin: 3rem 0 2rem; }
+.summary-box h3 { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+.summary-box ul { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.88rem; }
+.summary-box li { margin-bottom: 6px; line-height: 1.7; }
+
+/* RESOURCE LIST */
+.resource-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.resource-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.resource-list li::before { content: '\2192'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.resource-list a { color: var(--accent2); }
+
+/* PREV/NEXT NAV */
+.page-nav { display: flex; justify-content: space-between; gap: 1rem; padding: 2rem; max-width: 1200px; margin: 0 auto; border-top: 1px solid var(--border); }
+.page-nav-btn { display: flex; flex-direction: column; gap: 4px; padding: 1rem 1.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; transition: all 0.2s; max-width: 45%; }
+.page-nav-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.page-nav-btn .nav-dir { font-size: 0.72rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; }
+.page-nav-btn .nav-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.page-nav-btn.next { text-align: right; margin-left: auto; }
+
+/* QUIZ/EXERCISE BOX */
+.exercise-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin: 2rem 0; }
+.exercise-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent4); margin-bottom: 0.5rem; }
+.exercise-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; }
+.exercise-body { font-size: 0.88rem; color: var(--muted); line-height: 1.75; }
+
+/* QUIZ BOX */
+.quiz-box { background: rgba(129,140,248,0.06); border: 1px solid rgba(129,140,248,0.22); border-radius: 14px; padding: 1.5rem; margin: 1.5rem 0; }
+.quiz-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.5rem; }
+.quiz-question { font-size: 0.93rem; color: var(--text); margin-bottom: 0.75rem; font-weight: 500; }
+.quiz-answer { margin-top: 0.5rem; }
+.quiz-answer summary { cursor: pointer; font-size: 0.82rem; color: var(--accent2); font-weight: 600; }
+.quiz-answer p { margin-top: 0.5rem; font-size: 0.86rem; color: var(--muted); }
+
+/* CELL (for assignment files - jupyter style) */
+.jupyter-cell { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin: 1.5rem 0; overflow: hidden; }
+.cell-header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted2); font-family: var(--mono); }
+.cell-input-label { color: var(--accent4); font-weight: 600; }
+.cell-body { padding: 1rem 1.25rem; }
+.jupyter-cell pre { padding: 1rem 1.25rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; background: var(--code-bg); margin: 0; }
+.cell-prompt { color: var(--accent3); font-weight: 700; }
+
+/* GRADING RUBRIC */
+.rubric-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+.rubric-table th { background: var(--card2); padding: 10px 14px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); }
+.rubric-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+
+/* DETAILS (collapsible hints) */
+details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; }
+details summary { cursor: pointer; font-size: 0.85rem; color: var(--accent2); font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
+
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">Hyper<span>Tune</span></a>
+    <ul class="nav-links">
+
+    </ul>
+    <a href="../index.html#curriculum" class="nav-cta">Start Learning</a>
+  </div>
+</nav>
+<div class="page-layout">
+  <aside class="toc-sidebar">
+    <div class="toc-label">On this page</div>
+    <nav class="toc-nav">
+<a href="#section-1" class="toc-link">1. Why the LR Dominates</a>
+<a href="#section-2" class="toc-link">2. Intuition: Hiking in Fog</a>
+<a href="#section-3" class="toc-link">3. Convex vs Non-Convex</a>
+<a href="#section-4" class="toc-link">4. The LR Finder (Smith 2015)</a>
+<a href="#section-5" class="toc-link">5. LR Finder from Scratch</a>
+<a href="#section-6" class="toc-link">6. LR Schedules Overview</a>
+<a href="#step-decay" class="toc-link toc-sub">6.1 Step Decay</a>
+<a href="#exp-decay" class="toc-link toc-sub">6.2 Exponential Decay</a>
+<a href="#cosine-annealing" class="toc-link toc-sub">6.3 Cosine Annealing</a>
+<a href="#sgdr" class="toc-link toc-sub">6.4 SGDR (Warm Restarts)</a>
+<a href="#linear-warmup" class="toc-link toc-sub">6.5 Linear Warmup</a>
+<a href="#reduce-on-plateau" class="toc-link toc-sub">6.6 ReduceLROnPlateau</a>
+<a href="#section-7" class="toc-link">7. Why Warmup Matters for Transformers</a>
+<a href="#section-8" class="toc-link">8. Implementing Schedules in PyTorch</a>
+<a href="#section-9" class="toc-link">9. Common Mistakes</a>
+<a href="#resources" class="toc-link">Useful Resources</a>
+    </nav>
+  </aside>
+  <article class="article-body">
+    <div class="breadcrumb"><a href="../index.html">HyperTune</a> › <a href="intro.html">Module 05</a> › The Learning Rate</div>
+    <div class="article-header">
+      <div class="module-badge">Module 05 · Deep Learning</div>
+      <h1 class="article-title">The Learning Rate: The Most Important Hyperparameter in Deep Learning</h1>
+      <div class="article-meta">Part of the <strong>HyperTune</strong> open course · Estimated read time: 20 min · Python 3.10+ · PyTorch 2.0+</div>
+    </div>
+    <div class="outline-box">
+      <div class="outline-title">📋 Article Outline</div>
+      <ol class="outline-list">
+
+<li><a href="#section-1">1. Why the Learning Rate Dominates Everything Else</a></li>
+<li><a href="#section-2">2. Intuition: Hiking Downhill in Fog</a></li>
+<li><a href="#section-3">3. The Loss Landscape: Convex vs Non-Convex</a></li>
+<li><a href="#section-4">4. The LR Finder (Smith, 2015)</a></li>
+<li><a href="#section-5">5. Implementing the LR Finder from Scratch</a></li>
+<li><a href="#section-6">6. Learning Rate Schedules: An Overview</a>
+  <ul>
+    <li><a href="#step-decay">6.1 Step Decay</a></li>
+    <li><a href="#exp-decay">6.2 Exponential Decay</a></li>
+    <li><a href="#cosine-annealing">6.3 Cosine Annealing</a></li>
+    <li><a href="#sgdr">6.4 Cosine Warm Restarts (SGDR)</a></li>
+    <li><a href="#linear-warmup">6.5 Linear Warmup</a></li>
+    <li><a href="#reduce-on-plateau">6.6 ReduceLROnPlateau</a></li>
+  </ul>
+</li>
+<li><a href="#section-7">7. Why Warmup is Critical for Transformers</a></li>
+<li><a href="#section-8">8. Implementing Every Schedule in PyTorch</a></li>
+<li><a href="#section-9">9. Common Mistakes with Schedulers</a></li>
+<li><a href="#resources">Useful Resources</a></li>
+      </ol>
+    </div>
+
+<section id="section-1">
+  <h2>1. Why the Learning Rate Dominates Everything Else</h2>
+  <p>If you remember only one number from a deep learning experiment, make it the learning rate. Of every knob you can turn — batch size, optimizer, depth, width, dropout, weight decay, augmentation — none has a larger or more discontinuous effect on whether training <em>works at all</em>. A learning rate that is 10× too large will diverge in the first five steps; one that is 10× too small will crawl so slowly that you will declare the model broken before it converges. Both failures look identical in a Jupyter notebook: the loss refuses to go down. The diagnosis is almost always the same: the learning rate is wrong.</p>
+  <p>Concretely, vanilla mini-batch gradient descent updates each parameter $\theta$ by stepping opposite the gradient of the loss $\mathcal{L}$ with respect to that parameter:</p>
+  <div class="math-block">$$ \theta_{{t+1}} = \theta_t - \eta \, \nabla_\theta \mathcal{{L}}(\theta_t; \mathcal{{B}}_t) $$ <div class="math-label">Eq. 1 — Vanilla SGD update. η is the learning rate, B_t is the mini-batch at step t.</div></div>
+  <p>The learning rate $\eta$ is the scalar that converts a gradient — a direction — into an actual step in parameter space. Gradients from different layers, different datasets, and different architectures are not directly comparable in magnitude; the learning rate is what normalizes them into "a reasonable step." When $\eta$ is well chosen, training is a smooth downhill walk. When it is not, training either overshoots the valley entirely or never leaves the trailhead.</p>
+  <p>This is why every credible deep learning workflow starts with the learning rate. Before you tune dropout, before you swap Adam for SGD, before you add a residual block — you find a learning rate that actually trains the model. Everything else is a refinement; the learning rate is the foundation.</p>
+  <div class="callout important"><div class="callout-icon">🔥</div><div class="callout-body"><div class="callout-title">LR is the single most impactful hyperparameter</div><p>Empirical studies (Goodfellow et al., Bengio 2012, Smith 2015) consistently find that the learning rate accounts for the largest share of variance in final model quality among all deep learning hyperparameters. A poorly chosen LR can swing final accuracy by 20+ percentage points on image classification tasks — no other single knob comes close.</p></div></div>
+</section>
+
+<section id="section-2">
+  <h2>2. Intuition: Hiking Downhill in Fog</h2>
+  <p>Here is the picture that makes the learning rate click. Imagine you are hiking through a mountain range in dense fog, trying to reach the lowest valley. You can only feel the slope of the ground directly beneath your feet — that is your gradient. You cannot see the horizon, and you cannot remember the trail behind you in any detail. Your only decision is how big a step to take before re-evaluating the slope.</p>
+  <p>If your steps are <strong>enormous</strong>, you will stride across valleys without noticing them. You will feel the ground go down, then up, then down again as you bounce from ridge to ridge, and you will never settle anywhere. In optimization terms, the loss oscillates wildly and may even grow. This is divergence.</p>
+  <p>If your steps are <strong>tiny</strong>, you will inch forward cautiously, eventually reaching a low point — but only after an absurd number of evaluations, and you will get stuck in the first small dip you encounter because your step is too small to climb out of it. This is the regime where training "works" but never finishes, or converges to a poor local minimum.</p>
+  <p>Between these extremes is a step size that is large enough to make steady downhill progress, small enough to actually notice the valley floor when you reach it, and — crucially — large enough to "jump over" small noise bumps in the terrain without getting deflected. This is the regime where deep learning actually trains well. Finding that step size is what the LR Finder (section 4) does systematically.</p>
+  <div class="callout tip"><div class="callout-icon">💡</div><div class="callout-body"><div class="callout-title">The fog matters too</div><p>The "fog" in this analogy is the fact that you only see a <em>mini-batch</em> gradient, not the full dataset gradient. The mini-batch gradient is a noisy estimate of the true gradient, and that noise is itself a function of batch size (small batch = more noise). This is why batch size and learning rate are coupled — see Part 2 of this module.</p></div></div>
+</section>
+
+<section id="section-3">
+  <h2>3. The Loss Landscape: Convex vs Non-Convex</h2>
+  <p>The hiking analogy assumes there is a single valley. For convex problems — logistic regression on linearly separable data, ridge regression with a positive-definite design matrix — there is exactly one minimum, and any reasonable learning rate will eventually reach it. The loss surface is a bowl, and gradient descent rolls downhill to the bottom. Different learning rates change <em>how fast</em> you get there, but not <em>where</em> you end up.</p>
+  <p>Deep learning is not like this. A neural network's loss as a function of its weights is a high-dimensional non-convex surface with many local minima, saddle points, flat plateaus, and steep ravines. Where you end up depends on where you start (initialization), what direction the gradient points you (the optimizer), and <em>how big each step is</em> (the learning rate). Two runs of the same network with the same initialization but different learning rates can land in completely different basins of attraction and reach different final accuracies.</p>
+  <div class="math-block">$$ \mathcal{{L}}: \mathbb{{R}}^P \to \mathbb{{R}}, \quad P = 10^4 \text{ to } 10^{{11}} $$ <div class="math-label">Eq. 2 — A modern neural network&#x27;s loss is a function of anywhere from ten thousand to over a hundred billion parameters.</div></div>
+  <p>In this regime, the learning rate has two distinct jobs. First, it controls <em>convergence speed</em>: the right LR reaches a good basin quickly; the wrong LR wastes compute. Second, it controls <em>which basin you reach</em>: a larger LR can jump over small barriers and escape sharp minima (which often generalize poorly), while a smaller LR tends to settle into whatever basin you happen to be near. This is the theoretical basis for the empirical observation that <em>slightly larger</em> learning rates often produce better-generalizing models — they bias the optimizer toward flatter, more robust minima.</p>
+  <p>The practical upshot is that you cannot reason about "the optimal learning rate" in the abstract. It depends on the model, the data, the batch size, and the optimizer. The LR Finder (next section) is the standard procedure for measuring it empirically on your specific setup.</p>
+</section>
+
+<section id="section-4">
+  <h2>4. The LR Finder (Smith, 2015)</h2>
+  <p>Leslie Smith's 2015 paper <em>Cyclical Learning Rates for Training Neural Networks</em> introduced a beautifully simple procedure for picking a learning rate: instead of guessing, <strong>let the model tell you.</strong> The procedure, now universally called the <em>LR Finder</em>, works as follows.</p>
+  <ol>
+    <li>Initialize the model with your chosen architecture and weight initialization.</li>
+    <li>Start with an extremely small learning rate, typically $\eta = 10^{-7}$.</li>
+    <li>Train for one epoch over your data. After every mini-batch, exponentially increase the learning rate — multiply it by a constant factor — so that by the end of the epoch it has reached a large value like $\eta = 10$.</li>
+    <li>Record the loss at every step (smoothed, to reduce noise).</li>
+    <li>Plot loss against learning rate on a log scale.</li>
+  </ol>
+  <p>The resulting curve has a characteristic shape. At very low LR, the loss is flat — the steps are too small to make meaningful progress. As LR increases, the loss starts to decrease steadily — you have entered the productive regime. Continue increasing, and at some point the loss plateaus or starts to rise — you have overshot the productive regime and entered the divergent regime. The optimal learning rate is <strong>just before the loss starts to increase</strong>, and the standard rule of thumb is to use $\eta^* / 10$ where $\eta^*$ is the LR at the minimum of the curve. The factor of 10 gives you safety margin: training for many epochs amplifies small instabilities, so picking the absolute minimum is riskier than picking a slightly smaller value.</p>
+  <div class="figure">
+<svg viewBox="0 0 700 380" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:700px;font-family:Inter,sans-serif">
+  <!-- Axes -->
+  <line x1="70" y1="320" x2="660" y2="320" stroke="#8899aa" stroke-width="1.5"/>
+  <line x1="70" y1="40" x2="70" y2="320" stroke="#8899aa" stroke-width="1.5"/>
+  <!-- Grid lines -->
+  <line x1="70" y1="100" x2="660" y2="100" stroke="rgba(99,179,237,0.08)" stroke-width="1"/>
+  <line x1="70" y1="160" x2="660" y2="160" stroke="rgba(99,179,237,0.08)" stroke-width="1"/>
+  <line x1="70" y1="220" x2="660" y2="220" stroke="rgba(99,179,237,0.08)" stroke-width="1"/>
+  <line x1="70" y1="280" x2="660" y2="280" stroke="rgba(99,179,237,0.08)" stroke-width="1"/>
+  <!-- Loss curve: flat at start, decreases, then sharply rises -->
+  <path d="M 70 290 Q 130 285 180 270 T 270 200 T 360 130 Q 400 110 440 130 Q 470 160 490 220 Q 510 280 540 310 Q 580 330 660 335"
+        fill="none" stroke="#38bdf8" stroke-width="2.5"/>
+  <!-- Smoothing band -->
+  <path d="M 70 295 Q 130 290 180 275 T 270 205 T 360 135 Q 400 115 440 135 Q 470 165 490 225 Q 510 285 540 315 Q 580 335 660 340"
+        fill="none" stroke="#38bdf8" stroke-width="1" stroke-dasharray="3,3" opacity="0.5"/>
+  <!-- Minimum marker -->
+  <circle cx="400" cy="110" r="5" fill="#34d399"/>
+  <line x1="400" y1="110" x2="400" y2="320" stroke="#34d399" stroke-width="1" stroke-dasharray="4,3"/>
+  <!-- Recommended LR marker (peak/10) -->
+  <circle cx="335" cy="155" r="5" fill="#f59e0b"/>
+  <line x1="335" y1="155" x2="335" y2="320" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,3"/>
+  <!-- Annotations -->
+  <text x="405" y="100" fill="#34d399" font-size="11" font-weight="600">peak LR (η*)</text>
+  <text x="225" y="145" fill="#f59e0b" font-size="11" font-weight="600">use η* / 10</text>
+  <text x="100" y="270" fill="#8899aa" font-size="10">too small</text>
+  <text x="285" y="170" fill="#34d399" font-size="10">productive</text>
+  <text x="500" y="290" fill="#f472b6" font-size="10">diverging</text>
+  <!-- X axis labels (log scale) -->
+  <text x="70" y="340" fill="#64748b" font-size="10" text-anchor="middle">1e-7</text>
+  <text x="190" y="340" fill="#64748b" font-size="10" text-anchor="middle">1e-5</text>
+  <text x="310" y="340" fill="#64748b" font-size="10" text-anchor="middle">1e-3</text>
+  <text x="430" y="340" fill="#64748b" font-size="10" text-anchor="middle">1e-1</text>
+  <text x="555" y="340" fill="#64748b" font-size="10" text-anchor="middle">10</text>
+  <text x="365" y="362" fill="#8899aa" font-size="11" text-anchor="middle">learning rate (log scale)</text>
+  <!-- Y axis label -->
+  <text x="35" y="180" fill="#8899aa" font-size="11" text-anchor="middle" transform="rotate(-90 35 180)">loss (smoothed)</text>
+  <!-- Title -->
+  <text x="350" y="28" fill="#f0f6fc" font-size="14" text-anchor="middle" font-weight="700">LR Finder: Loss vs Learning Rate</text>
+</svg>
+<div class="figure-caption">A typical LR Finder curve. The productive regime is the descending portion between the flat &quot;too small&quot; region and the rising &quot;diverging&quot; region. Pick a learning rate about 10× smaller than the LR at the loss minimum.</div></div>
+  <p>The LR Finder works because the loss curve over an exponentially-spaced LR range is a near-universal signature of gradient descent on a smooth loss surface. It costs you exactly one epoch of training — typically a few minutes — and replaces hours of trial-and-error guesswork. There is no excuse for not running it.</p>
+  <div class="callout note"><div class="callout-icon">📌</div><div class="callout-body"><div class="callout-title">Origin of the LR Finder</div><p>The LR Finder was introduced by Leslie Smith in <em>Cyclical Learning Rates for Training Neural Networks</em> (arXiv:1506.01186, 2015). The same paper introduced cyclical learning rates (triangular, triangular2, exp_range). Smith followed up with <em>Don't Decay the Learning Rate, Increase the Momentum</em> (2017) and a companion paper on super-convergence. Together these form the canonical reference for modern LR scheduling practice.</p></div></div>
+</section>
+
+<section id="section-5">
+  <h2>5. Implementing the LR Finder from Scratch in PyTorch</h2>
+  <p>The LR Finder is short enough to implement in a single function. The key trick is to <strong>log-space interpolate</strong> the LR between $\eta_\text{start} = 10^{-7}$ and $\eta_\text{end} = 10$ across the total number of mini-batches in one epoch. After each step, record the loss. When the loss explodes (say, 4× the running minimum), stop early to avoid NaN-ing your weights.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── lr_finder.py ─────────────────────────────────────────────────────────────
+# Leslie Smith&#x27;s LR Finder implemented from scratch on MNIST.
+
+import copy
+import math
+import numpy as np
+import matplotlib.pyplot as plt
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader
+from torchvision import datasets, transforms
+
+device = &quot;cuda&quot; if torch.cuda.is_available() else &quot;cpu&quot;
+
+# ─── 1. A small CNN for MNIST ────────────────────────────────────────────────
+class TinyCNN(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Conv2d(1, 16, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2),
+            nn.Conv2d(16, 32, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2),
+            nn.Flatten(),
+            nn.Linear(32 * 7 * 7, 64), nn.ReLU(),
+            nn.Linear(64, 10),
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+# ─── 2. Data ─────────────────────────────────────────────────────────────────
+tfm = transforms.Compose([transforms.ToTensor(),
+                          transforms.Normalize((0.1307,), (0.3081,))])
+train_ds = datasets.MNIST(&quot;./data&quot;, train=True, download=True, transform=tfm)
+loader = DataLoader(train_ds, batch_size=128, shuffle=True, num_workers=2)
+
+# ─── 3. LR Finder ────────────────────────────────────────────────────────────
+def lr_finder(model, loader, lr_start=1e-7, lr_end=10.0, beta=0.98):
+    &quot;&quot;&quot;Smith&#x27;s LR Finder. Returns (lrs, smoothed_losses).&quot;&quot;&quot;
+    # Save weights so we can restore after the destructive sweep.
+    saved_state = copy.deepcopy(model.state_dict())
+
+    optimizer = optim.SGD(model.parameters(), lr=lr_start)
+    criterion = nn.CrossEntropyLoss()
+
+    n_steps = len(loader)
+    log_lr_start = math.log10(lr_start)
+    log_lr_end = math.log10(lr_end)
+    log_lrs = np.linspace(log_lr_start, log_lr_end, n_steps)
+    lrs = 10 ** log_lrs
+
+    losses, avg_loss, best_loss = [], 0.0, float(&quot;inf&quot;)
+
+    model.train()
+    for step, (x, y) in enumerate(loader):
+        x, y = x.to(device), y.to(device)
+
+        # Set the LR for this step (log-spaced).
+        for pg in optimizer.param_groups:
+            pg[&quot;lr&quot;] = lrs[step]
+
+        optimizer.zero_grad()
+        logits = model(x)
+        loss = criterion(logits, y)
+        loss.backward()
+        optimizer.step()
+
+        # Exponential moving average for smoothing.
+        avg_loss = beta * avg_loss + (1 - beta) * loss.item()
+        smoothed = avg_loss / (1 - beta ** (step + 1))
+
+        # Stop early if loss explodes.
+        if step &gt; 10 and smoothed &gt; 4 * best_loss:
+            break
+
+        best_loss = min(best_loss, smoothed)
+        losses.append(smoothed)
+
+    # Restore the original weights — the sweep is destructive.
+    model.load_state_dict(saved_state)
+
+    return lrs[:len(losses)], np.array(losses)
+
+# ─── 4. Run and plot ─────────────────────────────────────────────────────────
+model = TinyCNN().to(device)
+lrs, losses = lr_finder(model, loader)
+
+fig, ax = plt.subplots(figsize=(9, 5), constrained_layout=True)
+ax.plot(lrs, losses, color=&quot;#38bdf8&quot;, lw=2)
+ax.set_xscale(&quot;log&quot;)
+ax.set_xlabel(&quot;learning rate (log scale)&quot;)
+ax.set_ylabel(&quot;smoothed loss&quot;)
+ax.set_title(&quot;LR Finder on MNIST with TinyCNN&quot;)
+
+# Mark the suggested LR (just before the loss minimum).
+idx_min = int(np.argmin(losses))
+suggested = lrs[idx_min] / 10
+ax.axvline(suggested, color=&quot;#f59e0b&quot;, ls=&quot;--&quot;, lw=1.5,
+           label=f&quot;suggested LR ≈ {suggested:.2e}&quot;)
+ax.legend()
+plt.savefig(&quot;lr_finder.png&quot;, dpi=120)
+plt.show()
+
+print(f&quot;Loss minimum at LR = {lrs[idx_min]:.2e}&quot;)
+print(f&quot;Suggested starting LR = {suggested:.2e}&quot;)
+</pre></div>
+  <p>When you run this on MNIST with a small CNN, you should see a curve that is roughly flat from $10^{-7}$ down to about $10^{-4}$, descends steeply between $10^{-4}$ and $10^{-2}$, and then explodes above $10^{-1}$. The loss minimum typically sits around $10^{-2}$ to $10^{-1}$, so the suggested starting LR is in the $10^{-3}$ range — which is exactly where most Adam-based recipes for small CNNs land anyway. The LR Finder is not a substitute for fine-tuning, but it gives you the right order of magnitude in one minute.</p>
+  <div class="callout warning"><div class="callout-icon">⚠️</div><div class="callout-body"><div class="callout-title">Always restore weights after the LR Finder</div><p>The LR Finder is destructive — by the end of the sweep your weights have been pushed to a high-loss region (or NaN'd). The function above saves and restores <code>model.state_dict()</code>. If you skip this, your subsequent training run will start from corrupted weights and silently fail. This is one of the most common ways to waste a GPU-hour.</p></div></div>
+</section>
+
+<section id="section-6">
+  <h2>6. Learning Rate Schedules: An Overview</h2>
+  <p>A constant learning rate is almost never optimal over an entire training run. Early in training, you want large steps to make rapid progress; late in training, you want small steps to settle into a minimum without bouncing out. A <em>learning rate schedule</em> is a function $\eta(t)$ that varies the LR over the course of training. We give a brief overview here; the full treatment with comparison plots is in Module 08.</p>
+
+  <h3 id="step-decay">6.1 Step Decay</h3>
+  <p>The oldest schedule: multiply the LR by a constant factor (typically 0.1 or $\gamma = 0.5$) every $N$ epochs. The original AlexNet (2012) and VGG (2014) papers used step decay with manual drops at epochs 30, 60, and 90. Simple, predictable, and surprisingly competitive.</p>
+  <div class="math-block">$$ \eta(t) = \eta_0 \cdot \gamma^{{\lfloor t / N \rfloor}} $$ <div class="math-label">Eq. 3 — Step decay: drop LR by factor γ every N steps.</div></div>
+
+  <h3 id="exp-decay">6.2 Exponential Decay</h3>
+  <p>Smooth out step decay by decaying continuously: $\eta(t) = \eta_0 \, e^{-\lambda t}$. Rarely used in modern deep learning because the LR shrinks too aggressively near the end of training; you usually want a floor.</p>
+
+  <h3 id="cosine-annealing">6.3 Cosine Annealing</h3>
+  <p>The current default for image classification and many NLP tasks. The LR follows a cosine curve from $\eta_\text{max}$ down to $\eta_\text{min}$ (typically 0 or $\eta_\text{max}/1000$) over $T$ steps:</p>
+  <div class="math-block">$$ \eta(t) = \eta_\text{{min}} + \frac{{1}}{{2}} (\eta_\text{{max}} - \eta_\text{{min}}) \left(1 + \cos\left(\frac{{t \, \pi}}{{T}}\right)\right) $$ <div class="math-label">Eq. 4 — Cosine annealing. Loshchilov &amp; Hutter (2017).</div></div>
+
+  <h3 id="sgdr">6.4 Cosine Warm Restarts (SGDR)</h3>
+  <p>Loshchilov & Hutter's <em>Stochastic Gradient Descent with Warm Restarts</em> (SGDR, 2017) anneals the LR down to $\eta_\text{min}$ over $T_0$ steps, then snaps it back to $\eta_\text{max}$ and starts a new annealing cycle of length $T_1 = 2 \cdot T_0$ (the period typically doubles each restart). The "restarts" let the optimizer escape shallow minima late in training. Each restart typically produces a small accuracy bump.</p>
+
+  <h3 id="linear-warmup">6.5 Linear Warmup</h3>
+  <p>For the first $T_\text{warmup}$ steps, linearly ramp the LR from 0 (or a small value) up to $\eta_\text{max}$. After warmup, switch to a decay schedule (cosine, step, or constant). Warmup is essential for Transformer training and beneficial for any optimizer that maintains running statistics (Adam, AdamW, RMSProp) — see section 7.</p>
+  <div class="math-block">$$ \eta(t) = \begin{{cases}} \eta_\text{{max}} \cdot \frac{{t}}{{T_\text{{warmup}}}} & t < T_\text{{warmup}} \\ \text{{schedule}}(t - T_\text{{warmup}}) & t \geq T_\text{{warmup}} \end{{cases}} $$ <div class="math-label">Eq. 5 — Linear warmup followed by a decay schedule.</div></div>
+
+  <h3 id="reduce-on-plateau">6.6 ReduceLROnPlateau</h3>
+  <p>An adaptive schedule: monitor a validation metric (typically val loss or val accuracy), and reduce the LR by a factor (e.g., 0.1) when the metric stops improving for <code>patience</code> epochs. Useful when you don't know in advance how many epochs you will train, or when different model architectures converge at very different rates. Common in academic ResNet training and in many Kaggle solutions.</p>
+</section>
+
+<section id="section-7">
+  <h2>7. Why Warmup is Critical for Transformers</h2>
+  <p>If you have ever read a Transformer paper, you have seen the formula $\eta_t = d_\text{model}^{-0.5} \cdot \min(t^{-0.5}, t \cdot w^{-1.5})$ from <em>Attention Is All You Need</em> (Vaswani et al., 2017). That is a linear warmup of length $w$ followed by an inverse-sqrt decay. The original authors describe warmup as necessary for "early training stability," but the deeper reason has taken the community several years to fully articulate.</p>
+  <p>There are three intertwined reasons warmup matters for Transformers specifically and for adaptive optimizers (Adam, AdamW) generally:</p>
+  <ol>
+    <li><strong>Adam's second-moment estimate is unreliable at the start.</strong> Adam divides the gradient by $\sqrt{v_t + \epsilon}$ where $v_t$ is the exponential moving average of squared gradients. For the first few steps, $v_t$ is essentially a single-sample estimate and is wildly noisy. Without warmup, the effective step size $\eta / \sqrt{v_t}$ can be enormous for parameters whose first gradient happens to be small. Warmup gives $v_t$ a few hundred steps to stabilize before the LR ramps up.</li>
+    <li><strong>Transformers train with very large batch sizes and very high peak LRs.</strong> A typical BERT pretraining recipe uses batch size 256–4096 and peak LR around $5 \times 10^{-4}$ to $25 \times 10^{-4}$. At step 0, with $v_t$ noisy and the model far from any good basin, taking a full-size step at that LR will diverge. Warmup lets the model move into a reasonable region of weight space before being hit with the full LR.</li>
+    <li><strong>LayerNorm and residual connections amplify early-training instability.</strong> Transformers stack many LayerNorm + attention + MLP blocks, and small perturbations early in training can be amplified through the residual stream. Warmup damps the magnitude of early updates and lets the model "find its footing."</li>
+  </ol>
+  <p>The empirical pattern is sharp: try training a Transformer without warmup at the recommended peak LR and the loss will explode within the first 200 steps. Add 4,000 steps of linear warmup and training is rock-solid. This is not a theoretical curiosity — it is a hard requirement of the architecture.</p>
+  <div class="callout tip"><div class="callout-icon">💡</div><div class="callout-body"><div class="callout-title">Warmup is also useful outside Transformers</div><p>Even for CNNs and tabular MLPs, a short warmup (1–5% of total steps) often lets Adam stabilize and gives slightly better final accuracy. It costs nothing — most modern schedulers (<code>SequentialLR</code>, <code>LambdaLR</code>, HuggingFace <code>get_cosine_schedule_with_warmup</code>) support warmup as a first-class option. Default to using it.</p></div></div>
+</section>
+
+<section id="section-8">
+  <h2>8. Implementing Every Schedule in PyTorch</h2>
+  <p>PyTorch's <code>torch.optim.lr_scheduler</code> module implements all of the schedules from section 6. Below is a single script that builds every scheduler, runs a dummy training loop, and plots the resulting LR curves over training steps so you can see the shapes side by side.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── lr_schedules.py ──────────────────────────────────────────────────────────
+# Build every common LR scheduler in PyTorch, step through a dummy loop,
+# and plot the LR-vs-step curves for visual comparison.
+
+import numpy as np
+import matplotlib.pyplot as plt
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.optim.lr_scheduler import (
+    StepLR, ExponentialLR, CosineAnnealingLR, CosineAnnealingWarmRestarts,
+    LambdaLR, ReduceLROnPlateau, SequentialLR, LinearLR, ConstantLR,
+)
+
+# A trivial model — we only need parameters for the optimizer to track.
+model = nn.Linear(10, 1)
+ETA0 = 1.0  # peak LR (use 1.0 so curves are easy to compare on the same axes)
+TOTAL_STEPS = 200
+WARMUP_STEPS = 20
+
+def make_optimizer():
+    return optim.SGD(model.parameters(), lr=ETA0)
+
+# ─── 1. Step decay: γ=0.5 every 50 steps ─────────────────────────────────────
+sched_step = StepLR(make_optimizer(), step_size=50, gamma=0.5)
+
+# ─── 2. Exponential decay: γ=0.99 per step ───────────────────────────────────
+sched_exp = ExponentialLR(make_optimizer(), gamma=0.99)
+
+# ─── 3. Cosine annealing (single cycle, η_min=0) ─────────────────────────────
+sched_cos = CosineAnnealingLR(make_optimizer(), T_max=TOTAL_STEPS, eta_min=0.0)
+
+# ─── 4. Cosine warm restarts: T_0=50, T_mult=2 ──────────────────────────────
+sched_sgdr = CosineAnnealingWarmRestarts(make_optimizer(), T_0=50, T_mult=2,
+                                         eta_min=0.0)
+
+# ─── 5. Linear warmup + cosine decay (Transformer-style) ────────────────────
+def warmup_cosine(step):
+    if step &lt; WARMUP_STEPS:
+        return step / WARMUP_STEPS
+    progress = (step - WARMUP_STEPS) / (TOTAL_STEPS - WARMUP_STEPS)
+    return 0.5 * (1 + np.cos(np.pi * progress))
+
+sched_warmcos = LambdaLR(make_optimizer(), lr_lambda=warmup_cosine)
+
+# ─── 6. ReduceLROnPlateau (needs a val_loss input each step) ─────────────────
+sched_plateau = ReduceLROnPlateau(make_optimizer(), mode=&quot;min&quot;, factor=0.5,
+                                  patience=10)
+
+# ─── Drive all schedulers for TOTAL_STEPS and record the LR ──────────────────
+def lr_of(sched):
+    return sched.optimizer.param_groups[0][&quot;lr&quot;]
+
+curves = {
+    &quot;Step (γ=0.5/50)&quot;: [],
+    &quot;Exponential (γ=0.99)&quot;: [],
+    &quot;Cosine&quot;: [],
+    &quot;SGDR (warm restarts)&quot;: [],
+    &quot;Warmup+Cosine&quot;: [],
+    &quot;ReduceLROnPlateau&quot;: [],
+}
+
+for t in range(TOTAL_STEPS):
+    curves[&quot;Step (γ=0.5/50)&quot;].append(lr_of(sched_step))
+    curves[&quot;Exponential (γ=0.99)&quot;].append(lr_of(sched_exp))
+    curves[&quot;Cosine&quot;].append(lr_of(sched_cos))
+    curves[&quot;SGDR (warm restarts)&quot;].append(lr_of(sched_sgdr))
+    curves[&quot;Warmup+Cosine&quot;].append(lr_of(sched_warmcos))
+
+    # ReduceLROnPlateau needs a val_loss argument; fake a decreasing-then-flat
+    # signal so we can see it drop the LR.
+    fake_val_loss = 1.0 / np.sqrt(t + 1) + (0.05 if t &gt; 100 else 0.0)
+    sched_plateau.step(fake_val_loss)
+    curves[&quot;ReduceLROnPlateau&quot;].append(lr_of(sched_plateau))
+
+    # Advance the others
+    sched_step.step()
+    sched_exp.step()
+    sched_cos.step()
+    sched_sgdr.step()
+    sched_warmcos.step()
+
+# ─── Plot ────────────────────────────────────────────────────────────────────
+fig, ax = plt.subplots(figsize=(11, 6), constrained_layout=True)
+colors = [&quot;#38bdf8&quot;, &quot;#818cf8&quot;, &quot;#34d399&quot;, &quot;#f59e0b&quot;, &quot;#f472b6&quot;, &quot;#8899aa&quot;]
+for (name, ys), c in zip(curves.items(), colors):
+    ax.plot(range(TOTAL_STEPS), ys, color=c, lw=2, label=name)
+ax.set_xlabel(&quot;training step&quot;)
+ax.set_ylabel(&quot;learning rate&quot;)
+ax.set_title(&quot;Common LR schedules (peak η = 1.0)&quot;)
+ax.legend(loc=&quot;upper right&quot;, fontsize=9)
+ax.grid(alpha=0.15)
+plt.savefig(&quot;lr_schedules.png&quot;, dpi=120)
+plt.show()
+</pre></div>
+  <p>The plot makes the qualitative differences obvious. Step decay looks like a descending staircase. Exponential decay is a smooth exponential curve that flattens near zero. Cosine annealing is a single smooth S-curve. SGDR shows the characteristic "sawtooth" pattern of cosine cycles with sudden restarts. Warmup+Cosine starts at zero, ramps linearly to the peak, then follows the cosine down. ReduceLROnPlateau is irregular — its drops happen exactly when the (fake) validation metric stops improving.</p>
+  <p>For a Transformer or large CNN, the standard recipe is <code>Warmup + Cosine</code>. For a ResNet on CIFAR, plain cosine annealing is the academic baseline. For an old-school CNN, step decay with manual drops is still perfectly acceptable. The schedule you pick matters less than picking one deliberately and tuning its hyperparameters ($\eta_\text{max}$, $T_\text{warmup}$, $T_\text{total}$) along with everything else.</p>
+</section>
+
+<section id="section-9">
+  <h2>9. Common Mistakes with Schedulers</h2>
+  <p>Schedulers are simple in concept but have several footguns that quietly destroy training runs. The three most common mistakes:</p>
+  <h3>9.1 Forgetting <code>scheduler.step()</code></h3>
+  <p>If you forget to call <code>scheduler.step()</code> in your training loop, the LR stays at its initial value forever. The model still trains — it just doesn't get the benefit of the schedule. This is the silent killer: training looks fine, accuracy is okay, but you are leaving 1–3% on the table. Always assert that the LR actually changes during training.</p>
+  <h3>9.2 Calling <code>scheduler.step()</code> Before <code>optimizer.step()</code></h3>
+  <p>Until PyTorch 1.1, the convention was to call <code>scheduler.step()</code> <em>before</em> <code>optimizer.step()</code>. Since 1.1, the convention has flipped: call <code>scheduler.step()</code> <em>after</em> <code>optimizer.step()</code>. If you use the old convention on modern PyTorch, the scheduler will skip the first LR value (it advances the schedule before the optimizer uses the LR). PyTorch prints a warning if it detects this, but the warning is easy to miss in a noisy log.</p>
+  <h3>9.3 Mixing Epoch-Based and Step-Based Schedulers</h3>
+  <p>Some schedulers (<code>StepLR</code>, <code>ExponentialLR</code>, <code>CosineAnnealingLR</code>) advance once per <code>.step()</code> call — whether that is per epoch or per batch depends on where you put the call. If you compute <code>T_max</code> as "number of epochs" but call <code>sched.step()</code> per batch, the cosine schedule completes in one epoch and the LR is zero for the rest of training. The fix: be explicit. Either compute <code>T_max</code> in <em>steps</em> and call <code>sched.step()</code> per batch, or compute it in <em>epochs</em> and call <code>sched.step()</code> per epoch. Never mix.</p>
+  <div class="callout warning"><div class="callout-icon">⚠️</div><div class="callout-body"><div class="callout-title">ReduceLROnPlateau has a different signature</div><p><code>ReduceLROnPlateau.step()</code> takes a <code>metrics</code> argument — typically the validation loss for the current epoch. This is different from every other scheduler, which takes no arguments. If you swap schedulers in a config file, your training loop has to know whether to pass a metric or not. The clean pattern is to wrap your scheduler in a small adapter class with a uniform <code>step(metric=None)</code> interface.</p></div></div>
+  <div class="quiz-box">
+  <div class="quiz-label">🧠 Quick Check</div>
+  <p class="quiz-question">You trained a ResNet for 100 epochs with cosine annealing (T_max=100) but called sched.step() inside the batch loop instead of the epoch loop. What happens?</p>
+  <details class="quiz-answer">
+    <summary>Show Answer</summary>
+    <p>The cosine schedule completes within the first epoch (since T_max=100 steps ≈ a few hundred batches). After that, eta_min=0 and the LR is permanently zero, so the model effectively stops training for the remaining 99 epochs. The training loss curve will look like it plateaued at epoch 1 — which it did, but for a stupid reason. Fix: either set T_max to total_steps (epochs × batches_per_epoch) and call sched.step() per batch, OR keep T_max=100 and call sched.step() only at the end of each epoch.</p>
+  </details>
+</div>
+</section>
+
+<div class="summary-box"><h3>🎯 Key Takeaways</h3><ul><li><strong>The learning rate is the single most impactful deep learning hyperparameter</strong> — a 10× error in either direction breaks training.</li><li><strong>Use the LR Finder</strong> (Smith 2015) to find the right order of magnitude in one epoch of training: sweep LR exponentially from 1e-7 to 10, plot loss, pick the LR just before the loss minimum and divide by 10.</li><li><strong>Deep learning loss surfaces are non-convex</strong>, so the LR controls both convergence speed AND which basin you land in — slightly larger LRs often generalize better.</li><li><strong>Use a schedule, not a constant LR</strong>: cosine annealing is the modern default; SGDR adds warm restarts; warmup+cosine is standard for Transformers.</li><li><strong>Warmup is essential for Transformers</strong> and adaptive optimizers (Adam, AdamW) because their second-moment estimates are noisy in the first few hundred steps.</li><li><strong>Call <code>scheduler.step()</code> AFTER <code>optimizer.step()</code></strong> (PyTorch ≥1.1) and be consistent about per-batch vs per-epoch stepping.</li></ul></div>
+
+<section id="resources"><h2>Useful Resources</h2><ul class="resource-list"><li><a href="https://arxiv.org/abs/1506.01186">Smith (2015) — Cyclical Learning Rates for Training Neural Networks (the LR Finder paper)</a></li><li><a href="https://arxiv.org/abs/1608.03983">Loshchilov &amp; Hutter (2017) — SGDR: Stochastic Gradient Descent with Warm Restarts</a></li><li><a href="https://arxiv.org/abs/1711.05101">Loshchilov &amp; Hutter (2019) — Decoupled Weight Decay Regularization (AdamW)</a></li><li><a href="https://arxiv.org/abs/1706.03762">Vaswani et al. (2017) — Attention Is All You Need (the original Transformer warmup formula)</a></li><li><a href="https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate">PyTorch torch.optim.lr_scheduler documentation</a></li><li><a href="https://huggingface.co/docs/transformers/main_classes/optimizer_schedules">HuggingFace Transformers — get_cosine_schedule_with_warmup source code</a></li><li><a href="https://fastai1.fast.ai/callbacks.lr_finder.html">fastai — LRFinder documentation (production-grade implementation)</a></li><li><a href="https://paperswithcode.com/methods/category/learning-rate-schedules">Papers with Code — Learning Rate Schedules (curated reference list)</a></li></ul></section>
+
+  </article>
+</div>
+<div class="page-nav"><a href="intro.html" class="page-nav-btn prev"><span class="nav-dir">← Previous</span><span class="nav-title">Module 05 — Deep Learning</span></a><a href="part2_architecture_regularization.html" class="page-nav-btn next"><span class="nav-dir">Next →</span><span class="nav-title">Architecture Hyperparameters</span></a></div>
+<footer>
+  <div class="container">
+    <div style="font-size:1.5rem;font-weight:800;font-family:var(--display);color:var(--accent);margin-bottom:0.5rem">HyperTune</div>
+    <p style="color:var(--muted2);font-size:0.85rem;max-width:500px;margin:0 auto">The complete hyperparameter tuning reference for ML &amp; DL engineers. Covers scikit-learn, XGBoost, LightGBM, PyTorch, Optuna, Ray Tune, and beyond — from first principles to production.</p>
+    <div style="margin-top:2rem;font-size:0.78rem;color:var(--muted2)">Built for learning · Python 3.10+ · scikit-learn 1.4+ · Optuna 3.0+</div>
+  </div>
+</footer>
+<script>
+(function() {
+  const links = Array.from(document.querySelectorAll('.toc-link'));
+  const sections = links
+    .map(l => document.querySelector(l.getAttribute('href')))
+    .filter(Boolean);
+  if (!('IntersectionObserver' in window) || sections.length === 0) return;
+  const setActive = id => {
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+  };
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  sections.forEach(s => observer.observe(s));
+})();
+</script>
+</body>
+</html>

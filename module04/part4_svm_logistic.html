@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SVM and Logistic Regression Hyperparameters — HyperTune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<style>
+
+:root {
+  --bg: #070b14; --bg2: #0c1220; --bg3: #111827;
+  --card: #131d2e; --card2: #1a2640;
+  --border: rgba(99,179,237,0.12); --border2: rgba(99,179,237,0.22);
+  --accent: #38bdf8; --accent2: #818cf8; --accent3: #34d399;
+  --accent4: #f59e0b; --accent5: #f472b6;
+  --text: #f0f6fc; --muted: #8899aa; --muted2: #64748b;
+  --code-bg: #0d1117;
+  --ff: 'Inter', sans-serif; --mono: 'JetBrains Mono', monospace;
+  --display: 'Sora', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,11,20,0.85);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:var(--display);font-weight:800;font-size:1.25rem;color:var(--accent);letter-spacing:-0.03em;text-decoration:none}
+.logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#000;padding:7px 18px;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85}
+
+/* LAYOUT */
+.page-layout { display: grid; grid-template-columns: 280px 1fr; gap: 3rem; max-width: 1200px; margin: 0 auto; padding: 5rem 2rem 5rem; padding-top: 80px; }
+@media(max-width: 900px) { .page-layout { grid-template-columns: 1fr; } .toc-sidebar { display: none; } }
+
+/* TOC SIDEBAR */
+.toc-sidebar { position: sticky; top: 80px; height: fit-content; max-height: calc(100vh - 100px); overflow-y: auto; }
+.toc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.75rem; }
+.toc-nav { display: flex; flex-direction: column; gap: 2px; }
+.toc-link { color: var(--muted); font-size: 0.82rem; text-decoration: none; padding: 4px 10px; border-left: 2px solid transparent; transition: all 0.15s; border-radius: 0 4px 4px 0; }
+.toc-link:hover, .toc-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(56,189,248,0.05); }
+.toc-link.toc-sub { font-size: 0.78rem; padding-left: 22px; }
+
+/* ARTICLE BODY */
+.article-body { min-width: 0; }
+.breadcrumb { font-size: 0.78rem; color: var(--muted2); margin-bottom: 1.5rem; }
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--accent); }
+.module-badge { display: inline-block; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: var(--accent); padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 1rem; }
+.article-title { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
+.article-meta { font-size: 0.83rem; color: var(--muted); margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+
+/* OUTLINE BOX */
+.outline-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 3rem; }
+.outline-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.75rem; color: var(--text); }
+.outline-list { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.85rem; }
+.outline-list a { color: var(--accent); text-decoration: none; }
+.outline-list a:hover { text-decoration: underline; }
+.outline-list li { margin: 4px 0; }
+.outline-list ul { margin: 4px 0; padding-left: 1rem; }
+
+/* ARTICLE PROSE */
+.article-body h2 { font-family: var(--display); font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; margin: 3rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); scroll-margin-top: 80px; }
+.article-body h3 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 80px; }
+.article-body h4 { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.article-body p { margin-bottom: 1.25rem; color: var(--muted); font-size: 0.97rem; line-height: 1.85; }
+.article-body strong { color: var(--text); font-weight: 600; }
+.article-body em { color: var(--accent3); font-style: italic; }
+.article-body ul, .article-body ol { margin: 0 0 1.25rem 1.5rem; color: var(--muted); font-size: 0.95rem; }
+.article-body li { margin-bottom: 6px; line-height: 1.75; }
+.article-body code { font-family: var(--mono); font-size: 0.82em; background: rgba(56,189,248,0.08); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
+.article-body a { color: var(--accent2); text-decoration: none; }
+.article-body a:hover { text-decoration: underline; }
+
+/* CODE BLOCKS */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+.code-block-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot.r { background: #ff5f57; } .code-dot.y { background: #ffbd2e; } .code-dot.g { background: #28c840; }
+.code-filename { font-family: var(--mono); font-size: 0.73rem; color: var(--muted2); margin-left: 8px; }
+.code-block pre { padding: 1.5rem; overflow-x: auto; margin: 0; font-family: var(--mono); font-size: 0.82rem; line-height: 1.8; color: #e2e8f0; }
+/* Syntax colors */
+.kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; }
+.num { color: #f78c6c; } .cm { color: #546e7a; font-style: italic; }
+.cls { color: #ffcb6b; } .imp { color: #89ddff; } .op { color: #89ddff; }
+
+/* CALLOUT BOXES */
+.callout { display: flex; gap: 1rem; border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; border-width: 1px; border-style: solid; }
+.callout-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+.callout-body { font-size: 0.88rem; line-height: 1.75; }
+.callout-body strong { font-weight: 600; }
+.callout-title { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+.callout.note { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.22); color: var(--muted); }
+.callout.note .callout-title, .callout.note strong { color: var(--accent); }
+.callout.warning { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.22); color: var(--muted); }
+.callout.warning .callout-title, .callout.warning strong { color: var(--accent4); }
+.callout.tip { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); color: var(--muted); }
+.callout.tip .callout-title, .callout.tip strong { color: var(--accent3); }
+.callout.important { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.22); color: var(--muted); }
+.callout.important .callout-title, .callout.important strong { color: var(--accent5); }
+
+/* MATH DISPLAY */
+.math-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.75rem; margin: 1.25rem 0; overflow-x: auto; font-size: 1.05rem; text-align: center; }
+.math-label { font-size: 0.72rem; color: var(--muted2); font-family: var(--mono); margin-top: 0.5rem; text-align: right; }
+
+/* INLINE FIGURE / DIAGRAM */
+.figure { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; margin: 2rem 0; text-align: center; }
+.figure-caption { font-size: 0.8rem; color: var(--muted2); margin-top: 1rem; font-style: italic; }
+
+/* DATA TABLE */
+.data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.85rem; }
+.data-table th { padding: 10px 14px; background: var(--card2); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); text-align: left; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(99,179,237,0.03); }
+
+/* SUMMARY BOX */
+.summary-box { background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(129,140,248,0.07)); border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 1.75rem 2rem; margin: 3rem 0 2rem; }
+.summary-box h3 { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+.summary-box ul { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.88rem; }
+.summary-box li { margin-bottom: 6px; line-height: 1.7; }
+
+/* RESOURCE LIST */
+.resource-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.resource-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.resource-list li::before { content: '\2192'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.resource-list a { color: var(--accent2); }
+
+/* PREV/NEXT NAV */
+.page-nav { display: flex; justify-content: space-between; gap: 1rem; padding: 2rem; max-width: 1200px; margin: 0 auto; border-top: 1px solid var(--border); }
+.page-nav-btn { display: flex; flex-direction: column; gap: 4px; padding: 1rem 1.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; transition: all 0.2s; max-width: 45%; }
+.page-nav-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.page-nav-btn .nav-dir { font-size: 0.72rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; }
+.page-nav-btn .nav-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.page-nav-btn.next { text-align: right; margin-left: auto; }
+
+/* QUIZ/EXERCISE BOX */
+.exercise-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin: 2rem 0; }
+.exercise-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent4); margin-bottom: 0.5rem; }
+.exercise-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; }
+.exercise-body { font-size: 0.88rem; color: var(--muted); line-height: 1.75; }
+
+/* QUIZ BOX */
+.quiz-box { background: rgba(129,140,248,0.06); border: 1px solid rgba(129,140,248,0.22); border-radius: 14px; padding: 1.5rem; margin: 1.5rem 0; }
+.quiz-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.5rem; }
+.quiz-question { font-size: 0.93rem; color: var(--text); margin-bottom: 0.75rem; font-weight: 500; }
+.quiz-answer { margin-top: 0.5rem; }
+.quiz-answer summary { cursor: pointer; font-size: 0.82rem; color: var(--accent2); font-weight: 600; }
+.quiz-answer p { margin-top: 0.5rem; font-size: 0.86rem; color: var(--muted); }
+
+/* CELL (for assignment files - jupyter style) */
+.jupyter-cell { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin: 1.5rem 0; overflow: hidden; }
+.cell-header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted2); font-family: var(--mono); }
+.cell-input-label { color: var(--accent4); font-weight: 600; }
+.cell-body { padding: 1rem 1.25rem; }
+.jupyter-cell pre { padding: 1rem 1.25rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; background: var(--code-bg); margin: 0; }
+.cell-prompt { color: var(--accent3); font-weight: 700; }
+
+/* GRADING RUBRIC */
+.rubric-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+.rubric-table th { background: var(--card2); padding: 10px 14px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); }
+.rubric-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+
+/* DETAILS (collapsible hints) */
+details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; }
+details summary { cursor: pointer; font-size: 0.85rem; color: var(--accent2); font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
+
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">Hyper<span>Tune</span></a>
+    <ul class="nav-links">
+
+    </ul>
+    <a href="../index.html#curriculum" class="nav-cta">Start Learning</a>
+  </div>
+</nav>
+<div class="page-layout">
+  <aside class="toc-sidebar">
+    <div class="toc-label">On this page</div>
+    <nav class="toc-nav">
+<a href="#section-1" class="toc-link">1. The Geometric and Statistical Views</a>
+<a href="#section-2" class="toc-link">2. SVM: C</a>
+<a href="#section-3" class="toc-link">3. SVM: kernel, gamma, degree</a>
+<a href="#section-4" class="toc-link">4. Always Scale Features</a>
+<a href="#section-5" class="toc-link">5. SVM Scaling: SGDClassifier</a>
+<a href="#section-6" class="toc-link">6. LogReg: C, penalty, solvers</a>
+<a href="#section-7" class="toc-link">7. max_iter and class_weight</a>
+<a href="#section-8" class="toc-link">8. Regularization Path: L1 vs L2</a>
+<a href="#resources" class="toc-link">Useful Resources</a>
+    </nav>
+  </aside>
+  <article class="article-body">
+    <div class="breadcrumb"><a href="../index.html">HyperTune</a> › <a href="intro.html">Module 04</a> › SVM and Logistic Regression</div>
+    <div class="article-header">
+      <div class="module-badge">Module 04 · Model Type Deep Dive</div>
+      <h1 class="article-title">SVM and Logistic Regression Hyperparameters: The Geometric and Statistical View</h1>
+      <div class="article-meta">Part of the <strong>HyperTune</strong> open course · Estimated read time: 18 min · Python 3.10+ · scikit-learn 1.4+</div>
+    </div>
+    <div class="outline-box">
+      <div class="outline-title">📋 Article Outline</div>
+      <ol class="outline-list">
+
+<li><a href="#section-1">1. The Geometric and Statistical Views</a></li>
+<li><a href="#section-2">2. SVM: C, the Regularization Parameter</a></li>
+<li><a href="#section-3">3. SVM: kernel, gamma, and degree</a></li>
+<li><a href="#section-4">4. Always Scale Features Before SVM</a></li>
+<li><a href="#section-5">5. SVM Scaling: SGDClassifier for Large Datasets</a></li>
+<li><a href="#section-6">6. Logistic Regression: C, penalty, and Solver Compatibility</a></li>
+<li><a href="#section-7">7. max_iter and class_weight</a></li>
+<li><a href="#section-8">8. Regularization Path: L1 vs L2</a></li>
+<li><a href="#resources">Useful Resources</a></li>
+      </ol>
+    </div>
+<section id="section-1">
+  <h2>1. The Geometric and Statistical Views</h2>
+  <p>Support Vector Machines and Logistic Regression are the two oldest and most theoretically grounded models in the supervised learning toolbox. They are often taught together because they sit at opposite ends of a spectrum: SVM is a <em>geometric</em> model that finds the maximum-margin separating hyperplane, while Logistic Regression is a <em>statistical</em> model that fits a probability distribution to the data via maximum likelihood. Despite this philosophical difference, they share a key structural hyperparameter — <code>C</code>, the inverse regularization strength — and on linearly separable problems they often produce nearly identical decision boundaries.</p>
+  <p>The reason to study them together is that their hyperparameters expose the bias-variance tradeoff in unusually clean ways. SVM's <code>C</code> directly controls margin width versus classification errors; Logistic Regression's <code>C</code> directly controls coefficient shrinkage. Both are best searched on a log scale spanning many orders of magnitude. And both require feature scaling to behave sensibly, which is a frequent source of "my model doesn't work" complaints from beginners.</p>
+  <p>This article covers both model families, with emphasis on the hyperparameters you will actually tune: <code>C</code>, <code>kernel</code>, <code>gamma</code>, <code>degree</code> for SVMs, and <code>C</code>, <code>penalty</code>, <code>solver</code>, <code>max_iter</code>, <code>class_weight</code> for Logistic Regression. We close with a comparison of the regularization paths of L1 and L2 Logistic Regression, which is the cleanest visual demonstration of why the two penalties produce such different models.</p>
+</section>
+<section id="section-2">
+  <h2>2. SVM: <code>C</code>, the Regularization Parameter</h2>
+  <p><code>C</code> is the single most important SVM hyperparameter. It controls the tradeoff between maximizing the margin (the geometric distance between the decision boundary and the closest training points) and minimizing classification errors on the training set. Mathematically, the soft-margin SVM objective is:</p>
+<div class="math-block">$$ \min_{w, b, \xi} \;\; \frac{1}{2} \|w\|^2 + C \sum_{i=1}^{n} \xi_i \quad \text{subject to} \quad y_i (w^\top x_i + b) \geq 1 - \xi_i, \;\; \xi_i \geq 0 $$ <div class="math-label">Eq. 1 — Soft-margin SVM objective. C controls the penalty on slack variables ξ_i.</div></div>
+  <p>The first term $\frac{1}{2}\|w\|^2$ is the inverse margin (maximizing the margin is equivalent to minimizing $\|w\|$). The second term $C \sum_i \xi_i$ penalizes the total amount of slack — the total amount by which training points violate the margin. Low <code>C</code> means the penalty is small, so the optimizer is willing to accept many margin violations in exchange for a wider, smoother margin. This produces high bias (the model is too smooth to capture fine structure) and low variance (the boundary is stable across training sets). High <code>C</code> means the penalty is large, so the optimizer insists on classifying training points correctly even at the cost of a narrow, wiggly margin. This produces low bias and high variance.</p>
+  <p>The standard search range for <code>C</code> is $10^{-3}$ to $10^3$, on a log scale. The default of <code>C=1.0</code> is rarely optimal — most datasets prefer either much smaller (more regularization, smoother boundary) or much larger (less regularization, tighter fit). Always include <code>C</code> in any SVM hyperparameter search, and always search it on a log scale.</p>
+<div class="callout warning"><div class="callout-icon">⚠️</div><div class="callout-body"><div class="callout-title">C has different signs in SVM vs Logistic Regression</div><p>In scikit-learn's <code>SVC</code>, larger <code>C</code> means <em>less</em> regularization (more overfitting). In <code>LogisticRegression</code>, larger <code>C</code> <em>also</em> means less regularization — so the direction is the same. But conceptually, <code>C</code> is the <em>inverse</em> of the regularization strength <code>alpha</code> used in <code>Ridge</code>/<code>Lasso</code>. If you are coming from the linear-models world, mentally invert: large <code>alpha</code> ≈ small <code>C</code>.</p></div></div>
+</section>
+<section id="section-3">
+  <h2>3. SVM: <code>kernel</code>, <code>gamma</code>, and <code>degree</code></h2>
+  <p>The <code>kernel</code> hyperparameter selects the similarity function the SVM uses to map inputs into a higher-dimensional feature space. <code>'linear'</code> uses no mapping — the SVM is just a linear classifier in the original feature space, and <code>kernel='linear'</code> is equivalent (up to implementation details) to <code>LogisticRegression</code> with L2 regularization. <code>'rbf'</code> (the default) uses the radial basis function $K(x, x') = \exp(-\gamma \|x - x'\|^2)$, which can produce arbitrarily nonlinear boundaries. <code>'poly'</code> uses a polynomial kernel $K(x, x') = (\gamma x \cdot x' + r)^d$, where the degree $d$ is controlled by the <code>degree</code> hyperparameter. <code>'sigmoid'</code> uses a tanh-like kernel that is rarely useful in practice.</p>
+  <p><code>gamma</code> controls the radius of influence of each training point in the RBF kernel. Low <code>gamma</code> means each point has a wide influence — the boundary is smooth and low-variance. High <code>gamma</code> means each point has a narrow influence — the boundary can wiggle around individual training points, producing low bias and high variance. The default <code>gamma='scale'</code> sets $\gamma = 1 / (d \cdot \text{Var}(X))$, which is a sensible starting point but should always be tuned. The standard search range is $10^{-4}$ to $10^1$ on a log scale.</p>
+  <p>The interaction between <code>C</code> and <code>gamma</code> is what makes SVM tuning tricky. High <code>C</code> with high <code>gamma</code> produces severe overfitting — the model fits tiny islands around each training point. Low <code>C</code> with low <code>gamma</code> produces severe underfitting — the model is essentially a linear classifier with extra slack. The sweet spot is usually somewhere in the middle, and finding it requires a 2D grid search over both parameters.</p>
+<div class="figure">
+<svg viewBox="0 0 720 540" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:Inter;">
+  <text x="360" y="22" text-anchor="middle" fill="#8899aa" font-size="13" font-weight="600">RBF-SVM decision boundaries: 3×3 grid of (C, gamma)</text>
+
+  <!-- Column headers (gamma values) -->
+  <text x="160" y="48" text-anchor="middle" fill="#38bdf8" font-size="12" font-weight="700">gamma=0.01</text>
+  <text x="360" y="48" text-anchor="middle" fill="#38bdf8" font-size="12" font-weight="700">gamma=0.1</text>
+  <text x="560" y="48" text-anchor="middle" fill="#38bdf8" font-size="12" font-weight="700">gamma=1.0</text>
+
+  <!-- Row headers (C values) -->
+  <text x="40" y="145" text-anchor="middle" fill="#f59e0b" font-size="12" font-weight="700" transform="rotate(-90 40 145)">C=0.1</text>
+  <text x="40" y="275" text-anchor="middle" fill="#f59e0b" font-size="12" font-weight="700" transform="rotate(-90 40 275)">C=1</text>
+  <text x="40" y="405" text-anchor="middle" fill="#f59e0b" font-size="12" font-weight="700" transform="rotate(-90 40 405)">C=10</text>
+
+  <!-- 9 panels, each 200x130 -->
+  <!-- Helper: each panel draws a few scattered points and a contour shape -->
+
+  <!-- Row 1: C=0.1 (soft margin, big margin, smooth boundary) -->
+  <g transform="translate(80,70)">
+    <rect width="160" height="110" fill="#0d1117" stroke="#8899aa" stroke-width="1"/>
+    <!-- very smooth, underfit boundary -->
+    <ellipse cx="80" cy="55" rx="60" ry="35" fill="none" stroke="#38bdf8" stroke-width="1.5"/>
+    <circle cx="60" cy="40" r="3" fill="#34d399"/>
+    <circle cx="70" cy="55" r="3" fill="#34d399"/>
+    <circle cx="55" cy="65" r="3" fill="#34d399"/>
+    <circle cx="95" cy="50" r="3" fill="#f472b6"/>
+    <circle cx="105" cy="65" r="3" fill="#f472b6"/>
+    <circle cx="100" cy="40" r="3" fill="#f472b6"/>
+    <text x="80" y="105" text-anchor="middle" fill="#64748b" font-size="10">Underfit (smooth)</text>
+  </g>
+
+  <g transform="translate(280,70)">
+    <rect width="160" height="110" fill="#0d1117" stroke="#8899aa" stroke-width="1"/>
+    <ellipse cx="80" cy="55" rx="50" ry="32" fill="none" stroke="#38bdf8" stroke-width="1.5"/>
+    <circle cx="60" cy="40" r="3" fill="#34d399"/>
+    <circle cx="70" cy="55" r="3" fill="#34d399"/>
+    <circle cx="55" cy="65" r="3" fill="#34d399"/>
+    <circle cx="95" cy="50" r="3" fill="#f472b6"/>
+    <circle cx="105" cy="65" r="3" fill="#f472b6"/>
+    <circle cx="100" cy="40" r="3" fill="#f472b6"/>
+    <text x="80" y="105" text-anchor="middle" fill="#64748b" font-size="10">Reasonable</text>
+  </g>
+
+  <g transform="translate(480,70)">
+    <rect width="160" height="110" fill="#0d1117" stroke="#8899aa" stroke-width="1"/>
+    <!-- tight island around positive cluster -->
+    <path d="M 50 35 Q 70 25 85 35 Q 105 45 100 65 Q 90 80 70 75 Q 50 70 50 55 Z"
+          fill="none" stroke="#38bdf8" stroke-width="1.5"/>
+    <circle cx="60" cy="40" r="3" fill="#34d399"/>
+    <circle cx="70" cy="55" r="3" fill="#34d399"/>
+    <circle cx="55" cy="65" r="3" fill="#34d399"/>
+    <circle cx="95" cy="50" r="3" fill="#f472b6"/>
+    <circle cx="105" cy="65" r="3" fill="#f472b6"/>
+    <circle cx="100" cy="40" r="3" fill="#f472b6"/>
+    <text x="80" y="105" text-anchor="middle" fill="#64748b" font-size="10">Tight but stable</text>
+  </g>
+
+  <!-- Row 2: C=1 (moderate margin, the sweet spot row) -->
+  <g transform="translate(80,200)">
+    <rect width="160" height="110" fill="#0d1117" stroke="#8899aa" stroke-width="1"/>
+    <ellipse cx="80" cy="55" rx="55" ry="33" fill="none" stroke="#38bdf8" stroke-width="1.5"/>
+    <circle cx="60" cy="40" r="3" fill="#34d399"/>
+    <circle cx="70" cy="55" r="3" fill="#34d399"/>
+    <circle cx="55" cy="65" r="3" fill="#34d399"/>
+    <circle cx="95" cy="50" r="3" fill="#f472b6"/>
+    <circle cx="105" cy="65" r="3" fill="#f472b6"/>
+    <circle cx="100" cy="40" r="3" fill="#f472b6"/>
+    <text x="80" y="105" text-anchor="middle" fill="#64748b" font-size="10">Good</text>
+  </g>
+
+  <g transform="translate(280,200)">
+    <rect width="160" height="110" fill="#0d1117" stroke="#8899aa" stroke-width="1"/>
+    <path d="M 45 45 Q 60 30 80 35 Q 100 40 110 60 Q 110 80 90 80 Q 65 80 50 65 Z"
+          fill="none" stroke="#38bdf8" stroke-width="1.5"/>
+    <circle cx="60" cy="40" r="3" fill="#34d399"/>
+    <circle cx="70" cy="55" r="3" fill="#34d399"/>
+    <circle cx="55" cy="65" r="3" fill="#34d399"/>
+    <circle cx="95" cy="50" r="3" fill="#f472b6"/>
+    <circle cx="105" cy="65" r="3" fill="#f472b6"/>
+    <circle cx="100" cy="40" r="3" fill="#f472b6"/>
+    <text x="80" y="105" text-anchor="middle" fill="#34d399" font-size="10" font-weight="700">Sweet spot</text>
+  </g>
+
+  <g transform="translate(480,200)">
+    <rect width="160" height="110" fill="#0d1117" stroke="#8899aa" stroke-width="1"/>
+    <path d="M 48 38 Q 70 28 85 38 Q 108 48 102 68 Q 88 82 68 75 Q 48 70 48 55 Z"
+          fill="none" stroke="#38bdf8" stroke-width="1.5"/>
+    <circle cx="60" cy="40" r="3" fill="#34d399"/>
+    <circle cx="70" cy="55" r="3" fill="#34d399"/>
+    <circle cx="55" cy="65" r="3" fill="#34d399"/>
+    <circle cx="95" cy="50" r="3" fill="#f472b6"/>
+    <circle cx="105" cy="65" r="3" fill="#f472b6"/>
+    <circle cx="100" cy="40" r="3" fill="#f472b6"/>
+    <text x="80" y="105" text-anchor="middle" fill="#64748b" font-size="10">Risk: per-sample islands</text>
+  </g>
+
+  <!-- Row 3: C=10 (hard margin, narrow, wiggly) -->
+  <g transform="translate(80,330)">
+    <rect width="160" height="110" fill="#0d1117" stroke="#8899aa" stroke-width="1"/>
+    <path d="M 45 45 Q 60 30 80 35 Q 100 40 110 60 Q 110 80 90 80 Q 65 80 50 65 Z"
+          fill="none" stroke="#38bdf8" stroke-width="1.5"/>
+    <circle cx="60" cy="40" r="3" fill="#34d399"/>
+    <circle cx="70" cy="55" r="3" fill="#34d399"/>
+    <circle cx="55" cy="65" r="3" fill="#34d399"/>
+    <circle cx="95" cy="50" r="3" fill="#f472b6"/>
+    <circle cx="105" cy="65" r="3" fill="#f472b6"/>
+    <circle cx="100" cy="40" r="3" fill="#f472b6"/>
+    <text x="80" y="105" text-anchor="middle" fill="#64748b" font-size="10">Better</text>
+  </g>
+
+  <g transform="translate(280,330)">
+    <rect width="160" height="110" fill="#0d1117" stroke="#8899aa" stroke-width="1"/>
+    <path d="M 45 42 Q 55 28 70 32 Q 85 28 95 38 Q 110 45 108 62 Q 100 80 85 78 Q 70 82 55 70 Q 42 60 45 42 Z"
+          fill="none" stroke="#38bdf8" stroke-width="1.5"/>
+    <circle cx="60" cy="40" r="3" fill="#34d399"/>
+    <circle cx="70" cy="55" r="3" fill="#34d399"/>
+    <circle cx="55" cy="65" r="3" fill="#34d399"/>
+    <circle cx="95" cy="50" r="3" fill="#f472b6"/>
+    <circle cx="105" cy="65" r="3" fill="#f472b6"/>
+    <circle cx="100" cy="40" r="3" fill="#f472b6"/>
+    <text x="80" y="105" text-anchor="middle" fill="#f59e0b" font-size="10">Overfit risk</text>
+  </g>
+
+  <g transform="translate(480,330)">
+    <rect width="160" height="110" fill="#0d1117" stroke="#8899aa" stroke-width="1"/>
+    <!-- extreme memorization: small circles around each positive point -->
+    <circle cx="60" cy="40" r="6" fill="none" stroke="#38bdf8" stroke-width="1"/>
+    <circle cx="70" cy="55" r="6" fill="none" stroke="#38bdf8" stroke-width="1"/>
+    <circle cx="55" cy="65" r="6" fill="none" stroke="#38bdf8" stroke-width="1"/>
+    <circle cx="60" cy="40" r="3" fill="#34d399"/>
+    <circle cx="70" cy="55" r="3" fill="#34d399"/>
+    <circle cx="55" cy="65" r="3" fill="#34d399"/>
+    <circle cx="95" cy="50" r="3" fill="#f472b6"/>
+    <circle cx="105" cy="65" r="3" fill="#f472b6"/>
+    <circle cx="100" cy="40" r="3" fill="#f472b6"/>
+    <text x="80" y="105" text-anchor="middle" fill="#f472b6" font-size="10" font-weight="700">Severe overfit</text>
+  </g>
+
+  <text x="360" y="490" text-anchor="middle" fill="#64748b" font-size="11">Each panel shows the same 6 training points (3 green, 3 pink) with the SVM decision boundary.</text>
+  <text x="360" y="510" text-anchor="middle" fill="#64748b" font-size="11">High C + high gamma (bottom right) memorizes training points. Low C + low gamma (top left) underfits.</text>
+</svg>
+<div class="figure-caption">Figure 1 — RBF-SVM decision boundaries on a 6-point toy dataset for the 9 combinations of C ∈ {0.1, 1, 10} × gamma ∈ {0.01, 0.1, 1.0}. Top-left (low C, low gamma) underfits; bottom-right (high C, high gamma) memorizes individual training points. The sweet spot is in the middle of the grid.</div></div>
+</section>
+<section id="section-4">
+  <h2>4. Always Scale Features Before SVM</h2>
+  <p>This cannot be emphasized enough: SVMs are extremely sensitive to feature scaling. The RBF kernel computes Euclidean distances between points, and if one feature has values in the thousands while another has values in the tenths, the distance is dominated by the large-scale feature and the small-scale feature is essentially ignored. The same is true for the linear kernel, which fits a coefficient per feature — without scaling, features with larger magnitudes get larger coefficients by default, which is rarely what you want.</p>
+  <p>The fix is to wrap the SVM in a <code>Pipeline</code> with a <code>StandardScaler</code> (or <code>MinMaxScaler</code>) as the first step. This ensures every feature has zero mean and unit variance (or is in [0, 1]) before the SVM sees it. The same is true for Logistic Regression — even though it is less distance-based than the RBF-SVM, the solvers used to fit it (especially L-BFGS and SAG) converge much faster on scaled data, and L1/L2 regularization treats all features fairly only when they are on the same scale.</p>
+<div class="callout important"><div class="callout-icon">🔥</div><div class="callout-body"><div class="callout-title">If your SVM &#x27;doesn&#x27;t work&#x27;, check scaling first</div><p>The most common cause of 'my SVM gives 30% accuracy on this dataset' (where 30% is the majority-class baseline) is forgetting to scale the features. Wrap your SVC in <code>make_pipeline(StandardScaler(), SVC(...))</code> and the accuracy will usually jump by 30+ percentage points. Always, always, always scale before an SVM.</p></div></div>
+</section>
+<section id="section-5">
+  <h2>5. SVM Scaling: <code>SGDClassifier</code> for Large Datasets</h2>
+  <p>The scikit-learn <code>SVC</code> implementation has time complexity between $O(n^2)$ and $O(n^3)$ in the number of training samples, because it needs to compute and store the kernel matrix (an $n \times n$ matrix of pairwise similarities). On datasets larger than ~50,000 samples, <code>SVC</code> becomes impractical — a single fit can take hours or days.</p>
+  <p>For large datasets, use <code>SGDClassifier(loss='hinge')</code> instead. This fits a linear SVM using stochastic gradient descent, with time complexity $O(n)$ per epoch. You lose the ability to use nonlinear kernels (linear SVM only), but you gain the ability to train on millions of samples in minutes. The key hyperparameters change from <code>C</code> and <code>gamma</code> to <code>alpha</code> (the regularization strength, $1/C$) and <code>learning_rate</code> / <code>eta0</code> (the SGD schedule).</p>
+  <p>If you really need a nonlinear boundary on a large dataset, consider <code>sklearn.kernel_approximation.Nystroem</code> or <code>RBFSampler</code>, which approximate the RBF kernel with a finite-dimensional feature map that can be fed to a linear model. This gives you most of the flexibility of an RBF-SVM at the cost of an <code>SGDClassifier</code>-style training loop.</p>
+<div class="quiz-box">
+  <div class="quiz-label">🧠 Quick Check</div>
+  <p class="quiz-question">You are training an SVM on a dataset with 200,000 samples and 100 features. Training has been running for 6 hours and shows no sign of finishing. What is the most likely cause, and what should you switch to?</p>
+  <details class="quiz-answer">
+    <summary>Show Answer</summary>
+    <p>The O(n²)-to-O(n³) scaling of SVC is the cause — 200k samples is well past the practical limit for the kernel-matrix-based implementation. Switch to SGDClassifier(loss=&#x27;hinge&#x27;) for a linear SVM, which is O(n) per epoch and will train in minutes. If you need nonlinearity, use Nystroem or RBFSampler to approximate the RBF kernel as a finite feature map, then feed that to SGDClassifier.</p>
+  </details>
+</div>
+</section>
+<section id="section-6">
+  <h2>6. Logistic Regression: <code>C</code>, <code>penalty</code>, and the Solver Compatibility Matrix</h2>
+  <p>Logistic Regression's <code>C</code> has the same conceptual meaning as SVM's <code>C</code> — it is the inverse of the regularization strength. Larger <code>C</code> means weaker regularization (more overfitting); smaller <code>C</code> means stronger regularization (more underfitting). The default of <code>C=1.0</code> is rarely optimal; search in <code>[1e-3, 1e-2, 1e-1, 1, 10, 100, 1000]</code> on a log scale.</p>
+  <p>The <code>penalty</code> hyperparameter selects the regularization type: <code>'l1'</code> (Lasso-style, produces sparse coefficients), <code>'l2'</code> (Ridge-style, shrinks coefficients smoothly), <code>'elasticnet'</code> (a weighted combination of L1 and L2, controlled by <code>l1_ratio</code>), or <code>'none'</code> (no regularization, almost never a good idea). The choice between L1 and L2 depends on whether you want sparsity (L1, useful for feature selection) or smooth shrinkage (L2, usually slightly better test accuracy).</p>
+  <p>The catch is that not all solvers support all penalties. The compatibility matrix is:</p>
+  <table class="data-table">
+    <thead>
+      <tr><th>Solver</th><th>L1</th><th>L2</th><th>ElasticNet</th><th>None</th><th>Best for</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>'lbfgs'</code></td><td>✗</td><td>✓</td><td>✗</td><td>✓</td><td>Default; L2 small-to-medium data</td></tr>
+      <tr><td><code>'liblinear'</code></td><td>✓</td><td>✓</td><td>✗</td><td>✗</td><td>L1/L2 small data; multiclass OvR</td></tr>
+      <tr><td><code>'newton-cg'</code></td><td>✗</td><td>✓</td><td>✗</td><td>✓</td><td>L2 medium-to-large data</td></tr>
+      <tr><td><code>'newton-cholesky'</code></td><td>✗</td><td>✓</td><td>✗</td><td>✓</td><td>L2 very large data, few features</td></tr>
+      <tr><td><code>'sag'</code></td><td>✗</td><td>✓</td><td>✗</td><td>✓</td><td>L2 large data, faster than lbfgs</td></tr>
+      <tr><td><code>'saga'</code></td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>All penalties; large data; the only elasticnet option</td></tr>
+    </tbody>
+  </table>
+
+  <p>If you want L1 regularization, your only options are <code>liblinear</code> (good for small data) and <code>saga</code> (good for large data). If you want elasticnet, you must use <code>saga</code>. For plain L2, <code>lbfgs</code> is the default and works well for most cases; switch to <code>sag</code> or <code>saga</code> for very large datasets where the per-iteration cost of <code>lbfgs</code> becomes prohibitive.</p>
+</section>
+<section id="section-7">
+  <h2>7. <code>max_iter</code> and <code>class_weight</code></h2>
+  <p><code>max_iter</code> is the maximum number of iterations the solver is allowed to take before giving up. The default of 100 is too low for many problems — convergence warnings are common, especially with the <code>lbfgs</code> solver on data that is not perfectly scaled. Raise it to 1000 or 5000 to silence the warnings and ensure the solver actually reaches the optimum. If you still see convergence warnings at <code>max_iter=5000</code>, the most likely cause is unscaled features (the gradient is bouncing around the loss surface) or collinear features (the Hessian is ill-conditioned).</p>
+  <p><code>class_weight='balanced'</code> does for Logistic Regression exactly what it does for Decision Trees and Random Forests: it reweights the loss so that minority-class samples count more, with weights set to $n / (K \cdot n_k)$. This is essential for imbalanced classification, and is the single most impactful setting for problems with class imbalance.</p>
+<div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">logistic_regression_pipeline.py</span></div><pre># ─── logistic_regression_pipeline.py ──────────────────────────────────────────
+# End-to-end Logistic Regression pipeline on breast_cancer with solver
+# selection, scaling, and a small grid search over C and penalty.
+
+import numpy as np
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+
+X, y = load_breast_cancer(return_X_y=True)
+X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2,
+                                           stratify=y, random_state=42)
+
+pipe = Pipeline([
+    (&quot;scaler&quot;, StandardScaler()),
+    (&quot;clf&quot;, LogisticRegression(max_iter=5000, class_weight=&quot;balanced&quot;,
+                                random_state=42)),
+])
+
+# Use saga because it supports L1, L2, and elasticnet — keeps the search
+# space uniform across penalty choices.
+param_grid = {
+    &quot;clf__C&quot;:       [0.001, 0.01, 0.1, 1.0, 10.0, 100.0],
+    &quot;clf__penalty&quot;: [&quot;l1&quot;, &quot;l2&quot;],
+    &quot;clf__solver&quot;:  [&quot;saga&quot;],
+}
+
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+search = GridSearchCV(pipe, param_grid, cv=cv, scoring=&quot;roc_auc&quot;, n_jobs=-1)
+search.fit(X_tr, y_tr)
+
+print(f&quot;Best params: {search.best_params_}&quot;)
+print(f&quot;Best CV ROC-AUC: {search.best_score_:.4f}&quot;)
+print(f&quot;Test ROC-AUC:    {search.score(X_te, y_te):.4f}&quot;)
+
+# Inspect the L1 model&#x27;s sparsity
+best = search.best_estimator_.named_steps[&quot;clf&quot;]
+n_zero = (best.coef_ == 0).sum()
+n_total = best.coef_.size
+print(f&quot;\nL1 sparsity: {n_zero}/{n_total} coefficients are exactly zero &quot;
+      f&quot;({100*n_zero/n_total:.1f}%)&quot;)
+</pre></div>
+</section>
+<section id="section-8">
+  <h2>8. Regularization Path: L1 vs L2 Coefficient Magnitudes</h2>
+  <p>The cleanest way to understand the difference between L1 and L2 regularization is to plot the coefficient magnitudes as a function of <code>C</code>. For L2, coefficients shrink smoothly toward zero as <code>C</code> decreases (regularization increases) — no coefficient ever reaches exactly zero. For L1, coefficients hit exactly zero at some threshold and stay there — the model becomes sparse, with only a few non-zero coefficients surviving strong regularization.</p>
+<div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">regularization_path.py</span></div><pre># ─── regularization_path.py ───────────────────────────────────────────────────
+# Plot the regularization path: coefficient magnitudes vs C for L1 and L2
+# Logistic Regression on breast_cancer. Shows how L1 produces sparsity
+# (coefficients hit exactly zero) while L2 shrinks smoothly.
+
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import load_breast_cancer
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
+
+X, y = load_breast_cancer(return_X_y=True)
+Cs = np.logspace(-4, 4, 25)
+feature_names = load_breast_cancer().feature_names
+
+fig, axes = plt.subplots(1, 2, figsize=(14, 6), constrained_layout=True,
+                          sharey=True)
+
+for ax, penalty in zip(axes, [&quot;l1&quot;, &quot;l2&quot;]):
+    coefs = []
+    for C in Cs:
+        # saga supports both L1 and L2, so use it for both for consistency
+        clf = make_pipeline(
+            StandardScaler(),
+            LogisticRegression(
+                penalty=penalty, C=C, solver=&quot;saga&quot;,
+                max_iter=5000, random_state=42,
+            ),
+        )
+        clf.fit(X, y)
+        coefs.append(clf.named_steps[&quot;logisticregression&quot;].coef_.ravel())
+
+    coefs = np.array(coefs)
+    for j in range(coefs.shape[1]):
+        ax.plot(Cs, coefs[:, j], linewidth=1.2,
+                label=feature_names[j] if j &lt; 5 else None)
+
+    ax.set_xscale(&quot;log&quot;)
+    ax.set_xlabel(&quot;C (inverse regularization strength)&quot;)
+    ax.set_ylabel(&quot;Coefficient value&quot;)
+    ax.set_title(f&quot;penalty = {penalty!r}&quot;)
+    ax.axhline(0, color=&quot;#8899aa&quot;, linewidth=0.8, linestyle=&quot;--&quot;)
+    ax.grid(alpha=0.2)
+
+axes[0].legend(loc=&quot;upper left&quot;, fontsize=8, max_num_keywords=5)
+plt.savefig(&quot;regularization_path.png&quot;, dpi=120)
+plt.show()
+
+# Report sparsity at the strongest regularization
+clf_strong = make_pipeline(
+    StandardScaler(),
+    LogisticRegression(penalty=&quot;l1&quot;, C=1e-3, solver=&quot;saga&quot;,
+                       max_iter=5000, random_state=42),
+).fit(X, y)
+n_zero = (clf_strong.named_steps[&quot;logisticregression&quot;].coef_ == 0).sum()
+n_total = clf_strong.named_steps[&quot;logisticregression&quot;].coef_.size
+print(f&quot;At C=1e-3 with L1: {n_zero}/{n_total} coefficients are exactly zero&quot;)
+</pre></div>
+  <p>The resulting plot shows the L1 coefficients dying off one by one as <code>C</code> decreases, with the most informative features surviving longest. This is why L1 is the standard tool for feature selection via regularization: by varying <code>C</code>, you can directly control how many features the model uses, and the features that survive at strong regularization are the ones the model finds most predictive. L2 coefficients, by contrast, shrink smoothly toward zero without ever reaching it — the model always uses all features, just with smaller weights.</p>
+<div class="callout note"><div class="callout-icon">📌</div><div class="callout-body"><div class="callout-title">L1 vs L2 in one sentence</div><p>L1 (<code>penalty='l1'</code>) produces sparse models — some coefficients go exactly to zero, which is useful for feature selection and interpretability. L2 (<code>penalty='l2'</code>) produces smooth shrinkage — all coefficients stay nonzero but small, which usually gives slightly better predictive accuracy. Use L1 when you need sparsity or feature selection; use L2 for raw prediction performance.</p></div></div>
+</section>
+<div class="summary-box"><h3>Key Takeaways — SVM and Logistic Regression</h3><ul><li><strong>Always scale features</strong> before SVM or Logistic Regression — distance-based methods are crippled by unscaled features.</li><li><strong><code>C</code> is the master knob for both</strong>: search on a log scale from $10^{-3}$ to $10^3$; the default of 1.0 is rarely optimal.</li><li><strong>SVM (C, gamma) grid search is essential</strong>: high C + high gamma memorizes; low C + low gamma underfits; the sweet spot is in the middle.</li><li><strong>For > 50k samples use <code>SGDClassifier(loss='hinge')</code></strong>: SVC's $O(n^2)$ to $O(n^3)$ scaling is impractical beyond that point.</li><li><strong>Solver compatibility matters for Logistic Regression</strong>: use <code>saga</code> for L1 or elasticnet, <code>lbfgs</code> for plain L2.</li><li><strong>L1 produces sparsity, L2 produces smooth shrinkage</strong>: the regularization-path plot is the clearest visualization of the difference.</li></ul></div>
+<section id="resources"><h2>Useful Resources</h2><ul class="resource-list"><li><a href="https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html">scikit-learn SVC documentation</a></li><li><a href="https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html">scikit-learn LogisticRegression documentation</a></li><li><a href="https://link.springer.com/article/10.1007/BF00994018">Cortes &amp; Vapnik (1995) — Support-Vector Networks</a></li><li><a href="https://www.csie.ntu.edu.tw/~cjlin/papers/guide/guide.pdf">Hsu, Chang, Lin (2003) — A Practical Guide to Support Vector Classification</a></li><li><a href="https://hastie.su.domains/ElemStatLearn/">Elements of Statistical Learning — Chapter 12 (Support Vector Machines and Flexibility)</a></li><li><a href="https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDClassifier.html">scikit-learn SGDClassifier documentation</a></li><li><a href="https://scikit-learn.org/stable/auto_examples/linear_model/plot_logistic_l1_l2_sparsity.html">scikit-learn — L1 Penalty and Sparsity in Logistic Regression</a></li></ul></section>
+  </article>
+</div>
+<div class="page-nav"><a href="part3_xgboost_lightgbm.html" class="page-nav-btn prev"><span class="nav-dir">← Previous</span><span class="nav-title">XGBoost and LightGBM</span></a><a href="assignment_task.html" class="page-nav-btn next"><span class="nav-dir">Next →</span><span class="nav-title">Assignment 04</span></a></div>
+<footer>
+  <div class="container">
+    <div style="font-size:1.5rem;font-weight:800;font-family:var(--display);color:var(--accent);margin-bottom:0.5rem">HyperTune</div>
+    <p style="color:var(--muted2);font-size:0.85rem;max-width:500px;margin:0 auto">The complete hyperparameter tuning reference for ML &amp; DL engineers. Covers scikit-learn, XGBoost, LightGBM, PyTorch, Optuna, Ray Tune, and beyond — from first principles to production.</p>
+    <div style="margin-top:2rem;font-size:0.78rem;color:var(--muted2)">Built for learning · Python 3.10+ · scikit-learn 1.4+ · Optuna 3.0+</div>
+  </div>
+</footer>
+<script>
+(function() {
+  const links = Array.from(document.querySelectorAll('.toc-link'));
+  const sections = links
+    .map(l => document.querySelector(l.getAttribute('href')))
+    .filter(Boolean);
+  if (!('IntersectionObserver' in window) || sections.length === 0) return;
+  const setActive = id => {
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+  };
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  sections.forEach(s => observer.observe(s));
+})();
+</script>
+</body>
+</html>

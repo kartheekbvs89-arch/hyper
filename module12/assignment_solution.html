@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assignment 12 Solution — HyperTune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<style>
+
+:root {
+  --bg: #070b14; --bg2: #0c1220; --bg3: #111827;
+  --card: #131d2e; --card2: #1a2640;
+  --border: rgba(99,179,237,0.12); --border2: rgba(99,179,237,0.22);
+  --accent: #38bdf8; --accent2: #818cf8; --accent3: #34d399;
+  --accent4: #f59e0b; --accent5: #f472b6;
+  --text: #f0f6fc; --muted: #8899aa; --muted2: #64748b;
+  --code-bg: #0d1117;
+  --ff: 'Inter', sans-serif; --mono: 'JetBrains Mono', monospace;
+  --display: 'Sora', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,11,20,0.85);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:var(--display);font-weight:800;font-size:1.25rem;color:var(--accent);letter-spacing:-0.03em;text-decoration:none}
+.logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#000;padding:7px 18px;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85}
+
+/* LAYOUT */
+.page-layout { display: grid; grid-template-columns: 280px 1fr; gap: 3rem; max-width: 1200px; margin: 0 auto; padding: 5rem 2rem 5rem; padding-top: 80px; }
+@media(max-width: 900px) { .page-layout { grid-template-columns: 1fr; } .toc-sidebar { display: none; } }
+
+/* TOC SIDEBAR */
+.toc-sidebar { position: sticky; top: 80px; height: fit-content; max-height: calc(100vh - 100px); overflow-y: auto; }
+.toc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.75rem; }
+.toc-nav { display: flex; flex-direction: column; gap: 2px; }
+.toc-link { color: var(--muted); font-size: 0.82rem; text-decoration: none; padding: 4px 10px; border-left: 2px solid transparent; transition: all 0.15s; border-radius: 0 4px 4px 0; }
+.toc-link:hover, .toc-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(56,189,248,0.05); }
+.toc-link.toc-sub { font-size: 0.78rem; padding-left: 22px; }
+
+/* ARTICLE BODY */
+.article-body { min-width: 0; }
+.breadcrumb { font-size: 0.78rem; color: var(--muted2); margin-bottom: 1.5rem; }
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--accent); }
+.module-badge { display: inline-block; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: var(--accent); padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 1rem; }
+.article-title { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
+.article-meta { font-size: 0.83rem; color: var(--muted); margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+
+/* OUTLINE BOX */
+.outline-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 3rem; }
+.outline-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.75rem; color: var(--text); }
+.outline-list { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.85rem; }
+.outline-list a { color: var(--accent); text-decoration: none; }
+.outline-list a:hover { text-decoration: underline; }
+.outline-list li { margin: 4px 0; }
+.outline-list ul { margin: 4px 0; padding-left: 1rem; }
+
+/* ARTICLE PROSE */
+.article-body h2 { font-family: var(--display); font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; margin: 3rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); scroll-margin-top: 80px; }
+.article-body h3 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 80px; }
+.article-body h4 { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.article-body p { margin-bottom: 1.25rem; color: var(--muted); font-size: 0.97rem; line-height: 1.85; }
+.article-body strong { color: var(--text); font-weight: 600; }
+.article-body em { color: var(--accent3); font-style: italic; }
+.article-body ul, .article-body ol { margin: 0 0 1.25rem 1.5rem; color: var(--muted); font-size: 0.95rem; }
+.article-body li { margin-bottom: 6px; line-height: 1.75; }
+.article-body code { font-family: var(--mono); font-size: 0.82em; background: rgba(56,189,248,0.08); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
+.article-body a { color: var(--accent2); text-decoration: none; }
+.article-body a:hover { text-decoration: underline; }
+
+/* CODE BLOCKS */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+.code-block-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot.r { background: #ff5f57; } .code-dot.y { background: #ffbd2e; } .code-dot.g { background: #28c840; }
+.code-filename { font-family: var(--mono); font-size: 0.73rem; color: var(--muted2); margin-left: 8px; }
+.code-block pre { padding: 1.5rem; overflow-x: auto; margin: 0; font-family: var(--mono); font-size: 0.82rem; line-height: 1.8; color: #e2e8f0; }
+/* Syntax colors */
+.kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; }
+.num { color: #f78c6c; } .cm { color: #546e7a; font-style: italic; }
+.cls { color: #ffcb6b; } .imp { color: #89ddff; } .op { color: #89ddff; }
+
+/* CALLOUT BOXES */
+.callout { display: flex; gap: 1rem; border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; border-width: 1px; border-style: solid; }
+.callout-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+.callout-body { font-size: 0.88rem; line-height: 1.75; }
+.callout-body strong { font-weight: 600; }
+.callout-title { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+.callout.note { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.22); color: var(--muted); }
+.callout.note .callout-title, .callout.note strong { color: var(--accent); }
+.callout.warning { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.22); color: var(--muted); }
+.callout.warning .callout-title, .callout.warning strong { color: var(--accent4); }
+.callout.tip { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); color: var(--muted); }
+.callout.tip .callout-title, .callout.tip strong { color: var(--accent3); }
+.callout.important { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.22); color: var(--muted); }
+.callout.important .callout-title, .callout.important strong { color: var(--accent5); }
+
+/* MATH DISPLAY */
+.math-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.75rem; margin: 1.25rem 0; overflow-x: auto; font-size: 1.05rem; text-align: center; }
+.math-label { font-size: 0.72rem; color: var(--muted2); font-family: var(--mono); margin-top: 0.5rem; text-align: right; }
+
+/* INLINE FIGURE / DIAGRAM */
+.figure { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; margin: 2rem 0; text-align: center; }
+.figure-caption { font-size: 0.8rem; color: var(--muted2); margin-top: 1rem; font-style: italic; }
+
+/* DATA TABLE */
+.data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.85rem; }
+.data-table th { padding: 10px 14px; background: var(--card2); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); text-align: left; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(99,179,237,0.03); }
+
+/* SUMMARY BOX */
+.summary-box { background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(129,140,248,0.07)); border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 1.75rem 2rem; margin: 3rem 0 2rem; }
+.summary-box h3 { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+.summary-box ul { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.88rem; }
+.summary-box li { margin-bottom: 6px; line-height: 1.7; }
+
+/* RESOURCE LIST */
+.resource-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.resource-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.resource-list li::before { content: '\2192'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.resource-list a { color: var(--accent2); }
+
+/* PREV/NEXT NAV */
+.page-nav { display: flex; justify-content: space-between; gap: 1rem; padding: 2rem; max-width: 1200px; margin: 0 auto; border-top: 1px solid var(--border); }
+.page-nav-btn { display: flex; flex-direction: column; gap: 4px; padding: 1rem 1.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; transition: all 0.2s; max-width: 45%; }
+.page-nav-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.page-nav-btn .nav-dir { font-size: 0.72rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; }
+.page-nav-btn .nav-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.page-nav-btn.next { text-align: right; margin-left: auto; }
+
+/* QUIZ/EXERCISE BOX */
+.exercise-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin: 2rem 0; }
+.exercise-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent4); margin-bottom: 0.5rem; }
+.exercise-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; }
+.exercise-body { font-size: 0.88rem; color: var(--muted); line-height: 1.75; }
+
+/* QUIZ BOX */
+.quiz-box { background: rgba(129,140,248,0.06); border: 1px solid rgba(129,140,248,0.22); border-radius: 14px; padding: 1.5rem; margin: 1.5rem 0; }
+.quiz-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.5rem; }
+.quiz-question { font-size: 0.93rem; color: var(--text); margin-bottom: 0.75rem; font-weight: 500; }
+.quiz-answer { margin-top: 0.5rem; }
+.quiz-answer summary { cursor: pointer; font-size: 0.82rem; color: var(--accent2); font-weight: 600; }
+.quiz-answer p { margin-top: 0.5rem; font-size: 0.86rem; color: var(--muted); }
+
+/* CELL (for assignment files - jupyter style) */
+.jupyter-cell { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin: 1.5rem 0; overflow: hidden; }
+.cell-header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted2); font-family: var(--mono); }
+.cell-input-label { color: var(--accent4); font-weight: 600; }
+.cell-body { padding: 1rem 1.25rem; }
+.jupyter-cell pre { padding: 1rem 1.25rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; background: var(--code-bg); margin: 0; }
+.cell-prompt { color: var(--accent3); font-weight: 700; }
+
+/* GRADING RUBRIC */
+.rubric-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+.rubric-table th { background: var(--card2); padding: 10px 14px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); }
+.rubric-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+
+/* DETAILS (collapsible hints) */
+details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; }
+details summary { cursor: pointer; font-size: 0.85rem; color: var(--accent2); font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
+
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">Hyper<span>Tune</span></a>
+    <ul class="nav-links">
+
+    </ul>
+    <a href="../index.html#curriculum" class="nav-cta">Start Learning</a>
+  </div>
+</nav>
+<div class="page-layout">
+  <aside class="toc-sidebar">
+    <div class="toc-label">On this page</div>
+    <nav class="toc-nav">
+<a href="#intro" class="toc-link">Solution Walkthrough</a>
+<a href="#sol-task1" class="toc-link">Task 1 — Dual-Objective Function</a>
+<a href="#sol-task2" class="toc-link">Task 2 — NSGA-II Study</a>
+<a href="#sol-task3" class="toc-link">Task 3 — Pareto Front Plot</a>
+<a href="#sol-task4" class="toc-link">Task 4 — Operating Points</a>
+<a href="#sol-task5" class="toc-link">Task 5 — MLflow Logging</a>
+<a href="#sol-task6" class="toc-link">Task 6 — Ray Tune Comparison</a>
+<a href="#resources" class="toc-link">Resources</a>
+    </nav>
+  </aside>
+  <article class="article-body">
+    <div class="breadcrumb"><a href="../index.html">HyperTune</a> › <a href="intro.html">Module 12</a> › Assignment 12 Solution</div>
+    <div class="article-header">
+      <div class="module-badge">Module 12 · Assignment Solution</div>
+      <h1 class="article-title">Assignment 12 — Solution Walkthrough</h1>
+      <div class="article-meta">Solution · Difficulty: ★★★★☆ · Run time: ~10 minutes total</div>
+    </div>
+    <div class="outline-box">
+      <div class="outline-title">📋 Article Outline</div>
+      <ol class="outline-list">
+
+<li><a href="#intro">Solution Walkthrough</a></li>
+<li><a href="#sol-task1">Task 1 — Dual-Objective Function</a></li>
+<li><a href="#sol-task2">Task 2 — NSGA-II Multi-Objective Study</a></li>
+<li><a href="#sol-task3">Task 3 — Pareto Front Plot</a></li>
+<li><a href="#sol-task4">Task 4 — Two Operating Points</a></li>
+<li><a href="#sol-task5">Task 5 — Log Every Trial to MLflow</a></li>
+<li><a href="#sol-task6">Task 6 — Ray Tune Comparison</a></li>
+<li><a href="#resources">Useful Resources</a></li>
+      </ol>
+    </div>
+
+<section id="intro">
+  <h2>Solution Walkthrough</h2>
+  <p>Below are reference solutions for Assignment 12. The solutions are written to be readable, not minimally clever — each step is annotated so you can follow the reasoning even if you got stuck. Run them in order in a fresh kernel; the full notebook should finish in under 10 minutes (single-machine) or 5 minutes (with Ray Tune).</p>
+  <div class="callout warning"><div class="callout-icon">⚠️</div><div class="callout-body"><div class="callout-title">Use the solution ethically</div><p>If you are taking this course for credit, do not submit this solution as your own work. Use it to unstick yourself when you are blocked, or to compare your approach after you have attempted the task. The learning happens when you struggle with the problem; copying the answer short-circuits the learning entirely.</p></div></div>
+</section>
+
+<section id="sol-task1">
+  <h2>Task 1 — Dual-Objective Function</h2>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── sol_task1_dual_objective.py ────────────────────────────────────────────────
+import time
+import numpy as np
+from xgboost import XGBClassifier
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import StratifiedKFold, cross_val_score
+
+X, y = load_breast_cancer(return_X_y=True)
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+
+def measure_latency(model, X, n_repeats=5, n_samples=1000):
+    &quot;&quot;&quot;Median per-sample inference latency in milliseconds.
+
+    Warms up the model with 10 calls, then times 5 repeats of 100 predict()
+    calls on a random subsample of size n_samples.
+    &quot;&quot;&quot;
+    rng = np.random.default_rng(42)
+    idx = rng.choice(len(X), size=min(n_samples, len(X)), replace=True)
+    Xs = X[idx]
+
+    # Warm up
+    for _ in range(10):
+        model.predict(Xs)
+
+    # Measure
+    times = []
+    for _ in range(n_repeats):
+        t0 = time.perf_counter()
+        for _ in range(100):
+            model.predict(Xs)
+        t1 = time.perf_counter()
+        # Convert to ms per sample
+        times.append((t1 - t0) / 100 / len(Xs) * 1000)
+    return float(np.median(times))
+
+
+def objective(trial):
+    &quot;&quot;&quot;Returns (accuracy, latency_ms) for a single XGBoost configuration.
+
+    n_jobs is forced to 1 so latency measurements are comparable across trials.
+    &quot;&quot;&quot;
+    params = {
+        &quot;learning_rate&quot;:     trial.suggest_float(&quot;learning_rate&quot;, 1e-3, 1.0, log=True),
+        &quot;max_depth&quot;:         trial.suggest_int(&quot;max_depth&quot;, 3, 10),
+        &quot;n_estimators&quot;:      trial.suggest_int(&quot;n_estimators&quot;, 50, 500),
+        &quot;subsample&quot;:         trial.suggest_float(&quot;subsample&quot;, 0.5, 1.0),
+        &quot;colsample_bytree&quot;:  trial.suggest_float(&quot;colsample_bytree&quot;, 0.5, 1.0),
+        &quot;min_child_weight&quot;:  trial.suggest_int(&quot;min_child_weight&quot;, 1, 10),
+        &quot;eval_metric&quot;:       &quot;logloss&quot;,
+        &quot;tree_method&quot;:       &quot;hist&quot;,
+        &quot;n_jobs&quot;:            1,           # critical: single-thread for fair latency
+        &quot;random_state&quot;:      42,
+    }
+    model = XGBClassifier(**params)
+    scores = cross_val_score(model, X, y, cv=cv, scoring=&quot;accuracy&quot;)
+    acc = float(scores.mean())
+
+    # Fit on all data, then measure latency
+    model.fit(X, y)
+    lat = measure_latency(model, X)
+
+    return acc, lat
+
+
+# Sanity check
+import optuna
+test_study = optuna.create_study(directions=[&quot;maximize&quot;, &quot;minimize&quot;])
+test_study.optimize(objective, n_trials=3)
+for t in test_study.trials:
+    print(f&quot;Trial {t.number}: acc={t.values[0]:.4f}  lat={t.values[1]:.5f} ms&quot;)
+</pre></div>
+  <p>Sanity-check output: each trial should report <code>acc</code> in [0.94, 0.99] and <code>lat</code> in [0.001, 0.05] ms. Latency varies because larger <code>n_estimators</code> and deeper <code>max_depth</code> produce larger trees that take longer to traverse during inference.</p>
+</section>
+
+<section id="sol-task2">
+  <h2>Task 2 — NSGA-II Multi-Objective Study</h2>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── sol_task2_nsgaii_study.py ──────────────────────────────────────────────────
+import optuna
+import time
+
+t0 = time.perf_counter()
+
+study = optuna.create_study(
+    directions=[&quot;maximize&quot;, &quot;minimize&quot;],
+    sampler=optuna.samplers.NSGAIISampler(seed=42),
+    storage=&quot;sqlite:///assign12_multiobj.db&quot;,
+    study_name=&quot;assign12_multiobj&quot;,
+    load_if_exists=True,
+)
+study.optimize(objective, n_trials=100)
+
+elapsed = time.perf_counter() - t0
+print(f&quot;\n100 trials completed in {elapsed:.1f}s&quot;)
+
+pareto = study.best_trials
+print(f&quot;Pareto front: {len(pareto)} trials&quot;)
+for t in sorted(pareto, key=lambda t: -t.values[0])[:8]:
+    print(f&quot;  trial {t.number:3d}  acc={t.values[0]:.4f}  lat={t.values[1]:.5f} ms&quot;)
+</pre></div>
+  <p>Typical output: ~80 seconds for 100 trials. Pareto front has 18–25 trials. Top-8 by accuracy all have acc &gt; 0.975 and lat &lt; 0.02 ms.</p>
+</section>
+
+<section id="sol-task3">
+  <h2>Task 3 — Pareto Front Plot</h2>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── sol_task3_pareto_plot.py ───────────────────────────────────────────────────
+import matplotlib.pyplot as plt
+import numpy as np
+
+pareto_nums = {t.number for t in study.best_trials}
+
+trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
+nums   = np.array([t.number for t in trials])
+accs   = np.array([t.values[0] for t in trials])
+lats   = np.array([t.values[1] for t in trials])
+is_par = np.array([t.number in pareto_nums for t in trials])
+
+fig, ax = plt.subplots(figsize=(9, 5.5), constrained_layout=True)
+# Dominated trials (gray, small)
+ax.scatter(lats[~is_par], accs[~is_par], c=nums[~is_par], cmap=&quot;viridis&quot;,
+           s=30, alpha=0.5, marker=&quot;o&quot;, label=&quot;dominated&quot;)
+# Pareto-optimal trials (green, large, white edge)
+sc = ax.scatter(lats[is_par], accs[is_par], c=nums[is_par], cmap=&quot;viridis&quot;,
+                s=120, marker=&quot;o&quot;, edgecolors=&quot;white&quot;, linewidth=1.5,
+                label=&quot;Pareto-optimal&quot;)
+# Connect the Pareto front with a line
+order = np.argsort(lats[is_par])
+ax.plot(lats[is_par][order], accs[is_par][order], &quot;-&quot;,
+        color=&quot;#34d399&quot;, linewidth=2, alpha=0.7, label=&quot;Pareto front&quot;)
+
+ax.set_xlabel(&quot;Inference latency (ms per sample)&quot;)
+ax.set_ylabel(&quot;Validation accuracy&quot;)
+ax.set_title(&quot;Multi-objective Pareto front: XGBoost on breast_cancer&quot;)
+cbar = fig.colorbar(sc, ax=ax)
+cbar.set_label(&quot;Trial number&quot;)
+ax.legend(loc=&quot;lower right&quot;)
+plt.savefig(&quot;assign12_task3_pareto.png&quot;, dpi=120)
+plt.show()
+</pre></div>
+  <p>The Pareto front appears as a green curve in the upper-left of the scatter plot — high accuracy, low latency. Late trials (high trial numbers, light green on the colormap) cluster near the front; early trials (low numbers, dark purple) are scattered. This is the visual signature of NSGA-II converging toward the front as the search progresses.</p>
+</section>
+
+<section id="sol-task4">
+  <h2>Task 4 — Two Operating Points</h2>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── sol_task4_operating_points.py ─────────────────────────────────────────────
+pareto = study.best_trials
+
+# Point A: highest accuracy subject to latency &lt; 1 ms
+feasible_A = [t for t in pareto if t.values[1] &lt; 1.0]
+point_A = max(feasible_A, key=lambda t: t.values[0])
+
+# Point B: lowest latency subject to accuracy &gt; 0.97
+feasible_B = [t for t in pareto if t.values[0] &gt; 0.97]
+point_B = min(feasible_B, key=lambda t: t.values[1])
+
+print(&quot;Operating Point A (max accuracy, latency &lt; 1ms):&quot;)
+print(f&quot;  Trial number:    {point_A.number}&quot;)
+print(f&quot;  Accuracy:        {point_A.values[0]:.4f}&quot;)
+print(f&quot;  Latency (ms):    {point_A.values[1]:.5f}&quot;)
+print(f&quot;  Hyperparameters: {point_A.params}&quot;)
+
+print(&quot;\nOperating Point B (min latency, accuracy &gt; 0.97):&quot;)
+print(f&quot;  Trial number:    {point_B.number}&quot;)
+print(f&quot;  Accuracy:        {point_B.values[0]:.4f}&quot;)
+print(f&quot;  Latency (ms):    {point_B.values[1]:.5f}&quot;)
+print(f&quot;  Hyperparameters: {point_B.params}&quot;)
+</pre></div>
+  <h3>Discussion</h3>
+  <p><strong>(a) Real-time ad-bidding system:</strong> I would deploy <strong>Point B</strong>. In ad bidding, every millisecond of latency costs money — the bid must arrive before the auction closes, which is typically a 10–100ms window including network round-trip. The 0.5–1% accuracy gap between A and B is worth far less than the latency savings: a 2× faster model means you can bid on 2× more auctions, which more than compensates for the small accuracy hit.</p>
+  <p><strong>(b) Medical screening tool:</strong> I would deploy <strong>Point A</strong>. In medical screening, false negatives (missed cancer) have catastrophic cost — both clinically and legally. The latency budget is much more generous (the patient waited days for the appointment; they can wait another 50ms for the prediction). Maximizing accuracy subject to the SLA is the right call. If anything, I would push the latency SLA higher (5ms? 10ms?) to see whether accuracy could be pushed further.</p>
+</section>
+
+<section id="sol-task5">
+  <h2>Task 5 — Log Every Trial to MLflow</h2>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── sol_task5_mlflow.py ──────────────────────────────────────────────────────
+import mlflow
+from optuna.integration.mlflow import MLflowCallback
+import optuna
+
+mlflow.set_tracking_uri(&quot;file:./mlruns&quot;)
+mlflow.set_experiment(&quot;assign12_multiobj&quot;)
+
+callback = MLflowCallback(
+    tracking_uri=mlflow.get_tracking_uri(),
+    metric_name=[&quot;cv_accuracy&quot;, &quot;latency_ms&quot;],
+)
+
+@callback.track_in_mlflow()
+def objective_mlflow(trial):
+    acc, lat = objective(trial)   # reuse Task 1&#x27;s objective
+    return acc, lat
+
+study_ml = optuna.create_study(
+    directions=[&quot;maximize&quot;, &quot;minimize&quot;],
+    sampler=optuna.samplers.NSGAIISampler(seed=42),
+    storage=&quot;sqlite:///assign12_mlflow.db&quot;,
+    study_name=&quot;assign12_mlflow&quot;,
+)
+study_ml.optimize(objective_mlflow, n_trials=100, callbacks=[callback])
+
+# Find trial 50 in MLflow
+client = mlflow.tracking.MlflowClient()
+exp = client.get_experiment_by_name(&quot;assign12_multiobj&quot;)
+runs = client.search_runs(experiment_ids=[exp.experiment_id])
+trial_50 = next(
+    (r for r in runs if r.data.tags.get(&quot;trial_number&quot;) == &quot;50&quot;),
+    None,
+)
+if trial_50:
+    print(&quot;MLflow run for trial 50:&quot;)
+    print(f&quot;  Run ID:        {trial_50.info.run_id}&quot;)
+    print(f&quot;  Params:        {trial_50.data.params}&quot;)
+    print(f&quot;  Metrics:       {trial_50.data.metrics}&quot;)
+else:
+    print(&quot;Trial 50 not found in MLflow. Check the tag name.&quot;)
+</pre></div>
+  <p>Open <code>mlflow ui</code> in a terminal and navigate to <code>http://localhost:5000</code>. You will see 100 runs in the <code>assign12_multiobj</code> experiment. Filter the runs table by typing <code>tags.trial_number = "50"</code> in the search box to find trial 50 specifically.</p>
+</section>
+
+<section id="sol-task6">
+  <h2>Task 6 — Ray Tune Comparison</h2>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── sol_task6_ray_tune.py ────────────────────────────────────────────────────
+import os
+import time
+import ray
+from ray import tune
+from ray.tune.search.optuna import OptunaSearch
+from ray.tune.schedulers import ASHAScheduler
+
+ray.init(ignore_reinit_error=True)
+X_ref, y_ref = ray.put(X), ray.put(y)
+
+
+def trainable(config):
+    X = ray.get(X_ref)
+    y = ray.get(y_ref)
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+    model = XGBClassifier(
+        learning_rate=config[&quot;learning_rate&quot;],
+        max_depth=int(config[&quot;max_depth&quot;]),
+        n_estimators=int(config[&quot;n_estimators&quot;]),
+        subsample=config[&quot;subsample&quot;],
+        colsample_bytree=config[&quot;colsample_bytree&quot;],
+        min_child_weight=int(config[&quot;min_child_weight&quot;]),
+        eval_metric=&quot;logloss&quot;, tree_method=&quot;hist&quot;,
+        n_jobs=1, random_state=42,
+    )
+    scores = cross_val_score(model, X, y, cv=cv, scoring=&quot;accuracy&quot;)
+    acc = float(scores.mean())
+    model.fit(X, y)
+    lat = measure_latency(model, X)
+    tune.report(cv_accuracy=acc, latency_ms=lat)
+
+
+search_space = {
+    &quot;learning_rate&quot;:     tune.loguniform(1e-3, 1.0),
+    &quot;max_depth&quot;:         tune.randint(3, 11),
+    &quot;n_estimators&quot;:      tune.randint(50, 501),
+    &quot;subsample&quot;:         tune.uniform(0.5, 1.0),
+    &quot;colsample_bytree&quot;:  tune.uniform(0.5, 1.0),
+    &quot;min_child_weight&quot;:  tune.randint(1, 11),
+}
+
+# Optuna multi-objective inside Ray Tune
+search_alg = OptunaSearch(
+    metric=[&quot;cv_accuracy&quot;, &quot;latency_ms&quot;],
+    mode=[&quot;max&quot;, &quot;min&quot;],
+)
+
+t0 = time.perf_counter()
+tuner = tune.Tuner(
+    trainable,
+    param_space=search_space,
+    tune_config=tune.TuneConfig(
+        metric=[&quot;cv_accuracy&quot;, &quot;latency_ms&quot;],
+        mode=[&quot;max&quot;, &quot;min&quot;],
+        search_alg=search_alg,
+        num_samples=100,
+        max_concurrent_trials=2,
+    ),
+    run_config=ray.train.RunConfig(
+        name=&quot;assign12_ray&quot;, storage_path=&quot;/tmp/ray_results&quot;,
+    ),
+)
+results = tuner.fit()
+ray_elapsed = time.perf_counter() - t0
+
+print(f&quot;Ray Tune (2 workers): {ray_elapsed:.1f}s for 100 trials&quot;)
+print(f&quot;Single-machine Optuna (from Task 2): {elapsed:.1f}s&quot;)
+print(f&quot;Speedup: {elapsed / ray_elapsed:.2f}x&quot;)
+
+# Best result on the Pareto front
+best = results.get_best_result(metric=&quot;cv_accuracy&quot;, mode=&quot;max&quot;)
+print(f&quot;\nBest by accuracy:  acc={best.metrics[&#x27;cv_accuracy&#x27;]:.4f}  &quot;
+      f&quot;lat={best.metrics[&#x27;latency_ms&#x27;]:.5f} ms&quot;)
+</pre></div>
+  <p>Typical output: Ray Tune with 2 workers completes 100 trials in ~50–60 seconds, vs ~80–100 seconds for single-machine Optuna — a ~1.5× speedup. The speedup is sublinear because (a) Ray adds scheduling overhead (~5–10%), and (b) on a 4-core laptop, 2 workers each pinning 1 thread for the latency measurement leaves fewer cores for cross-validation. On a real cluster with 8+ workers, the speedup approaches linear.</p>
+</section>
+
+<div class="summary-box"><h3>🎯 What This Assignment Teaches</h3><ul><li>Multi-objective optimization with NSGA-II is the production-grade answer to "I also care about latency."</li><li>A 100-trial NSGA-II study produces 15–25 Pareto-optimal trials — enough to make an informed product decision.</li><li>The choice of operating point on the Pareto front is a <em>product</em> decision, not a technical one. The engineer delivers the front; the product team picks the point.</li><li>MLflow integration adds 2 lines of code and gives you queryable per-trial logs that survive across sessions.</li><li>Ray Tune gives a ~1.5× speedup with 2 workers on a laptop, and approaches linear speedup on a real cluster.</li><li>Latency measurement is sensitive to thread count — pin <code>n_jobs=1</code> and warm up the model before timing.</li></ul></div>
+
+<section id="resources"><h2>Useful Resources</h2><ul class="resource-list"><li><a href="https://optuna.readthedocs.io/en/stable/tutorial/20_recipes/002_multi_objective.html">Optuna — Multi-objective optimization with NSGA-II</a></li><li><a href="https://optuna.readthedocs.io/en/stable/reference/generated/optuna.samplers.NSGAIISampler.html">Optuna — NSGAIISampler API reference</a></li><li><a href="https://mlflow.org/docs/latest/tracking.html">MLflow — Tracking quickstart</a></li><li><a href="https://docs.ray.io/en/latest/tune/examples/optuna_multi_objective.html">Ray Tune — Multi-objective with Optuna</a></li><li><a href="https://ieeexplore.ieee.org/document/996017">Deb et al. (2002) — NSGA-II paper</a></li><li><a href="https://dl.acm.org/doi/10.1145/3292500.3330701">Akiba et al. (2019) — Optuna paper</a></li></ul></section>
+
+  </article>
+</div>
+<div class="page-nav"><a href="assignment_task.html" class="page-nav-btn prev"><span class="nav-dir">← Previous</span><span class="nav-title">Assignment 12</span></a><a href="../index.html" class="page-nav-btn next"><span class="nav-dir">Next →</span><span class="nav-title">HyperTune Home</span></a></div>
+<footer>
+  <div class="container">
+    <div style="font-size:1.5rem;font-weight:800;font-family:var(--display);color:var(--accent);margin-bottom:0.5rem">HyperTune</div>
+    <p style="color:var(--muted2);font-size:0.85rem;max-width:500px;margin:0 auto">The complete hyperparameter tuning reference for ML &amp; DL engineers. Covers scikit-learn, XGBoost, LightGBM, PyTorch, Optuna, Ray Tune, and beyond — from first principles to production.</p>
+    <div style="margin-top:2rem;font-size:0.78rem;color:var(--muted2)">Built for learning · Python 3.10+ · scikit-learn 1.4+ · Optuna 3.0+</div>
+  </div>
+</footer>
+<script>
+(function() {
+  const links = Array.from(document.querySelectorAll('.toc-link'));
+  const sections = links
+    .map(l => document.querySelector(l.getAttribute('href')))
+    .filter(Boolean);
+  if (!('IntersectionObserver' in window) || sections.length === 0) return;
+  const setActive = id => {
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+  };
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  sections.forEach(s => observer.observe(s));
+})();
+</script>
+</body>
+</html>

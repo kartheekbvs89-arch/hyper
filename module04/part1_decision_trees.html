@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Decision Tree Hyperparameters — HyperTune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<style>
+
+:root {
+  --bg: #070b14; --bg2: #0c1220; --bg3: #111827;
+  --card: #131d2e; --card2: #1a2640;
+  --border: rgba(99,179,237,0.12); --border2: rgba(99,179,237,0.22);
+  --accent: #38bdf8; --accent2: #818cf8; --accent3: #34d399;
+  --accent4: #f59e0b; --accent5: #f472b6;
+  --text: #f0f6fc; --muted: #8899aa; --muted2: #64748b;
+  --code-bg: #0d1117;
+  --ff: 'Inter', sans-serif; --mono: 'JetBrains Mono', monospace;
+  --display: 'Sora', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,11,20,0.85);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:var(--display);font-weight:800;font-size:1.25rem;color:var(--accent);letter-spacing:-0.03em;text-decoration:none}
+.logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#000;padding:7px 18px;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85}
+
+/* LAYOUT */
+.page-layout { display: grid; grid-template-columns: 280px 1fr; gap: 3rem; max-width: 1200px; margin: 0 auto; padding: 5rem 2rem 5rem; padding-top: 80px; }
+@media(max-width: 900px) { .page-layout { grid-template-columns: 1fr; } .toc-sidebar { display: none; } }
+
+/* TOC SIDEBAR */
+.toc-sidebar { position: sticky; top: 80px; height: fit-content; max-height: calc(100vh - 100px); overflow-y: auto; }
+.toc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.75rem; }
+.toc-nav { display: flex; flex-direction: column; gap: 2px; }
+.toc-link { color: var(--muted); font-size: 0.82rem; text-decoration: none; padding: 4px 10px; border-left: 2px solid transparent; transition: all 0.15s; border-radius: 0 4px 4px 0; }
+.toc-link:hover, .toc-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(56,189,248,0.05); }
+.toc-link.toc-sub { font-size: 0.78rem; padding-left: 22px; }
+
+/* ARTICLE BODY */
+.article-body { min-width: 0; }
+.breadcrumb { font-size: 0.78rem; color: var(--muted2); margin-bottom: 1.5rem; }
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--accent); }
+.module-badge { display: inline-block; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: var(--accent); padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 1rem; }
+.article-title { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
+.article-meta { font-size: 0.83rem; color: var(--muted); margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+
+/* OUTLINE BOX */
+.outline-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 3rem; }
+.outline-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.75rem; color: var(--text); }
+.outline-list { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.85rem; }
+.outline-list a { color: var(--accent); text-decoration: none; }
+.outline-list a:hover { text-decoration: underline; }
+.outline-list li { margin: 4px 0; }
+.outline-list ul { margin: 4px 0; padding-left: 1rem; }
+
+/* ARTICLE PROSE */
+.article-body h2 { font-family: var(--display); font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; margin: 3rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); scroll-margin-top: 80px; }
+.article-body h3 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 80px; }
+.article-body h4 { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.article-body p { margin-bottom: 1.25rem; color: var(--muted); font-size: 0.97rem; line-height: 1.85; }
+.article-body strong { color: var(--text); font-weight: 600; }
+.article-body em { color: var(--accent3); font-style: italic; }
+.article-body ul, .article-body ol { margin: 0 0 1.25rem 1.5rem; color: var(--muted); font-size: 0.95rem; }
+.article-body li { margin-bottom: 6px; line-height: 1.75; }
+.article-body code { font-family: var(--mono); font-size: 0.82em; background: rgba(56,189,248,0.08); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
+.article-body a { color: var(--accent2); text-decoration: none; }
+.article-body a:hover { text-decoration: underline; }
+
+/* CODE BLOCKS */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+.code-block-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot.r { background: #ff5f57; } .code-dot.y { background: #ffbd2e; } .code-dot.g { background: #28c840; }
+.code-filename { font-family: var(--mono); font-size: 0.73rem; color: var(--muted2); margin-left: 8px; }
+.code-block pre { padding: 1.5rem; overflow-x: auto; margin: 0; font-family: var(--mono); font-size: 0.82rem; line-height: 1.8; color: #e2e8f0; }
+/* Syntax colors */
+.kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; }
+.num { color: #f78c6c; } .cm { color: #546e7a; font-style: italic; }
+.cls { color: #ffcb6b; } .imp { color: #89ddff; } .op { color: #89ddff; }
+
+/* CALLOUT BOXES */
+.callout { display: flex; gap: 1rem; border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; border-width: 1px; border-style: solid; }
+.callout-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+.callout-body { font-size: 0.88rem; line-height: 1.75; }
+.callout-body strong { font-weight: 600; }
+.callout-title { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+.callout.note { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.22); color: var(--muted); }
+.callout.note .callout-title, .callout.note strong { color: var(--accent); }
+.callout.warning { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.22); color: var(--muted); }
+.callout.warning .callout-title, .callout.warning strong { color: var(--accent4); }
+.callout.tip { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); color: var(--muted); }
+.callout.tip .callout-title, .callout.tip strong { color: var(--accent3); }
+.callout.important { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.22); color: var(--muted); }
+.callout.important .callout-title, .callout.important strong { color: var(--accent5); }
+
+/* MATH DISPLAY */
+.math-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.75rem; margin: 1.25rem 0; overflow-x: auto; font-size: 1.05rem; text-align: center; }
+.math-label { font-size: 0.72rem; color: var(--muted2); font-family: var(--mono); margin-top: 0.5rem; text-align: right; }
+
+/* INLINE FIGURE / DIAGRAM */
+.figure { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; margin: 2rem 0; text-align: center; }
+.figure-caption { font-size: 0.8rem; color: var(--muted2); margin-top: 1rem; font-style: italic; }
+
+/* DATA TABLE */
+.data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.85rem; }
+.data-table th { padding: 10px 14px; background: var(--card2); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); text-align: left; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(99,179,237,0.03); }
+
+/* SUMMARY BOX */
+.summary-box { background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(129,140,248,0.07)); border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 1.75rem 2rem; margin: 3rem 0 2rem; }
+.summary-box h3 { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+.summary-box ul { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.88rem; }
+.summary-box li { margin-bottom: 6px; line-height: 1.7; }
+
+/* RESOURCE LIST */
+.resource-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.resource-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.resource-list li::before { content: '\2192'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.resource-list a { color: var(--accent2); }
+
+/* PREV/NEXT NAV */
+.page-nav { display: flex; justify-content: space-between; gap: 1rem; padding: 2rem; max-width: 1200px; margin: 0 auto; border-top: 1px solid var(--border); }
+.page-nav-btn { display: flex; flex-direction: column; gap: 4px; padding: 1rem 1.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; transition: all 0.2s; max-width: 45%; }
+.page-nav-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.page-nav-btn .nav-dir { font-size: 0.72rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; }
+.page-nav-btn .nav-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.page-nav-btn.next { text-align: right; margin-left: auto; }
+
+/* QUIZ/EXERCISE BOX */
+.exercise-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin: 2rem 0; }
+.exercise-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent4); margin-bottom: 0.5rem; }
+.exercise-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; }
+.exercise-body { font-size: 0.88rem; color: var(--muted); line-height: 1.75; }
+
+/* QUIZ BOX */
+.quiz-box { background: rgba(129,140,248,0.06); border: 1px solid rgba(129,140,248,0.22); border-radius: 14px; padding: 1.5rem; margin: 1.5rem 0; }
+.quiz-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.5rem; }
+.quiz-question { font-size: 0.93rem; color: var(--text); margin-bottom: 0.75rem; font-weight: 500; }
+.quiz-answer { margin-top: 0.5rem; }
+.quiz-answer summary { cursor: pointer; font-size: 0.82rem; color: var(--accent2); font-weight: 600; }
+.quiz-answer p { margin-top: 0.5rem; font-size: 0.86rem; color: var(--muted); }
+
+/* CELL (for assignment files - jupyter style) */
+.jupyter-cell { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin: 1.5rem 0; overflow: hidden; }
+.cell-header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted2); font-family: var(--mono); }
+.cell-input-label { color: var(--accent4); font-weight: 600; }
+.cell-body { padding: 1rem 1.25rem; }
+.jupyter-cell pre { padding: 1rem 1.25rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; background: var(--code-bg); margin: 0; }
+.cell-prompt { color: var(--accent3); font-weight: 700; }
+
+/* GRADING RUBRIC */
+.rubric-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+.rubric-table th { background: var(--card2); padding: 10px 14px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); }
+.rubric-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+
+/* DETAILS (collapsible hints) */
+details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; }
+details summary { cursor: pointer; font-size: 0.85rem; color: var(--accent2); font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
+
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">Hyper<span>Tune</span></a>
+    <ul class="nav-links">
+
+    </ul>
+    <a href="../index.html#curriculum" class="nav-cta">Start Learning</a>
+  </div>
+</nav>
+<div class="page-layout">
+  <aside class="toc-sidebar">
+    <div class="toc-label">On this page</div>
+    <nav class="toc-nav">
+<a href="#section-1" class="toc-link">1. Why Decision Trees First</a>
+<a href="#section-2" class="toc-link">2. max_depth</a>
+<a href="#section-3" class="toc-link">3. min_samples_split</a>
+<a href="#section-4" class="toc-link">4. min_samples_leaf</a>
+<a href="#section-5" class="toc-link">5. max_features</a>
+<a href="#section-6" class="toc-link">6. max_leaf_nodes &amp; min_impurity_decrease</a>
+<a href="#section-7" class="toc-link">7. class_weight &amp; splitter</a>
+<a href="#section-8" class="toc-link">8. Criterion: gini vs entropy</a>
+<a href="#section-9" class="toc-link">9. Full Tuning on Adult Census</a>
+<a href="#section-10" class="toc-link">10. Decision Boundary Plots</a>
+<a href="#resources" class="toc-link">Useful Resources</a>
+    </nav>
+  </aside>
+  <article class="article-body">
+    <div class="breadcrumb"><a href="../index.html">HyperTune</a> › <a href="intro.html">Module 04</a> › Decision Tree Hyperparameters</div>
+    <div class="article-header">
+      <div class="module-badge">Module 04 · Model Type Deep Dive</div>
+      <h1 class="article-title">Decision Tree Hyperparameters: A Complete Visual Guide</h1>
+      <div class="article-meta">Part of the <strong>HyperTune</strong> open course · Estimated read time: 22 min · Python 3.10+ · scikit-learn 1.4+</div>
+    </div>
+    <div class="outline-box">
+      <div class="outline-title">📋 Article Outline</div>
+      <ol class="outline-list">
+
+<li><a href="#section-1">1. Why Decision Trees Are the Right Place to Start</a></li>
+<li><a href="#section-2">2. max_depth: The Master Knob</a></li>
+<li><a href="#section-3">3. min_samples_split</a></li>
+<li><a href="#section-4">4. min_samples_leaf: The Most Effective Pruner</a></li>
+<li><a href="#section-5">5. max_features</a></li>
+<li><a href="#section-6">6. max_leaf_nodes & min_impurity_decrease</a></li>
+<li><a href="#section-7">7. class_weight & splitter</a></li>
+<li><a href="#section-8">8. Criterion: gini vs entropy</a></li>
+<li><a href="#section-9">9. Full Tuning Example on Adult Census</a></li>
+<li><a href="#section-10">10. Decision Boundary Plots</a></li>
+<li><a href="#resources">Useful Resources</a></li>
+      </ol>
+    </div>
+<section id="section-1">
+  <h2>1. Why Decision Trees Are the Right Place to Start</h2>
+  <p>Decision trees are the conceptual backbone of an enormous fraction of modern supervised machine learning. Random forests, gradient boosted trees (XGBoost, LightGBM, CatBoost), and even the rotation forests and extremely randomized trees that show up in research code are all built out of the same atomic unit: a single <code>DecisionTreeClassifier</code> or <code>DecisionTreeRegressor</code> trained on a (possibly resampled) subset of the data. If you understand the hyperparameters of a single tree, you understand the per-base-learner hyperparameters of every tree ensemble you will ever tune. This is why we devote the first article of Module 04 to trees in isolation: every knob we cover here reappears, with the same semantics, in the random forest and gradient boosting articles that follow.</p>
+  <p>Trees are also unusual in that their hyperparameters are <em>structural</em> rather than <em>numerical</em>. When you tune a logistic regression, you are searching for a real-valued regularization strength that smoothly interpolates between under- and over-regularization. When you tune a decision tree, you are making decisions about the <em>shape</em> of the model: how many splits it can contain, how many samples each leaf must hold, how many features it is allowed to consider at each split. These structural choices have discrete, often dramatic, effects on the model's behavior — moving <code>max_depth</code> from 3 to 4 doesn't gently nudge the model, it roughly doubles the number of leaves the tree can contain.</p>
+  <p>The goal of this article is to give you a complete mental model of every hyperparameter that scikit-learn's <code>DecisionTreeClassifier</code> exposes, with the intuition, the math, and the runnable code to back each one up. By the end you should be able to look at a tree's <code>get_params()</code> output and predict, before fitting, whether the model will underfit, overfit, or land in the sweet spot — and you should be able to defend that prediction with both a mathematical argument and an empirical demonstration.</p>
+</section>
+<section id="section-2">
+  <h2>2. <code>max_depth</code>: The Master Knob</h2>
+  <p>Of all the hyperparameters a decision tree exposes, <code>max_depth</code> is the one you will tune most often and the one that has the largest single effect on bias and variance. Its physical meaning is exactly what the name suggests: the maximum number of splits along any path from the root to a leaf. A tree with <code>max_depth=1</code> is allowed to make a single split — its decision boundary is one axis-aligned hyperplane, and it produces exactly two leaves. A tree with <code>max_depth=2</code> can split, then split each child again, producing up to four leaves. In general, a depth-<em>k</em> tree can produce up to $2^k$ leaves, so the model's representational capacity grows <em>exponentially</em> with depth.</p>
+  <p>This exponential growth is the source of both the power and the danger of deep trees. At <code>max_depth=30</code>, a tree can have up to $2^{30} \approx 10^9$ leaves, more than enough to assign every training point its own leaf and achieve perfect training accuracy on any realistic dataset. That is memorization, not learning: the tree's predictions on unseen data will be erratic because each leaf's prediction is determined by the labels of the (very few) training points that happened to land there. At the other extreme, <code>max_depth=1</code> is almost always too rigid: a single axis-aligned split cannot capture any non-axis-aligned structure in the data, and on a multi-class problem it can only separate one class from the rest.</p>
+  <p>The bias-variance interpretation is direct. Increasing <code>max_depth</code> lowers bias (the tree can represent more complex decision boundaries) and raises variance (small changes in the training set produce very different trees). Decreasing <code>max_depth</code> does the opposite. The sweet spot is typically in the 4–12 range for tabular classification, depending on sample size and the complexity of the true decision boundary. On very small datasets (a few hundred rows), depth 3–5 is often enough; on large datasets with intricate structure, depth 8–15 may be appropriate. Beyond 15 you almost always overfit unless you are also tuning aggressive regularization on top.</p>
+<div class="figure">
+<svg viewBox="0 0 720 320" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:Inter;">
+  <text x="360" y="22" text-anchor="middle" fill="#8899aa" font-size="13" font-weight="600">Decision tree complexity vs max_depth (iris, 2 features)</text>
+
+  <!-- depth=1 panel -->
+  <g transform="translate(30,50)">
+    <text x="80" y="14" text-anchor="middle" fill="#38bdf8" font-size="12" font-weight="700">depth = 1</text>
+    <text x="80" y="32" text-anchor="middle" fill="#64748b" font-size="10">1 split, 2 leaves</text>
+    <!-- root -->
+    <rect x="55" y="44" width="50" height="22" fill="#131d2e" stroke="#38bdf8" stroke-width="1.5"/>
+    <text x="80" y="59" text-anchor="middle" fill="#e2e8f0" font-size="9">petal ≤ 2.45</text>
+    <!-- leaves -->
+    <line x1="80" y1="66" x2="50" y2="92" stroke="#8899aa" stroke-width="1"/>
+    <line x1="80" y1="66" x2="110" y2="92" stroke="#8899aa" stroke-width="1"/>
+    <rect x="25" y="92" width="50" height="22" fill="rgba(52,211,153,0.2)" stroke="#34d399" stroke-width="1.5"/>
+    <text x="50" y="107" text-anchor="middle" fill="#34d399" font-size="9">setosa</text>
+    <rect x="85" y="92" width="50" height="22" fill="rgba(244,114,182,0.2)" stroke="#f472b6" stroke-width="1.5"/>
+    <text x="110" y="107" text-anchor="middle" fill="#f472b6" font-size="9">mixed</text>
+    <text x="80" y="140" text-anchor="middle" fill="#8899aa" font-size="10">High bias · Low variance</text>
+  </g>
+
+  <!-- depth=2 panel -->
+  <g transform="translate(220,50)">
+    <text x="120" y="14" text-anchor="middle" fill="#38bdf8" font-size="12" font-weight="700">depth = 2</text>
+    <text x="120" y="32" text-anchor="middle" fill="#64748b" font-size="10">3 splits, 4 leaves</text>
+    <rect x="95" y="44" width="50" height="22" fill="#131d2e" stroke="#38bdf8" stroke-width="1.5"/>
+    <text x="120" y="59" text-anchor="middle" fill="#e2e8f0" font-size="9">petal ≤ 2.45</text>
+    <line x1="120" y1="66" x2="70" y2="92" stroke="#8899aa" stroke-width="1"/>
+    <line x1="120" y1="66" x2="170" y2="92" stroke="#8899aa" stroke-width="1"/>
+    <rect x="45" y="92" width="50" height="22" fill="rgba(52,211,153,0.2)" stroke="#34d399" stroke-width="1.5"/>
+    <text x="70" y="107" text-anchor="middle" fill="#34d399" font-size="9">setosa</text>
+    <rect x="145" y="92" width="50" height="22" fill="#131d2e" stroke="#38bdf8" stroke-width="1.5"/>
+    <text x="170" y="107" text-anchor="middle" fill="#e2e8f0" font-size="9">petal ≤ 4.75</text>
+    <line x1="170" y1="114" x2="145" y2="138" stroke="#8899aa" stroke-width="1"/>
+    <line x1="170" y1="114" x2="195" y2="138" stroke="#8899aa" stroke-width="1"/>
+    <rect x="120" y="138" width="50" height="20" fill="rgba(245,158,11,0.2)" stroke="#f59e0b" stroke-width="1.5"/>
+    <text x="145" y="152" text-anchor="middle" fill="#f59e0b" font-size="9">versicolor</text>
+    <rect x="170" y="138" width="50" height="20" fill="rgba(244,114,182,0.2)" stroke="#f472b6" stroke-width="1.5"/>
+    <text x="195" y="152" text-anchor="middle" fill="#f472b6" font-size="9">virginica</text>
+    <text x="120" y="180" text-anchor="middle" fill="#8899aa" font-size="10">Sweet spot · CV-optimal</text>
+  </g>
+
+  <!-- depth=8 panel -->
+  <g transform="translate(470,50)">
+    <text x="120" y="14" text-anchor="middle" fill="#38bdf8" font-size="12" font-weight="700">depth = 8</text>
+    <text x="120" y="32" text-anchor="middle" fill="#64748b" font-size="10">up to 255 splits, 256 leaves</text>
+    <rect x="95" y="44" width="50" height="22" fill="#131d2e" stroke="#38bdf8" stroke-width="1.5"/>
+    <text x="120" y="59" text-anchor="middle" fill="#e2e8f0" font-size="9">split 1</text>
+    <line x1="120" y1="66" x2="60" y2="86" stroke="#8899aa" stroke-width="1"/>
+    <line x1="120" y1="66" x2="180" y2="86" stroke="#8899aa" stroke-width="1"/>
+    <rect x="35" y="86" width="50" height="18" fill="#131d2e" stroke="#38bdf8" stroke-width="1"/>
+    <text x="60" y="98" text-anchor="middle" fill="#e2e8f0" font-size="8">split</text>
+    <rect x="155" y="86" width="50" height="18" fill="#131d2e" stroke="#38bdf8" stroke-width="1"/>
+    <text x="180" y="98" text-anchor="middle" fill="#e2e8f0" font-size="8">split</text>
+    <line x1="60" y1="104" x2="30" y2="120" stroke="#8899aa" stroke-width="1"/>
+    <line x1="60" y1="104" x2="90" y2="120" stroke="#8899aa" stroke-width="1"/>
+    <line x1="180" y1="104" x2="150" y2="120" stroke="#8899aa" stroke-width="1"/>
+    <line x1="180" y1="104" x2="210" y2="120" stroke="#8899aa" stroke-width="1"/>
+    <text x="120" y="138" text-anchor="middle" fill="#8899aa" font-size="9">… (recursive splits) …</text>
+    <text x="30" y="158" text-anchor="middle" fill="#34d399" font-size="8">·</text>
+    <text x="90" y="158" text-anchor="middle" fill="#34d399" font-size="8">·</text>
+    <text x="150" y="158" text-anchor="middle" fill="#34d399" font-size="8">·</text>
+    <text x="210" y="158" text-anchor="middle" fill="#34d399" font-size="8">·</text>
+    <text x="120" y="180" text-anchor="middle" fill="#8899aa" font-size="10">Low bias · High variance</text>
+  </g>
+
+  <!-- bottom caption row -->
+  <g transform="translate(0,250)">
+    <text x="360" y="14" text-anchor="middle" fill="#64748b" font-size="11">Each level doubles the maximum number of leaves. The model capacity grows exponentially with depth.</text>
+    <text x="360" y="32" text-anchor="middle" fill="#64748b" font-size="11">Train accuracy reaches 100% at the depth where every leaf contains a single class — usually depth ≈ log₂(n).</text>
+  </g>
+</svg>
+<div class="figure-caption">Figure 1 — Tree structure at depth 1, 2, and 8 on iris. Each level doubles the maximum number of leaves, so the model&#x27;s representational capacity grows exponentially with depth. Depth 1 is too rigid for most problems; depth 8+ on a 150-sample dataset is memorization.</div></div>
+  <p>The cleanest way to internalize this is to fit trees of increasing depth on a small dataset and watch the structure change. The iris dataset is perfect for this: 150 samples, 4 features, 3 classes, and the petal length and petal width features alone are nearly enough to separate the classes. Let us use scikit-learn's <code>plot_tree</code> to actually draw the trees at depths 1, 2, and 8.</p>
+<div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">tree_depth_visualization.py</span></div><pre># ─── tree_depth_visualization.py ──────────────────────────────────────────────
+# Fit DecisionTreeClassifier on iris at depths 1, 2, 8 and visualize the
+# tree structure with sklearn.tree.plot_tree. Demonstrates how the model
+# capacity grows exponentially with max_depth.
+
+import matplotlib.pyplot as plt
+from sklearn.datasets import load_iris
+from sklearn.tree import DecisionTreeClassifier, plot_tree
+
+iris = load_iris()
+X, y = iris.data, iris.target
+feature_names = iris.feature_names
+class_names = iris.target_names
+
+fig, axes = plt.subplots(1, 3, figsize=(20, 6), constrained_layout=True)
+for ax, depth in zip(axes, [1, 2, 8]):
+    clf = DecisionTreeClassifier(max_depth=depth, random_state=42)
+    clf.fit(X, y)
+    plot_tree(
+        clf,
+        feature_names=feature_names,
+        class_names=class_names,
+        ax=ax,
+        filled=True,
+        rounded=True,
+        fontsize=8,
+        max_depth=3,  # cap the drawn depth so the depth-8 tree stays readable
+    )
+    train_acc = clf.score(X, y)
+    n_leaves = clf.get_n_leaves()
+    ax.set_title(f&quot;max_depth={depth}  |  leaves={n_leaves}  |  train_acc={train_acc:.3f}&quot;)
+
+plt.savefig(&quot;tree_depths.png&quot;, dpi=110)
+plt.show()
+</pre></div>
+  <p>Run this and observe three things. First, the depth-1 tree picks the single best split (petal length ≤ 2.45 cm, which separates <em>setosa</em> from everything else) and stops. Train accuracy is around 0.667 because the depth-1 tree cannot distinguish <em>versicolor</em> from <em>virginica</em>. Second, the depth-2 tree adds one more split on the right child, separating <em>versicolor</em> from <em>virginica</em> with petal width ≤ 1.75 cm; train accuracy jumps to about 0.96. Third, the depth-8 tree is a sprawling mass of tiny leaves, several of which contain a single sample; train accuracy is exactly 1.0, but the tree has memorized the data rather than learned its structure.</p>
+  <p>The number of leaves is the key diagnostic. A depth-<em>k</em> tree can have at most $2^k$ leaves, but it will have fewer if the algorithm decides no further split would reduce impurity. So <code>clf.get_n_leaves()</code> tells you how close the tree came to its maximum capacity. On iris with 150 samples, a tree that produces 100+ leaves is overfitting by definition — most leaves contain only one or two samples, and their predictions are essentially noise.</p>
+<div class="callout tip"><div class="callout-icon">💡</div><div class="callout-body"><div class="callout-title">max_depth is your first knob, not your last</div><p>When you start tuning a decision tree, set <code>max_depth</code> first. Try a few values in <code>[3, 5, 8, 12, None]</code> and watch the train/CV gap. Once you find a depth that lands in the right ballpark, layer on <code>min_samples_leaf</code> and <code>min_samples_split</code> to fine-tune. Trying to tune all structural hyperparameters simultaneously from a cold start wastes search budget — start with the high-leverage knob and refine.</p></div></div>
+</section>
+<section id="section-3">
+  <h2>3. <code>min_samples_split</code>: The Minimum Population to Split</h2>
+  <p><code>min_samples_split</code> specifies the minimum number of samples a node must contain before the algorithm is allowed to split it. If a node has fewer than this many samples, it becomes a leaf regardless of how much impurity could be reduced by splitting. The default is 2, which means <em>any</em> node with at least 2 samples is a candidate for splitting — this is the most permissive setting and produces the deepest trees.</p>
+  <p>Raising <code>min_samples_split</code> is a form of pre-pruning. It stops the tree from creating tiny nodes late in the training process, where each split is fitted to a handful of samples and is therefore high-variance. Values in the 5–20 range are common for medium-sized tabular datasets; on very large datasets (hundreds of thousands of samples) you might raise it to 50 or 100. You can also pass a float in (0, 1] to express the threshold as a fraction of the total sample count, which is useful when you want the constraint to scale automatically with dataset size.</p>
+  <p>The interaction between <code>min_samples_split</code> and <code>max_depth</code> is worth understanding. <code>max_depth</code> controls the <em>maximum</em> number of splits along any path; <code>min_samples_split</code> controls the <em>practical</em> number of splits by making late splits illegal. A tree with <code>max_depth=30</code> and <code>min_samples_split=100</code> will rarely reach depth 30 in practice, because by the time the tree has split a few times, the child nodes will have fewer than 100 samples and will become leaves. The two knobs are partially redundant, and you usually tune one of them, not both.</p>
+</section>
+<section id="section-4">
+  <h2>4. <code>min_samples_leaf</code>: The Most Effective Pruning Knob</h2>
+  <p>If <code>min_samples_split</code> is the minimum population required to <em>consider</em> splitting a node, <code>min_samples_leaf</code> is the minimum population that must end up in <em>each</em> leaf after a split. This is a stronger constraint than <code>min_samples_split</code>, because it applies to <em>both</em> children of any split. A split that would produce a leaf with 1 sample is rejected even if the parent has 100 samples, if <code>min_samples_leaf=5</code>.</p>
+  <p>In practice, <code>min_samples_leaf</code> is the single most effective pre-pruning hyperparameter. The reason is subtle but important: it directly controls the variance of leaf predictions. A leaf containing 1 sample predicts that sample's label, which is pure noise on unseen data. A leaf containing 50 samples predicts the majority class of those 50 samples, which is a much more stable estimate. By forcing every leaf to contain at least <em>k</em> samples, you guarantee that every prediction the tree makes is backed by at least <em>k</em> training points — a form of built-in smoothing.</p>
+  <p>The default of 1 is too aggressive for most applications. For tabular classification, <code>min_samples_leaf</code> in the 1–20 range is typical; for regression, where leaf predictions are real-valued averages, slightly larger values (5–50) often work better because averaging over more samples reduces the variance of the prediction. As with <code>min_samples_split</code>, you can pass a float to express the threshold as a fraction of the total sample count.</p>
+<div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">min_samples_leaf_sweep.py</span></div><pre># ─── min_samples_leaf_sweep.py ─────────────────────────────────────────────────
+# Sweep min_samples_leaf on breast_cancer and show how it trades train
+# accuracy for CV accuracy. The optimal value balances leaf stability
+# against the model&#x27;s ability to capture genuine structure.
+
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import load_breast_cancer
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import StratifiedKFold, cross_val_score
+
+X, y = load_breast_cancer(return_X_y=True)
+leaves = np.arange(1, 31)
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+train_acc, cv_mean, cv_std = [], [], []
+for k in leaves:
+    clf = DecisionTreeClassifier(min_samples_leaf=k, random_state=42)
+    clf.fit(X, y)
+    train_acc.append(clf.score(X, y))
+    scores = cross_val_score(clf, X, y, cv=cv, scoring=&quot;accuracy&quot;, n_jobs=-1)
+    cv_mean.append(scores.mean())
+    cv_std.append(scores.std())
+
+train_acc, cv_mean, cv_std = map(np.array, (train_acc, cv_mean, cv_std))
+
+plt.figure(figsize=(9, 5), constrained_layout=True)
+plt.plot(leaves, train_acc, &quot;o-&quot;, color=&quot;#38bdf8&quot;, label=&quot;Train accuracy&quot;)
+plt.plot(leaves, cv_mean, &quot;s-&quot;, color=&quot;#f472b6&quot;, label=&quot;CV accuracy&quot;)
+plt.fill_between(leaves, cv_mean - cv_std, cv_mean + cv_std,
+                 color=&quot;#f472b6&quot;, alpha=0.15)
+plt.xlabel(&quot;min_samples_leaf&quot;)
+plt.ylabel(&quot;Accuracy&quot;)
+plt.title(&quot;min_samples_leaf sweep on breast_cancer&quot;)
+plt.legend()
+plt.grid(alpha=0.2)
+plt.savefig(&quot;min_samples_leaf_sweep.png&quot;, dpi=120)
+plt.show()
+
+best = leaves[np.argmax(cv_mean)]
+print(f&quot;Best min_samples_leaf = {best} (CV acc = {cv_mean.max():.4f})&quot;)
+</pre></div>
+  <p>On breast_cancer, you will typically see CV accuracy peak at <code>min_samples_leaf</code> around 3–10, with the train-CV gap shrinking substantially as you raise the value. This is the regularizing effect: by forcing leaves to contain more samples, you prevent the tree from fitting noise in the training set, at the cost of slightly higher bias. The sweet spot is where the bias cost starts to outweigh the variance reduction.</p>
+</section>
+<section id="section-5">
+  <h2>5. <code>max_features</code>: Random Subspace Per Split</h2>
+  <p><code>max_features</code> controls how many features the algorithm considers when searching for the best split at each node. The default for a single decision tree is <code>None</code>, meaning <em>all</em> features are considered — the split is the globally optimal one given the impurity criterion. This produces the lowest-training-impurity tree but also makes the tree highly sensitive to which features happen to be informative in the training set.</p>
+  <p>Setting <code>max_features='sqrt'</code> considers only $\sqrt{d}$ features at each split, where $d$ is the total feature count. <code>max_features='log2'</code> considers $\log_2 d$. You can also pass an integer or a float. The effect is twofold: training is faster (fewer features to scan per split), and the tree becomes more diverse — different trees trained on different samples will pick different splits because they consider different feature subsets.</p>
+  <p>For a single decision tree, <code>max_features</code> is rarely the most important knob. It becomes critical when you move to random forests, where the per-tree <code>max_features='sqrt'</code> is what makes the ensemble work: it forces the trees to be different, which is what gives bagging its variance-reduction power. We will cover that article next; for now, just remember that <code>max_features</code> controls the per-split feature subspace, and that for a single tree it is usually left at the default of <code>None</code> unless you have hundreds of features and want to speed up training.</p>
+</section>
+<section id="section-6">
+  <h2>6. <code>max_leaf_nodes</code> and <code>min_impurity_decrease</code></h2>
+  <p>Two less-discussed but occasionally very useful hyperparameters are <code>max_leaf_nodes</code> and <code>min_impurity_decrease</code>. <code>max_leaf_nodes</code> is an alternative to <code>max_depth</code>: instead of limiting the depth of the tree, it limits the <em>total number of leaves</em>. The tree grows in best-first fashion, always expanding the leaf that produces the largest impurity decrease, until the leaf budget is exhausted. This is often a more direct way to control model complexity than <code>max_depth</code>, because the relationship between number of leaves and representational capacity is closer to linear than exponential.</p>
+  <p><code>min_impurity_decrease</code> is a different kind of pre-pruning: a split is only made if it decreases the weighted impurity of the tree by at least the specified threshold. The math is: a split between parent node with $N$ samples and impurity $I$ into children with $N_L$, $N_R$ samples and impurities $I_L$, $I_R$ is accepted only if</p>
+<div class="math-block">$$ \Delta I = I - \left(\frac{N_L}{N} I_L + \frac{N_R}{N} I_R\right) \geq \texttt{min\_impurity\_decrease} $$ <div class="math-label">Eq. 1 — A split is accepted only if the weighted impurity decrease exceeds the threshold.</div></div>
+  <p>The default of 0 means every split that decreases impurity at all is accepted. Raising it to a small positive value like 0.01 or 0.05 filters out splits that are statistically marginal, which can be a useful form of regularization when the tree is overfitting to noise. This knob is less commonly tuned than <code>min_samples_leaf</code>, but it is worth knowing about for cases where you want to control complexity in impurity units rather than sample counts.</p>
+</section>
+<section id="section-7">
+  <h2>7. <code>class_weight='balanced'</code> and <code>splitter='best' vs 'random'</code></h2>
+  <p>Two more hyperparameters that often go untuned but can be decisive on imbalanced or unusual datasets: <code>class_weight</code> and <code>splitter</code>. <code>class_weight='balanced'</code> reweights the impurity calculation so that minority-class samples count more, effectively telling the tree "treat a misclassification of a rare class as more costly than a misclassification of a common class." The weights are automatically set to $n / (K \cdot n_k)$ where $n$ is the total sample count, $K$ is the number of classes, and $n_k$ is the count of class $k$. On a heavily imbalanced binary problem (1% positive, 99% negative), this can flip the model from "predicts negative always" to "actually useful."</p>
+  <p><code>splitter</code> controls <em>how</em> the split is chosen at each node. The default <code>'best'</code> evaluates all candidate splits (over the <code>max_features</code> subspace) and picks the one with the largest impurity decrease. <code>'random'</code> picks a random threshold for each feature and chooses the best among those randomly-generated thresholds. The random splitter is faster but produces worse trees on its own — its main use is inside <code>ExtraTreesClassifier</code>, where the combination of random splits and full bootstrap aggregating produces a different kind of ensemble. For a single decision tree you almost always want <code>splitter='best'</code>; the random splitter is a niche tool.</p>
+<div class="callout warning"><div class="callout-icon">⚠️</div><div class="callout-body"><div class="callout-title">class_weight is not a free lunch</div><p>Using <code>class_weight='balanced'</code> changes the model's training objective, which means it also changes the meaning of <code>predict_proba</code>. Probabilities will be calibrated toward the prior implied by the weights, not the true data-generating prior. If your downstream metric is AUC or ranking-based, this usually doesn't matter; if your metric is log-loss or calibrated probability, you may need to recalibrate the model after training with <code>CalibratedClassifierCV</code>.</p></div></div>
+</section>
+<section id="section-8">
+  <h2>8. Criterion: <code>'gini'</code> vs <code>'entropy'</code></h2>
+  <p>The <code>criterion</code> hyperparameter controls the impurity function used to evaluate splits. Scikit-learn supports <code>'gini'</code> (the default for classification) and <code>'entropy'</code>, plus <code>'log_loss'</code> (which is equivalent to entropy for classification). Both measure how "mixed" the classes are at a node, and both are minimized when a node contains a single class.</p>
+  <p>The Gini impurity at a node with class proportions $p_1, \ldots, p_K$ is defined as:</p>
+<div class="math-block">$$ G = \sum_{k=1}^{K} p_k (1 - p_k) = 1 - \sum_{k=1}^{K} p_k^2 $$ <div class="math-label">Eq. 2 — Gini impurity. Zero when one class dominates, maximized at $1 - 1/K$ when all classes are equally likely.</div></div>
+  <p>Entropy, by contrast, is the Shannon entropy of the class distribution:</p>
+<div class="math-block">$$ H = -\sum_{k=1}^{K} p_k \log_2 p_k $$ <div class="math-label">Eq. 3 — Shannon entropy (in bits). Zero when one class dominates, maximized at $\log_2 K$ when all classes are equally likely.</div></div>
+  <p>Mathematically, Gini and entropy are different functions with different shapes — Gini is a polynomial, entropy is logarithmic. But empirically, they produce nearly identical trees. The reason is that both functions are concave, symmetric around $p = 0.5$, and minimized at the same extremes. For any reasonable class distribution, the splits that maximize Gini decrease also roughly maximize entropy decrease, so the tree structures end up the same. The conventional wisdom is: <strong>use Gini because it is faster to compute (no logarithm)</strong>, switch to entropy only if you have a specific reason (e.g., you want the resulting tree to be more comparable to a softmax-output model).</p>
+<div class="callout note"><div class="callout-icon">📌</div><div class="callout-body"><div class="callout-title">Mathematically different, empirically similar</div><p>Multiple empirical studies have compared Gini vs entropy across hundreds of datasets and found that the resulting trees differ in structure on fewer than 5% of splits, and final test accuracy differs by less than 1% in the vast majority of cases. If you are spending search budget on <code>criterion</code>, you are almost certainly wasting it — move on to <code>max_depth</code>, <code>min_samples_leaf</code>, or <code>max_features</code> instead.</p></div></div>
+</section>
+<section id="section-9">
+  <h2>9. Full Tuning Example on the UCI Adult Dataset</h2>
+  <p>Let us put all of this together with a complete tuning pipeline on the UCI Adult Census dataset, which predicts whether an individual earns more than $50k per year from demographic features. Adult is a classic imbalanced binary classification benchmark: ~48,000 samples, 14 mixed-type features (numeric and categorical), and a 24/76 class split. It is large enough to be realistic but small enough to fit on a laptop. We will fetch it via scikit-learn's <code>fetch_openml</code> helper.</p>
+<div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">adult_tree_tuning.py</span></div><pre># ─── adult_tree_tuning.py ─────────────────────────────────────────────────────
+# Full pipeline: load Adult Census via fetch_openml, build a ColumnTransformer
+# preprocessing pipeline, and tune a DecisionTreeClassifier with
+# RandomizedSearchCV. Demonstrates the typical workflow you would use for
+# any tabular classification problem.
+
+import numpy as np
+from sklearn.datasets import fetch_openml
+from sklearn.model_selection import train_test_split, RandomizedSearchCV, StratifiedKFold
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import classification_report, roc_auc_score
+from scipy.stats import randint, loguniform
+
+# ─── 1. Load Adult Census ─────────────────────────────────────────────────────
+adult = fetch_openml(name=&quot;adult&quot;, version=2, as_frame=True, parser=&quot;auto&quot;)
+X, y = adult.data, adult.target  # y is a pandas Series of &quot;&lt;=50K&quot; / &quot;&gt;50K&quot;
+y = (y == &quot;&gt;50K&quot;).astype(int)    # convert to 0/1
+
+# Drop columns that leak the target or are too noisy
+X = X.drop(columns=[&quot;fnlwgt&quot;, &quot;education-num&quot;], errors=&quot;ignore&quot;)
+
+num_cols = X.select_dtypes(include=[&quot;number&quot;]).columns.tolist()
+cat_cols = X.select_dtypes(exclude=[&quot;number&quot;]).columns.tolist()
+print(f&quot;numeric: {num_cols}&quot;)
+print(f&quot;categorical: {cat_cols}&quot;)
+print(f&quot;class balance: {(y==0).sum()} neg / {(y==1).sum()} pos ({y.mean():.2%} positive)&quot;)
+
+# ─── 2. Train/test split (stratified) ─────────────────────────────────────────
+X_tr, X_te, y_tr, y_te = train_test_split(
+    X, y, test_size=0.2, stratify=y, random_state=42
+)
+
+# ─── 3. Preprocessing pipeline ────────────────────────────────────────────────
+preprocess = ColumnTransformer(
+    transformers=[
+        (&quot;num&quot;, StandardScaler(), num_cols),
+        (&quot;cat&quot;, OneHotEncoder(handle_unknown=&quot;ignore&quot;, max_categories=20), cat_cols),
+    ],
+    remainder=&quot;drop&quot;,
+)
+
+pipe = Pipeline([
+    (&quot;pre&quot;, preprocess),
+    (&quot;clf&quot;, DecisionTreeClassifier(class_weight=&quot;balanced&quot;, random_state=42)),
+])
+
+# ─── 4. Randomized search over the structural hyperparameters ─────────────────
+param_dist = {
+    &quot;clf__max_depth&quot;:        [3, 4, 5, 6, 8, 10, 12, 15, None],
+    &quot;clf__min_samples_split&quot;:randint(2, 50),
+    &quot;clf__min_samples_leaf&quot;: randint(1, 30),
+    &quot;clf__max_features&quot;:     [&quot;sqrt&quot;, &quot;log2&quot;, 0.5, 0.8, None],
+    &quot;clf__criterion&quot;:        [&quot;gini&quot;, &quot;entropy&quot;],
+    &quot;clf__min_impurity_decrease&quot;: loguniform(1e-4, 1e-1),
+}
+
+cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
+search = RandomizedSearchCV(
+    estimator=pipe,
+    param_distributions=param_dist,
+    n_iter=60,
+    cv=cv,
+    scoring=&quot;roc_auc&quot;,
+    n_jobs=-1,
+    random_state=42,
+    verbose=1,
+)
+search.fit(X_tr, y_tr)
+
+print(f&quot;\nBest params: {search.best_params_}&quot;)
+print(f&quot;Best CV ROC-AUC: {search.best_score_:.4f}&quot;)
+
+# ─── 5. Evaluate on the held-out test set ─────────────────────────────────────
+y_pred = search.predict(X_te)
+y_proba = search.predict_proba(X_te)[:, 1]
+print(f&quot;\nTest ROC-AUC: {roc_auc_score(y_te, y_proba):.4f}&quot;)
+print(classification_report(y_te, y_pred, target_names=[&quot;&lt;=50K&quot;, &quot;&gt;50K&quot;]))
+</pre></div>
+  <p>A typical run produces a sweet spot around <code>max_depth=8–10</code>, <code>min_samples_leaf=10–20</code>, <code>max_features='sqrt'</code> or <code>0.5</code>, with a test ROC-AUC around 0.85. Note that <code>class_weight='balanced'</code> is essential here — without it, the tree would simply predict "negative" for almost every sample, because the 24/76 class split means a constant-negative predictor already gets 76% accuracy. With balanced class weights, the model is forced to actually learn the structure that distinguishes the two classes.</p>
+</section>
+<section id="section-10">
+  <h2>10. Decision Boundaries at Different <code>max_depth</code> Values</h2>
+  <p>The most visceral way to understand <code>max_depth</code> is to look at the decision boundaries a tree produces in a 2D feature space. With <code>max_depth=1</code>, the boundary is a single axis-aligned line. With <code>max_depth=3</code>, it is a staircase with up to 8 cells. With <code>max_depth=8</code> on a small dataset, the boundary becomes a fractal-like grid that memorizes individual training points. Let us visualize this directly on a 2D projection of iris.</p>
+<div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">tree_decision_boundaries.py</span></div><pre># ─── tree_decision_boundaries.py ──────────────────────────────────────────────
+# Plot decision boundaries of DecisionTreeClassifier at depths 1, 3, 5, 8
+# on a 2D slice of iris (petal length vs petal width). Shows the staircase
+# structure of axis-aligned splits and how it degrades into memorization.
+
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import load_iris
+from sklearn.tree import DecisionTreeClassifier
+
+iris = load_iris()
+# Use only petal length (col 2) and petal width (col 3) for a 2D plot
+X = iris.data[:, [2, 3]]
+y = iris.target
+
+# Meshgrid for decision-boundary plotting
+x_min, x_max = X[:, 0].min() - 0.5, X[:, 0].max() + 0.5
+y_min, y_max = X[:, 1].min() - 0.5, X[:, 1].max() + 0.5
+xx, yy = np.meshgrid(np.linspace(x_min, x_max, 300),
+                     np.linspace(y_min, y_max, 300))
+
+fig, axes = plt.subplots(1, 4, figsize=(20, 5), constrained_layout=True)
+for ax, depth in zip(axes, [1, 3, 5, 8]):
+    clf = DecisionTreeClassifier(max_depth=depth, random_state=42)
+    clf.fit(X, y)
+    Z = clf.predict(np.c_[xx.ravel(), yy.ravel()]).reshape(xx.shape)
+    ax.contourf(xx, yy, Z, alpha=0.35, cmap=plt.cm.Set1)
+    ax.scatter(X[:, 0], X[:, 1], c=y, cmap=plt.cm.Set1,
+               edgecolor=&quot;k&quot;, s=40, alpha=0.9)
+    acc = clf.score(X, y)
+    n_leaves = clf.get_n_leaves()
+    ax.set_title(f&quot;max_depth={depth}\nleaves={n_leaves}  train_acc={acc:.3f}&quot;)
+    ax.set_xlabel(&quot;petal length (cm)&quot;)
+    ax.set_ylabel(&quot;petal width (cm)&quot;)
+
+plt.savefig(&quot;tree_decision_boundaries.png&quot;, dpi=120)
+plt.show()
+</pre></div>
+  <p>Look at the resulting figure carefully. The depth-1 boundary is a single horizontal or vertical line — it can only separate <em>setosa</em> from the other two classes, and only because <em>setosa</em> happens to be linearly separable on these features. The depth-3 boundary is a clean staircase with 4–6 cells, capturing the broad structure of the data without chasing individual points. The depth-5 boundary starts to show overfitting: small cells appear around individual points in the <em>versicolor</em>/<em>virginica</em> overlap region. The depth-8 boundary is a fractal mess, with tiny cells that exist purely to memorize specific training samples.</p>
+  <p>This visual progression is the decision-tree bias-variance tradeoff in a single image. As <code>max_depth</code> grows, the model's training accuracy climbs toward 1.0, but its decision boundary becomes less and less like the "true" boundary that generated the data and more and more like a per-sample lookup table. The art of tuning a tree is finding the depth where the boundary has captured the real structure but has not yet started to chase noise.</p>
+<div class="quiz-box">
+  <div class="quiz-label">🧠 Quick Check</div>
+  <p class="quiz-question">You have a DecisionTreeClassifier with max_depth=None and min_samples_leaf=1. You fit it on a dataset of 10,000 samples with 50 features and observe train accuracy = 1.000 and 5-fold CV accuracy = 0.78. Which single hyperparameter change is most likely to raise the CV accuracy?</p>
+  <details class="quiz-answer">
+    <summary>Show Answer</summary>
+    <p>Increasing min_samples_leaf. The train-CV gap of 0.22 is a textbook overfitting signature, and min_samples_leaf directly attacks the cause by forcing every leaf to contain a minimum number of samples. Try min_samples_leaf in [5, 10, 20, 50] and pick the value that maximizes CV accuracy. Setting max_depth explicitly is also reasonable, but min_samples_leaf is usually the more effective single-knob fix.</p>
+  </details>
+</div>
+</section>
+<div class="summary-box"><h3>Key Takeaways — Decision Tree Hyperparameters</h3><ul><li><strong><code>max_depth</code> is the master knob</strong>: capacity grows exponentially with depth ($2^k$ leaves), so small changes have large effects.</li><li><strong><code>min_samples_leaf</code> is the most effective pruner</strong>: it forces every prediction to be backed by at least <em>k</em> samples, directly reducing leaf-prediction variance.</li><li><strong><code>max_features</code> matters most for ensembles</strong>: for a single tree, leave it at <code>None</code> unless you need to speed up training.</li><li><strong>Gini vs entropy</strong>: mathematically different, empirically identical. Use Gini (the default) and move on.</li><li><strong><code>class_weight='balanced'</code></strong> is essential for imbalanced classification — without it, the tree may predict the majority class always.</li></ul></div>
+<section id="resources"><h2>Useful Resources</h2><ul class="resource-list"><li><a href="https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeClassifier.html">scikit-learn DecisionTreeClassifier documentation</a></li><li><a href="https://scikit-learn.org/stable/modules/tree.html">scikit-learn Decision Trees user guide</a></li><li><a href="https://www.routledge.com/Classification-and-Regression-Trees/Breiman-Friedman-Stone-Olshen/p/book/9780412048418">Breiman, Friedman, Olshen, Stone — Classification and Regression Trees (1984)</a></li><li><a href="https://hastie.su.domains/ElemStatLearn/">Elements of Statistical Learning — Chapter 9.2 (Tree-Based Methods)</a></li><li><a href="https://www.youtube.com/watch?v=7VeUPuFGJHk">StatQuest — Decision Trees (video series)</a></li><li><a href="https://scikit-learn.org/stable/modules/generated/sklearn.tree.plot_tree.html">scikit-learn plot_tree documentation</a></li><li><a href="https://archive.ics.uci.edu/dataset/2/adult">UCI Adult Census Dataset</a></li></ul></section>
+  </article>
+</div>
+<div class="page-nav"><a href="intro.html" class="page-nav-btn prev"><span class="nav-dir">← Previous</span><span class="nav-title">Module 04</span></a><a href="part2_random_forest.html" class="page-nav-btn next"><span class="nav-dir">Next →</span><span class="nav-title">Random Forest Hyperparameters</span></a></div>
+<footer>
+  <div class="container">
+    <div style="font-size:1.5rem;font-weight:800;font-family:var(--display);color:var(--accent);margin-bottom:0.5rem">HyperTune</div>
+    <p style="color:var(--muted2);font-size:0.85rem;max-width:500px;margin:0 auto">The complete hyperparameter tuning reference for ML &amp; DL engineers. Covers scikit-learn, XGBoost, LightGBM, PyTorch, Optuna, Ray Tune, and beyond — from first principles to production.</p>
+    <div style="margin-top:2rem;font-size:0.78rem;color:var(--muted2)">Built for learning · Python 3.10+ · scikit-learn 1.4+ · Optuna 3.0+</div>
+  </div>
+</footer>
+<script>
+(function() {
+  const links = Array.from(document.querySelectorAll('.toc-link'));
+  const sections = links
+    .map(l => document.querySelector(l.getAttribute('href')))
+    .filter(Boolean);
+  if (!('IntersectionObserver' in window) || sections.length === 0) return;
+  const setActive = id => {
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+  };
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  sections.forEach(s => observer.observe(s));
+})();
+</script>
+</body>
+</html>

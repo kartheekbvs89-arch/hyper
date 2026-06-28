@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tuning sklearn Pipelines: Preprocessing as a Hyperparameter — HyperTune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<style>
+
+:root {
+  --bg: #070b14; --bg2: #0c1220; --bg3: #111827;
+  --card: #131d2e; --card2: #1a2640;
+  --border: rgba(99,179,237,0.12); --border2: rgba(99,179,237,0.22);
+  --accent: #38bdf8; --accent2: #818cf8; --accent3: #34d399;
+  --accent4: #f59e0b; --accent5: #f472b6;
+  --text: #f0f6fc; --muted: #8899aa; --muted2: #64748b;
+  --code-bg: #0d1117;
+  --ff: 'Inter', sans-serif; --mono: 'JetBrains Mono', monospace;
+  --display: 'Sora', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,11,20,0.85);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:var(--display);font-weight:800;font-size:1.25rem;color:var(--accent);letter-spacing:-0.03em;text-decoration:none}
+.logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#000;padding:7px 18px;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85}
+
+/* LAYOUT */
+.page-layout { display: grid; grid-template-columns: 280px 1fr; gap: 3rem; max-width: 1200px; margin: 0 auto; padding: 5rem 2rem 5rem; padding-top: 80px; }
+@media(max-width: 900px) { .page-layout { grid-template-columns: 1fr; } .toc-sidebar { display: none; } }
+
+/* TOC SIDEBAR */
+.toc-sidebar { position: sticky; top: 80px; height: fit-content; max-height: calc(100vh - 100px); overflow-y: auto; }
+.toc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.75rem; }
+.toc-nav { display: flex; flex-direction: column; gap: 2px; }
+.toc-link { color: var(--muted); font-size: 0.82rem; text-decoration: none; padding: 4px 10px; border-left: 2px solid transparent; transition: all 0.15s; border-radius: 0 4px 4px 0; }
+.toc-link:hover, .toc-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(56,189,248,0.05); }
+.toc-link.toc-sub { font-size: 0.78rem; padding-left: 22px; }
+
+/* ARTICLE BODY */
+.article-body { min-width: 0; }
+.breadcrumb { font-size: 0.78rem; color: var(--muted2); margin-bottom: 1.5rem; }
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--accent); }
+.module-badge { display: inline-block; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: var(--accent); padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 1rem; }
+.article-title { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
+.article-meta { font-size: 0.83rem; color: var(--muted); margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+
+/* OUTLINE BOX */
+.outline-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 3rem; }
+.outline-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.75rem; color: var(--text); }
+.outline-list { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.85rem; }
+.outline-list a { color: var(--accent); text-decoration: none; }
+.outline-list a:hover { text-decoration: underline; }
+.outline-list li { margin: 4px 0; }
+.outline-list ul { margin: 4px 0; padding-left: 1rem; }
+
+/* ARTICLE PROSE */
+.article-body h2 { font-family: var(--display); font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; margin: 3rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); scroll-margin-top: 80px; }
+.article-body h3 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 80px; }
+.article-body h4 { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.article-body p { margin-bottom: 1.25rem; color: var(--muted); font-size: 0.97rem; line-height: 1.85; }
+.article-body strong { color: var(--text); font-weight: 600; }
+.article-body em { color: var(--accent3); font-style: italic; }
+.article-body ul, .article-body ol { margin: 0 0 1.25rem 1.5rem; color: var(--muted); font-size: 0.95rem; }
+.article-body li { margin-bottom: 6px; line-height: 1.75; }
+.article-body code { font-family: var(--mono); font-size: 0.82em; background: rgba(56,189,248,0.08); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
+.article-body a { color: var(--accent2); text-decoration: none; }
+.article-body a:hover { text-decoration: underline; }
+
+/* CODE BLOCKS */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+.code-block-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot.r { background: #ff5f57; } .code-dot.y { background: #ffbd2e; } .code-dot.g { background: #28c840; }
+.code-filename { font-family: var(--mono); font-size: 0.73rem; color: var(--muted2); margin-left: 8px; }
+.code-block pre { padding: 1.5rem; overflow-x: auto; margin: 0; font-family: var(--mono); font-size: 0.82rem; line-height: 1.8; color: #e2e8f0; }
+/* Syntax colors */
+.kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; }
+.num { color: #f78c6c; } .cm { color: #546e7a; font-style: italic; }
+.cls { color: #ffcb6b; } .imp { color: #89ddff; } .op { color: #89ddff; }
+
+/* CALLOUT BOXES */
+.callout { display: flex; gap: 1rem; border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; border-width: 1px; border-style: solid; }
+.callout-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+.callout-body { font-size: 0.88rem; line-height: 1.75; }
+.callout-body strong { font-weight: 600; }
+.callout-title { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+.callout.note { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.22); color: var(--muted); }
+.callout.note .callout-title, .callout.note strong { color: var(--accent); }
+.callout.warning { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.22); color: var(--muted); }
+.callout.warning .callout-title, .callout.warning strong { color: var(--accent4); }
+.callout.tip { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); color: var(--muted); }
+.callout.tip .callout-title, .callout.tip strong { color: var(--accent3); }
+.callout.important { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.22); color: var(--muted); }
+.callout.important .callout-title, .callout.important strong { color: var(--accent5); }
+
+/* MATH DISPLAY */
+.math-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.75rem; margin: 1.25rem 0; overflow-x: auto; font-size: 1.05rem; text-align: center; }
+.math-label { font-size: 0.72rem; color: var(--muted2); font-family: var(--mono); margin-top: 0.5rem; text-align: right; }
+
+/* INLINE FIGURE / DIAGRAM */
+.figure { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; margin: 2rem 0; text-align: center; }
+.figure-caption { font-size: 0.8rem; color: var(--muted2); margin-top: 1rem; font-style: italic; }
+
+/* DATA TABLE */
+.data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.85rem; }
+.data-table th { padding: 10px 14px; background: var(--card2); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); text-align: left; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(99,179,237,0.03); }
+
+/* SUMMARY BOX */
+.summary-box { background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(129,140,248,0.07)); border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 1.75rem 2rem; margin: 3rem 0 2rem; }
+.summary-box h3 { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+.summary-box ul { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.88rem; }
+.summary-box li { margin-bottom: 6px; line-height: 1.7; }
+
+/* RESOURCE LIST */
+.resource-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.resource-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.resource-list li::before { content: '\2192'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.resource-list a { color: var(--accent2); }
+
+/* PREV/NEXT NAV */
+.page-nav { display: flex; justify-content: space-between; gap: 1rem; padding: 2rem; max-width: 1200px; margin: 0 auto; border-top: 1px solid var(--border); }
+.page-nav-btn { display: flex; flex-direction: column; gap: 4px; padding: 1rem 1.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; transition: all 0.2s; max-width: 45%; }
+.page-nav-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.page-nav-btn .nav-dir { font-size: 0.72rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; }
+.page-nav-btn .nav-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.page-nav-btn.next { text-align: right; margin-left: auto; }
+
+/* QUIZ/EXERCISE BOX */
+.exercise-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin: 2rem 0; }
+.exercise-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent4); margin-bottom: 0.5rem; }
+.exercise-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; }
+.exercise-body { font-size: 0.88rem; color: var(--muted); line-height: 1.75; }
+
+/* QUIZ BOX */
+.quiz-box { background: rgba(129,140,248,0.06); border: 1px solid rgba(129,140,248,0.22); border-radius: 14px; padding: 1.5rem; margin: 1.5rem 0; }
+.quiz-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.5rem; }
+.quiz-question { font-size: 0.93rem; color: var(--text); margin-bottom: 0.75rem; font-weight: 500; }
+.quiz-answer { margin-top: 0.5rem; }
+.quiz-answer summary { cursor: pointer; font-size: 0.82rem; color: var(--accent2); font-weight: 600; }
+.quiz-answer p { margin-top: 0.5rem; font-size: 0.86rem; color: var(--muted); }
+
+/* CELL (for assignment files - jupyter style) */
+.jupyter-cell { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin: 1.5rem 0; overflow: hidden; }
+.cell-header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted2); font-family: var(--mono); }
+.cell-input-label { color: var(--accent4); font-weight: 600; }
+.cell-body { padding: 1rem 1.25rem; }
+.jupyter-cell pre { padding: 1rem 1.25rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; background: var(--code-bg); margin: 0; }
+.cell-prompt { color: var(--accent3); font-weight: 700; }
+
+/* GRADING RUBRIC */
+.rubric-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+.rubric-table th { background: var(--card2); padding: 10px 14px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); }
+.rubric-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+
+/* DETAILS (collapsible hints) */
+details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; }
+details summary { cursor: pointer; font-size: 0.85rem; color: var(--accent2); font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
+
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">Hyper<span>Tune</span></a>
+    <ul class="nav-links">
+
+    </ul>
+    <a href="../index.html#curriculum" class="nav-cta">Start Learning</a>
+  </div>
+</nav>
+<div class="page-layout">
+  <aside class="toc-sidebar">
+    <div class="toc-label">On this page</div>
+    <nav class="toc-nav">
+<a href="#section-1" class="toc-link">1. Why Pipeline Is Non-Negotiable</a>
+<a href="#section-2" class="toc-link">2. Pipeline Syntax: step__param</a>
+<a href="#section-3" class="toc-link">3. Preprocessing as Hyperparameter</a>
+<a href="#section-4" class="toc-link">4. FeatureUnion: Parallel Paths</a>
+<a href="#section-5" class="toc-link">5. Categorical Encoders</a>
+<a href="#section-6" class="toc-link">6. ColumnTransformer</a>
+<a href="#section-7" class="toc-link">7. SelectKBest &amp; RFE</a>
+<a href="#section-8" class="toc-link">8. joblib.Memory Caching</a>
+<a href="#section-9" class="toc-link">9. Nested Cross-Validation</a>
+<a href="#section-10" class="toc-link">10. Full Realistic Example</a>
+<a href="#resources" class="toc-link">Useful Resources</a>
+    </nav>
+  </aside>
+  <article class="article-body">
+    <div class="breadcrumb"><a href="../index.html">HyperTune</a> › <a href="intro.html">Module 10</a> › Pipeline Tuning</div>
+    <div class="article-header">
+      <div class="module-badge">Module 10 · Production</div>
+      <h1 class="article-title">Tuning sklearn Pipelines: Preprocessing as a Hyperparameter</h1>
+      <div class="article-meta">Part of the <strong>HyperTune</strong> open course · Estimated read time: 18 min · Python 3.10+ · scikit-learn 1.4+</div>
+    </div>
+    <div class="outline-box">
+      <div class="outline-title">📋 Article Outline</div>
+      <ol class="outline-list">
+
+<li><a href="#section-1">1. Why Pipeline Is Non-Negotiable for Hyperparameter Search</a></li>
+<li><a href="#section-2">2. Pipeline Syntax: The step__param Convention</a></li>
+<li><a href="#section-3">3. Preprocessing Steps Are Hyperparameters Too</a></li>
+<li><a href="#section-4">4. FeatureUnion: Parallel Preprocessing Paths</a></li>
+<li><a href="#section-5">5. Categorical Encoders: Each Has Tunable Hyperparameters</a></li>
+<li><a href="#section-6">6. ColumnTransformer: Per-Type Preprocessing</a></li>
+<li><a href="#section-7">7. SelectKBest and RFE: Feature Selection as Hyperparameter</a></li>
+<li><a href="#section-8">8. joblib.Memory: Caching Expensive Transformer Fits</a></li>
+<li><a href="#section-9">9. Nested Cross-Validation: Unbiased Evaluation Under Tuning</a></li>
+<li><a href="#section-10">10. Full Realistic Example</a></li>
+<li><a href="#resources">Useful Resources</a></li>
+      </ol>
+    </div>
+
+<section id="section-1">
+  <h2>1. Why Pipeline Is Non-Negotiable for Hyperparameter Search</h2>
+  <p>Every sklearn tutorial you have ever read does the same thing: load data, fit a <code>StandardScaler</code> on the training set, transform both train and test, then fit a classifier. This works for a one-shot model fit, but the moment you introduce cross-validation, it becomes a <strong>data leakage bug</strong>. If you fit the scaler on the <em>entire</em> training set <em>before</em> splitting it into CV folds, the scaler's mean and variance have already "seen" every fold's validation data through their summary statistics. The validation accuracy you measure is no longer an unbiased estimate of generalization — it is contaminated by leakage from the very data you are trying to validate on.</p>
+  <p>The fix is structural, not algorithmic: put every transformer that learns state from the data (scalers, PCA, feature selectors, encoders, vectorizers) <em>inside</em> a <code>Pipeline</code>, and let <code>cross_val_score</code> / <code>GridSearchCV</code> / <code>RandomizedSearchCV</code> call <code>fit</code> on each training fold and <code>transform</code> on each validation fold. The pipeline ensures that transformers see only the training portion of each fold, eliminating the leakage. This is not optional. It is the single most important API contract in scikit-learn, and the entire hyperparameter tuning infrastructure is built on the assumption that you respect it.</p>
+  <div class="callout warning"><div class="callout-icon">⚠️</div><div class="callout-body"><div class="callout-title">The most common leakage bug in production code</div><p>If you see <code>scaler.fit(X)</code> followed by <code>cross_val_score(model, scaler.transform(X), y)</code> in someone's notebook, the CV accuracy is <strong>optimistically biased</strong> — typically by 1–3 accuracy points, sometimes more for high-dimensional data with strong feature scaling effects. The bias is invisible until you deploy and your test-set accuracy undershoots expectations by exactly that margin. Always fit the scaler inside the pipeline; if you see "fit outside, transform inside CV", flag it as a bug.</p></div></div>
+</section>
+
+<section id="section-2">
+  <h2>2. Pipeline Syntax: The <code>step__param</code> Convention</h2>
+  <p>A <code>Pipeline</code> is an ordered sequence of named transformers followed by a final estimator. You construct it with a list of <code>(name, estimator)</code> tuples:</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── pipeline_basic_syntax.py ──────────────────────────────────────────────────
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.linear_model import LogisticRegression
+
+pipe = Pipeline([
+    (&quot;scaler&quot;, StandardScaler()),
+    (&quot;pca&quot;,    PCA(n_components=10)),
+    (&quot;clf&quot;,    LogisticRegression(C=1.0, max_iter=5000)),
+])
+
+# Every parameter inside the pipeline is addressable via &quot;step__param&quot;:
+# - scaler has no tunable params (with_mean / with_std are the only knobs)
+# - pca__n_components, pca__svd_solver, pca__whiten
+# - clf__C, clf__penalty, clf__solver, clf__class_weight
+
+# Hyperparameter search uses exactly this &quot;step__param&quot; naming:
+param_grid = {
+    &quot;pca__n_components&quot;: [5, 10, 20, 30],
+    &quot;clf__C&quot;:            [0.01, 0.1, 1.0, 10.0, 100.0],
+    &quot;clf__penalty&quot;:      [&quot;l1&quot;, &quot;l2&quot;],
+    &quot;clf__solver&quot;:       [&quot;saga&quot;],
+}
+
+from sklearn.model_selection import GridSearchCV
+search = GridSearchCV(pipe, param_grid, cv=5, scoring=&quot;accuracy&quot;, n_jobs=-1)
+search.fit(X_train, y_train)
+print(f&quot;Best params: {search.best_params_}&quot;)
+print(f&quot;Best CV acc: {search.best_score_:.4f}&quot;)
+</pre></div>
+  <p>The double-underscore syntax <code>step__param</code> is recursive: you can address parameters of pipelines <em>inside</em> pipelines, or parameters of transformers inside <code>ColumnTransformer</code> branches (which we cover in section 6). The general pattern is <code>outer_step__inner_step__param</code>, and it extends arbitrarily deep. Mastering this naming convention is the single most important practical skill for sklearn-based hyperparameter tuning — every search space you write for the rest of your career will use it.</p>
+</section>
+
+<section id="section-3">
+  <h2>3. Preprocessing Steps Are Hyperparameters Too</h2>
+  <p>Once you accept that preprocessing lives in the pipeline, the next insight is that <em>every</em> preprocessing choice is a hyperparameter. <code>PCA(n_components=10)</code> has <code>n_components</code> as a hyperparameter — and so does <code>whiten</code>, <code>svd_solver</code>, and <code>tol</code>. <code>StandardScaler(with_mean=True)</code> has <code>with_mean</code> as a hyperparameter (set this to <code>False</code> for sparse data!). <code>PolynomialFeatures(degree=2)</code> has <code>degree</code>, <code>interaction_only</code>, <code>include_bias</code>. <code>SelectKBest(k=10)</code> has <code>k</code> and <code>score_func</code>. Every one of these is fair game for the search space, and treating them as such routinely buys 2–5 accuracy points over "tune only the classifier".</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── preprocessing_as_hyperparameter.py ───────────────────────────────────────
+# Tune preprocessing + classifier jointly. Note that some preprocessing
+# choices interact strongly with the classifier — PCA helps linear models
+# but is largely redundant for tree-based ones.
+
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler, PolynomialFeatures
+from sklearn.decomposition import PCA
+from sklearn.feature_selection import SelectKBest, f_classif
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import RandomizedSearchCV
+from scipy.stats import loguniform, randint
+
+pipe = Pipeline([
+    (&quot;scaler&quot;,  StandardScaler()),
+    (&quot;poly&quot;,    PolynomialFeatures(include_bias=False)),
+    (&quot;pca&quot;,     PCA()),
+    (&quot;select&quot;,  SelectKBest(score_func=f_classif)),
+    (&quot;clf&quot;,     LogisticRegression(max_iter=5000, solver=&quot;saga&quot;)),
+])
+
+# ─── Joint search space: preprocessing + classifier ──────────────────────────
+param_distributions = {
+    &quot;poly__degree&quot;:         [1, 2, 3],                 # 1 = no poly features
+    &quot;poly__interaction_only&quot;: [True, False],
+    &quot;pca__n_components&quot;:    [5, 10, 20, 30, None],     # None = keep all
+    &quot;pca__whiten&quot;:          [True, False],
+    &quot;select__k&quot;:            randint(5, 50),            # int in [5, 50)
+    &quot;clf__C&quot;:               loguniform(1e-3, 1e3),
+    &quot;clf__penalty&quot;:         [&quot;l1&quot;, &quot;l2&quot;],
+}
+
+search = RandomizedSearchCV(
+    pipe,
+    param_distributions,
+    n_iter=50, cv=5, scoring=&quot;accuracy&quot;,
+    n_jobs=-1, random_state=42, verbose=1,
+)
+search.fit(X_train, y_train)
+print(f&quot;Best params: {search.best_params_}&quot;)
+print(f&quot;Best CV acc: {search.best_score_:.4f}&quot;)
+</pre></div>
+  <p>When you run a search like this, the parameter importance plot (which Optuna and sklearn's <code>permutation_importance</code> can both produce) usually reveals a surprising pattern: preprocessing hyperparameters are often as important as classifier hyperparameters. <code>pca__n_components</code> on a 100-feature dataset routinely ranks in the top 3 of importance, alongside <code>clf__C</code> and <code>select__k</code>. Treat preprocessing as a first-class part of the search space and your models will get better.</p>
+  <div class="callout tip"><div class="callout-icon">💡</div><div class="callout-body"><div class="callout-title">Conditional search spaces with sklearn</div><p>Plain <code>GridSearchCV</code> / <code>RandomizedSearchCV</code> struggle when hyperparameters are <em>conditional</em> — e.g., <code>pca__n_components</code> only makes sense if PCA is in the pipeline at all. For conditional spaces, either (a) use a list of param dicts (each grid is one branch of the conditional) with <code>GridSearchCV</code>, or (b) switch to Optuna, whose <code>trial.suggest_*</code> API handles conditionals natively by just not sampling the inactive branch. For complex pipelines with multiple optional transformers, Optuna is almost always cleaner.</p></div></div>
+</section>
+
+<section id="section-4">
+  <h2>4. FeatureUnion: Parallel Preprocessing Paths</h2>
+  <p>Not all preprocessing is sequential. Sometimes you want to apply several transformers in parallel and concatenate their outputs — e.g., PCA components <em>and</em> polynomial features <em>and</em> the raw scaled features, all fed to the same classifier. <code>FeatureUnion</code> does exactly this. Each transformer in the union sees the same input, and their outputs are concatenated horizontally.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── feature_union.py ──────────────────────────────────────────────────────────
+from sklearn.pipeline import Pipeline, FeatureUnion
+from sklearn.preprocessing import StandardScaler, PolynomialFeatures
+from sklearn.decomposition import PCA, TruncatedSVD
+from sklearn.feature_selection import SelectKBest
+from sklearn.ensemble import RandomForestClassifier
+
+# Union: PCA(15) + SelectKBest(10) + poly(2) features, all concatenated
+combined = FeatureUnion([
+    (&quot;pca&quot;,   PCA(n_components=15)),
+    (&quot;best&quot;,  SelectKBest(k=10)),
+    (&quot;poly&quot;,  PolynomialFeatures(degree=2, include_bias=False)),
+])
+
+pipe = Pipeline([
+    (&quot;scaler&quot;,    StandardScaler()),
+    (&quot;features&quot;,  combined),
+    (&quot;clf&quot;,       RandomForestClassifier(n_estimators=200, random_state=42)),
+])
+
+# Address parameters inside the union with &quot;features__&lt;name&gt;__param&quot;
+param_grid = {
+    &quot;features__pca__n_components&quot;: [10, 15, 20],
+    &quot;features__best__k&quot;:           [5, 10, 15],
+    &quot;features__poly__degree&quot;:      [1, 2],
+    &quot;clf__max_depth&quot;:              [4, 8, 12],
+    &quot;clf__max_features&quot;:           [&quot;sqrt&quot;, &quot;log2&quot;],
+}
+
+from sklearn.model_selection import GridSearchCV
+search = GridSearchCV(pipe, param_grid, cv=5, scoring=&quot;accuracy&quot;, n_jobs=-1)
+search.fit(X_train, y_train)
+print(f&quot;Best params: {search.best_params_}&quot;)
+</pre></div>
+  <p>FeatureUnion is the right tool when you have multiple incompatible feature representations that you want to keep side-by-side. For most tabular problems it is overkill — a single PCA or SelectKBest is enough — but for text+numeric mixed data, or for kernel-approximation ensembles, it is essential.</p>
+</section>
+
+<section id="section-5">
+  <h2>5. Categorical Encoders: Each Has Tunable Hyperparameters</h2>
+  <p>For categorical features, sklearn offers three main encoders, each with hyperparameters worth tuning. <strong>OneHotEncoder</strong> produces one binary column per category; its key hyperparameters are <code>min_frequency</code> (categories appearing in fewer than this fraction of rows are bucketed into "infrequent") and <code>max_categories</code> (cap on the number of one-hot columns). <strong>OrdinalEncoder</strong> produces a single integer column per feature; it has <code>handle_unknown</code> and <code>unknown_value</code> for unseen categories at test time. <strong>TargetEncoder</strong> (new in sklearn 1.3) replaces each category with the mean of the target for that category, with smoothing toward the global mean; its key hyperparameters are <code>smooth</code> (the smoothing strength) and <code>cv</code> (internal cross-validation folds to prevent leakage of the target into the encoding).</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── categorical_encoders.py ──────────────────────────────────────────────────
+import numpy as np
+from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, TargetEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.model_selection import RandomizedSearchCV
+from scipy.stats import loguniform, randint
+
+# Categorical column indices
+cat_cols = [0, 2, 5, 7, 9]
+num_cols = [1, 3, 4, 6, 8]
+
+preprocess = ColumnTransformer([
+    (&quot;cat&quot;, OneHotEncoder(handle_unknown=&quot;infrequent_if_exist&quot;), cat_cols),
+    (&quot;num&quot;, &quot;passthrough&quot;, num_cols),
+])
+
+pipe = Pipeline([
+    (&quot;pre&quot;,  preprocess),
+    (&quot;clf&quot;,  HistGradientBoostingClassifier(random_state=42)),
+])
+
+# ─── Tunable encoder parameters + classifier parameters together ─────────────
+param_dist = {
+    &quot;pre__cat__min_frequency&quot;: [0.0, 0.01, 0.05, 0.1],   # group rare categories
+    &quot;pre__cat__max_categories&quot;: [10, 25, 50, None],       # cap # of one-hot cols
+    &quot;clf__learning_rate&quot;:     loguniform(1e-3, 0.5),
+    &quot;clf__max_depth&quot;:         randint(3, 10),
+    &quot;clf__max_leaf_nodes&quot;:    randint(15, 100),
+    &quot;clf__l2_regularization&quot;: loguniform(1e-6, 1.0),
+}
+
+search = RandomizedSearchCV(pipe, param_dist, n_iter=40, cv=5,
+                            scoring=&quot;accuracy&quot;, n_jobs=-1, random_state=42)
+search.fit(X_train, y_train)
+print(f&quot;Best params: {search.best_params_}&quot;)
+</pre></div>
+  <p>The two encoder hyperparameters <code>min_frequency</code> and <code>max_categories</code> are the most under-tuned knobs in production sklearn code. Setting <code>min_frequency=0.01</code> buckets the long tail of rare categories into a single "infrequent" bucket, which both reduces dimensionality (fewer one-hot columns) and improves generalization (rare categories are noisy). On datasets with high-cardinality categoricals, this single change often improves accuracy by 1–2 points.</p>
+  <div class="callout note"><div class="callout-icon">📌</div><div class="callout-body"><div class="callout-title">TargetEncoder does internal CV to avoid leakage</div><p>TargetEncoder is special: it uses the target to encode features, which means naively fitting it before CV would leak the validation target into the training features. sklearn's <code>TargetEncoder</code> handles this correctly with internal cross-validation — by default <code>cv=5</code>. Inside a <code>Pipeline</code> with <code>cross_val_score</code>, the encoder fits on the inner training fold and transforms the inner validation fold, so no leakage occurs. Just do not call <code>encoder.fit_transform(X, y)</code> outside a pipeline and then feed the result to CV — that is a leakage bug.</p></div></div>
+</section>
+
+<section id="section-6">
+  <h2>6. ColumnTransformer: Per-Type Preprocessing</h2>
+  <p>Real-world tabular data has mixed types — numeric columns that need scaling, categorical columns that need encoding, text columns that need TF-IDF. <code>ColumnTransformer</code> applies different transformers to different column subsets and concatenates the results. It is the right tool whenever your dataset is not homogeneous, which is to say, almost always.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── column_transformer_full.py ───────────────────────────────────────────────
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.impute import SimpleImputer
+from sklearn.feature_selection import SelectKBest, f_classif
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import RandomizedSearchCV
+from scipy.stats import randint, loguniform
+
+# Mixed-type dataset: numeric + categorical columns
+numeric_features = [&quot;age&quot;, &quot;income&quot;, &quot;hours_per_week&quot;, &quot;capital_gain&quot;]
+categorical_features = [&quot;workclass&quot;, &quot;education&quot;, &quot;marital_status&quot;, &quot;occupation&quot;]
+
+numeric_pipeline = Pipeline([
+    (&quot;imputer&quot;, SimpleImputer(strategy=&quot;median&quot;)),
+    (&quot;scaler&quot;,  StandardScaler()),
+])
+
+categorical_pipeline = Pipeline([
+    (&quot;imputer&quot;, SimpleImputer(strategy=&quot;most_frequent&quot;)),
+    (&quot;encoder&quot;, OneHotEncoder(handle_unknown=&quot;infrequent_if_exist&quot;)),
+])
+
+preprocessor = ColumnTransformer([
+    (&quot;num&quot;, numeric_pipeline,  numeric_features),
+    (&quot;cat&quot;, categorical_pipeline, categorical_features),
+])
+
+pipe = Pipeline([
+    (&quot;pre&quot;,     preprocessor),
+    (&quot;select&quot;,  SelectKBest(score_func=f_classif)),
+    (&quot;clf&quot;,     RandomForestClassifier(n_estimators=200, n_jobs=-1, random_state=42)),
+])
+
+# ─── Address parameters inside nested pipelines:
+#     &quot;pre__&lt;branch&gt;__&lt;sub_step&gt;__&lt;param&gt;&quot;
+#     &quot;pre__num__imputer__strategy&quot; → tune imputation strategy
+#     &quot;pre__cat__encoder__min_frequency&quot; → tune encoder
+#     &quot;select__k&quot; → tune feature count
+#     &quot;clf__max_depth&quot; → tune classifier
+
+param_dist = {
+    &quot;pre__num__imputer__strategy&quot;:     [&quot;mean&quot;, &quot;median&quot;],
+    &quot;pre__cat__encoder__min_frequency&quot;: [0.0, 0.01, 0.05],
+    &quot;pre__cat__encoder__max_categories&quot;: [20, 50, None],
+    &quot;select__k&quot;:                       randint(10, 60),
+    &quot;clf__max_depth&quot;:                  randint(4, 20),
+    &quot;clf__min_samples_leaf&quot;:           randint(1, 16),
+    &quot;clf__max_features&quot;:               [&quot;sqrt&quot;, &quot;log2&quot;, 0.5],
+}
+
+search = RandomizedSearchCV(pipe, param_dist, n_iter=40, cv=5,
+                            scoring=&quot;accuracy&quot;, n_jobs=-1, random_state=42)
+search.fit(X_train, y_train)
+print(f&quot;Best params: {search.best_params_}&quot;)
+print(f&quot;Best CV acc: {search.best_score_:.4f}&quot;)
+</pre></div>
+  <p>Note the parameter naming depth: <code>pre__num__imputer__strategy</code> reaches inside the <code>pre</code> step, into the <code>num</code> branch, into its <code>imputer</code> step, and addresses the <code>strategy</code> parameter. This recursive addressing is what makes complex pipelines tunable from a single flat parameter dict — there is no need for nested search objects.</p>
+</section>
+
+<section id="section-7">
+  <h2>7. SelectKBest and RFE: Feature Selection as Hyperparameter</h2>
+  <p>Feature selection is itself a hyperparameter — both <em>how many</em> features to keep and <em>which scoring function</em> to use to rank them. <code>SelectKBest</code> takes <code>k</code> (an integer) and <code>score_func</code> (a callable: <code>f_classif</code>, <code>mutual_info_classif</code>, <code>chi2</code>, …). Both are tunable. The choice of <code>score_func</code> is a categorical hyperparameter that interacts strongly with the data: <code>f_classif</code> captures linear dependencies, <code>mutual_info_classif</code> captures nonlinear ones, and the right answer depends on the model downstream.</p>
+  <p><strong>RFE</strong> (Recursive Feature Elimination) is a different feature-selection strategy: it iteratively fits a model, drops the least important feature, refits, drops another, and so on until the desired count is reached. Its key hyperparameters are <code>n_features_to_select</code> and <code>step</code> (how many features to drop per iteration). RFE is more expensive than <code>SelectKBest</code> but is often more accurate for tree-based downstream models, because it uses the model's own feature importances to rank.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── feature_selection_search.py ──────────────────────────────────────────────
+from sklearn.feature_selection import SelectKBest, f_classif, mutual_info_classif
+from sklearn.pipeline import Pipeline
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import RandomizedSearchCV
+from scipy.stats import randint
+
+# We make score_func a tunable categorical by using sklearn&#x27;s parameter for it.
+# The trick: define a small wrapper that picks the function by name.
+from sklearn.base import BaseEstimator, TransformerMixin
+
+class ScoreFuncSelector(BaseEstimator, TransformerMixin):
+    &quot;&quot;&quot;Wraps SelectKBest so score_func is tunable via a string param.&quot;&quot;&quot;
+    def __init__(self, score_func=&quot;f_classif&quot;, k=10):
+        self.score_func = score_func
+        self.k = k
+
+    def fit(self, X, y):
+        funcs = {&quot;f_classif&quot;: f_classif, &quot;mutual_info_classif&quot;: mutual_info_classif}
+        self._selector = SelectKBest(score_func=funcs[self.score_func], k=self.k)
+        self._selector.fit(X, y)
+        return self
+
+    def transform(self, X):
+        return self._selector.transform(X)
+
+pipe = Pipeline([
+    (&quot;select&quot;, ScoreFuncSelector()),
+    (&quot;clf&quot;,    RandomForestClassifier(n_estimators=200, n_jobs=-1, random_state=42)),
+])
+
+param_dist = {
+    &quot;select__score_func&quot;: [&quot;f_classif&quot;, &quot;mutual_info_classif&quot;],
+    &quot;select__k&quot;:          randint(5, 40),
+    &quot;clf__max_depth&quot;:     randint(4, 16),
+    &quot;clf__min_samples_leaf&quot;: randint(1, 16),
+}
+
+search = RandomizedSearchCV(pipe, param_dist, n_iter=40, cv=5,
+                            scoring=&quot;accuracy&quot;, n_jobs=-1, random_state=42)
+search.fit(X_train, y_train)
+print(f&quot;Best score_func: {search.best_params_[&#x27;select__score_func&#x27;]}&quot;)
+print(f&quot;Best k:          {search.best_params_[&#x27;select__k&#x27;]}&quot;)
+</pre></div>
+  <p>This pattern — wrapping a sklearn object's callable parameter in a small custom class so it can be tuned as a string — is reusable any time you hit a parameter that takes a function. The wrapper costs you 10 lines of code and lets the search strategy explore choices it otherwise could not.</p>
+</section>
+
+<section id="section-8">
+  <h2>8. joblib.Memory: Caching Expensive Transformer Fits</h2>
+  <p>Some transformers are expensive to fit: <code>TfidfVectorizer</code> on a large text corpus, <code>PCA</code> on a 100K-feature dataset, <code>NMF</code>, anything that solves an inner optimization. During hyperparameter search, the same transformer with the same data and the same hyperparameters gets re-fit on every CV fold — and if you are also varying classifier hyperparameters, the same transformer-with-same-params may be re-fit dozens of times. <code>joblib.Memory</code> fixes this by memoizing the <code>fit</code> result to disk.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── joblib_memory_caching.py ─────────────────────────────────────────────────
+import tempfile
+from joblib import Memory
+from sklearn.pipeline import Pipeline
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import RandomizedSearchCV
+
+# Cache directory — survives across runs, so re-running the same search is fast
+cachedir = tempfile.mkdtemp(prefix=&quot;sklearn_cache_&quot;)
+memory = Memory(location=cachedir, verbose=0)
+
+pipe = Pipeline([
+    (&quot;tfidf&quot;, TfidfVectorizer(max_features=50000)),
+    (&quot;clf&quot;,   LogisticRegression(max_iter=5000, solver=&quot;liblinear&quot;)),
+], memory=memory)
+
+param_dist = {
+    &quot;tfidf__ngram_range&quot;: [(1, 1), (1, 2)],
+    &quot;tfidf__min_df&quot;:      [1, 2, 5],
+    &quot;tfidf__sublinear_tf&quot;: [True, False],
+    &quot;clf__C&quot;:             [0.1, 1.0, 10.0],
+    &quot;clf__penalty&quot;:       [&quot;l1&quot;, &quot;l2&quot;],
+}
+
+# ─── First run: ~slow (fits each unique tfidf config once per CV fold)
+# ─── Subsequent runs: fast (tfidf fits are cached on disk; only clf retrains)
+search = RandomizedSearchCV(pipe, param_dist, n_iter=20, cv=5, n_jobs=-1,
+                            scoring=&quot;accuracy&quot;, random_state=42)
+search.fit(X_text_train, y_train)
+
+# Best practice: clear the cache when done to avoid filling up disk
+memory.clear(warn=False)
+</pre></div>
+  <p>The speedup can be dramatic. On a text classification task with TF-IDF on a 1M-document corpus, caching the vectorizer brings the second-and-later search iterations from hours to minutes. The first run is still slow because the cache is cold — but if you iterate on the classifier hyperparameters while keeping the vectorizer fixed, every subsequent iteration is essentially free for the vectorizer step.</p>
+  <div class="callout warning"><div class="callout-icon">⚠️</div><div class="callout-body"><div class="callout-title">Cache invalidation is automatic but worth understanding</div><p>joblib's memory cache uses the <em>arguments</em> of the <code>fit</code> call as the cache key. If you change <code>tfidf__min_df</code> from 2 to 5, that is a cache miss — the new config is fit fresh and stored under a new key. The old cached fit is not automatically evicted; it sits on disk until you call <code>memory.clear()</code> or delete the cache directory manually. For long-running projects, periodically clear the cache or set a size limit, otherwise it will quietly fill your disk.</p></div></div>
+</section>
+
+<section id="section-9">
+  <h2>9. Nested Cross-Validation: Unbiased Evaluation Under Tuning</h2>
+  <p>Here is the subtlest and most important concept in this entire module. When you run <code>GridSearchCV(pipe, param_grid, cv=5).fit(X, y)</code> and report <code>search.best_score_</code> as your model's expected accuracy, that number is <strong>optimistically biased</strong>. Why? Because the same 5-fold CV that picked the best hyperparameters also produced the score — the best-of-50-configurations score on the data that picked it is, by construction, higher than the score you would get on genuinely unseen data.</p>
+  <p>The size of this bias is empirically 1–5 accuracy points for moderate search spaces, and it can be much larger for aggressive search (many configs, small datasets). Varma and Simon (2006) showed it on real medical datasets; Cawley and Talbot (2010) gave the theoretical analysis. The fix is <strong>nested cross-validation</strong>: an <em>outer</em> CV loop holds out a true test fold, and inside each outer training fold, an <em>inner</em> CV loop tunes hyperparameters. The mean of the outer-fold scores is an unbiased estimate of the tuned model's generalization accuracy.</p>
+  <div class="figure">
+<svg viewBox="0 0 720 440" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:Inter;">
+  <defs>
+    <linearGradient id="outerGrad" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.04"/>
+    </linearGradient>
+  </defs>
+
+  <text x="360" y="24" text-anchor="middle" fill="#f0f6fc" font-size="15" font-weight="700">
+    Nested Cross-Validation: outer = unbiased evaluation, inner = hyperparameter tuning
+  </text>
+
+  <!-- Outer folds: 5 horizontal bars; one is "test" (val), 4 are "train" -->
+  <g transform="translate(40, 60)">
+    <text x="-10" y="14" text-anchor="end" fill="#8899aa" font-size="11" font-weight="600">Outer</text>
+
+    <!-- Outer fold 1: test = fold 1 -->
+    <g>
+      <rect x="0"   y="0" width="120" height="40" fill="#f472b6" opacity="0.55"/>
+      <rect x="125" y="0" width="475" height="40" fill="url(#outerGrad)" stroke="#38bdf8" stroke-width="0.5" opacity="0.7"/>
+      <text x="60"  y="24" text-anchor="middle" fill="#f0f6fc" font-size="11" font-weight="700">Outer test</text>
+      <text x="362" y="24" text-anchor="middle" fill="#38bdf8" font-size="11" font-weight="600">Outer train (4 folds)</text>
+    </g>
+    <!-- Inside the outer-train area, show the inner CV split -->
+    <g transform="translate(125, 8)">
+      <rect x="0"   y="0" width="120" height="24" fill="#34d399" opacity="0.25" stroke="#34d399" stroke-width="0.6"/>
+      <rect x="120" y="0" width="120" height="24" fill="#34d399" opacity="0.25" stroke="#34d399" stroke-width="0.6"/>
+      <rect x="240" y="0" width="120" height="24" fill="#f59e0b" opacity="0.55" stroke="#f59e0b" stroke-width="0.6"/>
+      <rect x="355" y="0" width="120" height="24" fill="#34d399" opacity="0.25" stroke="#34d399" stroke-width="0.6"/>
+      <text x="300" y="16" text-anchor="middle" fill="#f0f6fc" font-size="9" font-weight="700">inner-val</text>
+      <text x="62"  y="16" text-anchor="middle" fill="#34d399" font-size="8">inner-train</text>
+      <text x="180" y="16" text-anchor="middle" fill="#34d399" font-size="8">inner-train</text>
+      <text x="412" y="16" text-anchor="middle" fill="#34d399" font-size="8">inner-train</text>
+    </g>
+  </g>
+
+  <!-- Repeat for outer folds 2-5 (compact) -->
+  <g transform="translate(40, 130)" font-size="9">
+    <text x="-10" y="14" text-anchor="end" fill="#8899aa" font-size="11" font-weight="600">Outer</text>
+
+    <rect x="0"   y="0" width="120" height="34" fill="url(#outerGrad)" stroke="#38bdf8" stroke-width="0.5"/>
+    <rect x="125" y="0" width="120" height="34" fill="#f472b6" opacity="0.55"/>
+    <rect x="250" y="0" width="350" height="34" fill="url(#outerGrad)" stroke="#38bdf8" stroke-width="0.5"/>
+    <text x="185" y="20" text-anchor="middle" fill="#f0f6fc" font-size="10" font-weight="700">Outer test</text>
+    <text x="425" y="20" text-anchor="middle" fill="#38bdf8" font-size="10">Outer train (4 folds)</text>
+  </g>
+
+  <g transform="translate(40, 180)" font-size="9">
+    <text x="-10" y="14" text-anchor="end" fill="#8899aa" font-size="11" font-weight="600">Outer</text>
+
+    <rect x="0"   y="0" width="245" height="34" fill="url(#outerGrad)" stroke="#38bdf8" stroke-width="0.5"/>
+    <rect x="250" y="0" width="120" height="34" fill="#f472b6" opacity="0.55"/>
+    <rect x="375" y="0" width="225" height="34" fill="url(#outerGrad)" stroke="#38bdf8" stroke-width="0.5"/>
+    <text x="310" y="20" text-anchor="middle" fill="#f0f6fc" font-size="10" font-weight="700">Outer test</text>
+    <text x="122" y="20" text-anchor="middle" fill="#38bdf8" font-size="10">Outer train</text>
+    <text x="487" y="20" text-anchor="middle" fill="#38bdf8" font-size="10">Outer train</text>
+  </g>
+
+  <g transform="translate(40, 230)" font-size="9">
+    <text x="-10" y="14" text-anchor="end" fill="#8899aa" font-size="11" font-weight="600">Outer</text>
+
+    <rect x="0"   y="0" width="370" height="34" fill="url(#outerGrad)" stroke="#38bdf8" stroke-width="0.5"/>
+    <rect x="375" y="0" width="120" height="34" fill="#f472b6" opacity="0.55"/>
+    <rect x="500" y="0" width="100" height="34" fill="url(#outerGrad)" stroke="#38bdf8" stroke-width="0.5"/>
+    <text x="435" y="20" text-anchor="middle" fill="#f0f6fc" font-size="10" font-weight="700">Outer test</text>
+    <text x="185" y="20" text-anchor="middle" fill="#38bdf8" font-size="10">Outer train</text>
+    <text x="550" y="20" text-anchor="middle" fill="#38bdf8" font-size="10">train</text>
+  </g>
+
+  <g transform="translate(40, 280)" font-size="9">
+    <text x="-10" y="14" text-anchor="end" fill="#8899aa" font-size="11" font-weight="600">Outer</text>
+
+    <rect x="0"   y="0" width="495" height="34" fill="url(#outerGrad)" stroke="#38bdf8" stroke-width="0.5"/>
+    <rect x="500" y="0" width="120" height="34" fill="#f472b6" opacity="0.55"/>
+    <text x="560" y="20" text-anchor="middle" fill="#f0f6fc" font-size="10" font-weight="700">Outer test</text>
+    <text x="247" y="20" text-anchor="middle" fill="#38bdf8" font-size="10">Outer train (4 folds)</text>
+  </g>
+
+  <!-- Legend -->
+  <g transform="translate(40, 360)" font-size="10">
+    <rect x="0"   y="0" width="14" height="14" fill="#f472b6" opacity="0.55"/>
+    <text x="20"  y="11" fill="#8899aa">Outer test fold (held-out; evaluates final model)</text>
+
+    <rect x="320" y="0" width="14" height="14" fill="url(#outerGrad)" stroke="#38bdf8"/>
+    <text x="340" y="11" fill="#8899aa">Outer train (used for inner CV + final refit)</text>
+
+    <rect x="0"   y="22" width="14" height="14" fill="#34d399" opacity="0.25" stroke="#34d399"/>
+    <text x="20"  y="33" fill="#8899aa">Inner train fold (used to fit candidate configs)</text>
+
+    <rect x="320" y="22" width="14" height="14" fill="#f59e0b" opacity="0.55"/>
+    <text x="340" y="33" fill="#8899aa">Inner validation fold (used to score candidate configs)</text>
+  </g>
+</svg>
+<div class="figure-caption">Figure 1 — Nested cross-validation. The outer loop (5 folds) provides an unbiased estimate of generalization. Inside each outer training fold, an inner loop (here 3-4 folds) tunes hyperparameters. The inner-CV-best pipeline is then refit on the entire outer training fold and scored on the outer test fold.</div></div>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── nested_cv.py ──────────────────────────────────────────────────────────────
+from sklearn.datasets import fetch_openml
+from sklearn.model_selection import (cross_val_score, KFold,
+                                     RandomizedSearchCV)
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from scipy.stats import randint
+import numpy as np
+
+X, y = fetch_openml(name=&quot;credit-g&quot;, version=1, return_X_y=True)
+# Encode categoricals (basic — for the full pattern see Section 6)
+X = pd.get_dummies(X, drop_first=True)
+
+pipe = Pipeline([
+    (&quot;scaler&quot;, StandardScaler()),
+    (&quot;clf&quot;,    RandomForestClassifier(n_estimators=200, n_jobs=-1, random_state=42)),
+])
+
+param_dist = {
+    &quot;clf__max_depth&quot;:        randint(4, 20),
+    &quot;clf__min_samples_leaf&quot;: randint(1, 16),
+    &quot;clf__max_features&quot;:     [&quot;sqrt&quot;, &quot;log2&quot;, 0.5],
+}
+
+# ─── Non-nested: RandomizedSearchCV&#x27;s best_score_ (biased) ───────────────────
+inner_cv = KFold(n_splits=5, shuffle=True, random_state=42)
+search = RandomizedSearchCV(pipe, param_dist, n_iter=30, cv=inner_cv,
+                            scoring=&quot;accuracy&quot;, n_jobs=-1, random_state=42)
+search.fit(X, y)
+non_nested_score = search.best_score_
+print(f&quot;Non-nested CV accuracy (biased): {non_nested_score:.4f}&quot;)
+
+# ─── Nested: outer CV wraps the inner RandomizedSearchCV ─────────────────────
+outer_cv = KFold(n_splits=5, shuffle=True, random_state=42)
+nested_scores = cross_val_score(search, X, y, cv=outer_cv, scoring=&quot;accuracy&quot;)
+print(f&quot;Nested CV accuracy (unbiased):   {nested_scores.mean():.4f} ± {nested_scores.std():.4f}&quot;)
+print(f&quot;Optimistic bias:                 {non_nested_score - nested_scores.mean():.4f}&quot;)
+</pre></div>
+  <p>When you run this on credit-g, expect the non-nested score to be ~0.77 and the nested score to be ~0.74–0.76 — an optimistic bias of 1–3 accuracy points. The bias is larger on smaller datasets and with more aggressive search (more <code>n_iter</code>). <strong>Always report nested CV when you are tuning and evaluating on the same dataset</strong>; the non-nested score is for picking a model to deploy, not for estimating its deployed accuracy.</p>
+  <div class="math-block">$$ \hat{{R}}_{{\text{{nested}}}} = \frac{{1}}{{K_{{\text{{outer}}}}}} \sum_{{k=1}}^{{K_{{\text{{outer}}}}}} L\left(f_{{\hat{{\lambda}}^*_k}}(X_{{\text{{test}},k}}), y_{{\text{{test}},k}}\right), \quad \hat{{\lambda}}^*_k = \arg\min_{{\lambda}} \; \frac{{1}}{{K_{{\text{{inner}}}}}} \sum_{{j=1}}^{{K_{{\text{{inner}}}}}} L\left(f_{{\lambda}}(X_{{\text{{train}},k,j}}), y_{{\text{{train}},k,j}}\right) $$ <div class="math-label">Eq. 1 — Nested CV. The outer average over k uses test fold k; inside each k, the inner argmin over &amp;#955; uses inner folds j. The inner-best &amp;#955;_k is then refit on the full outer training fold and scored on the outer test fold.</div></div>
+  <div class="quiz-box">
+  <div class="quiz-label">🧠 Quick Check</div>
+  <p class="quiz-question">You ran RandomizedSearchCV with 1000 iterations on a 200-row dataset and got best_score_ = 0.94. You deploy and find your real test accuracy is 0.79. What happened, and what should you do?</p>
+  <details class="quiz-answer">
+    <summary>Show Answer</summary>
+    <p>You are seeing the optimistic-bias-from-selection effect at its worst. With 1000 iterations on 200 rows, RandomizedSearchCV effectively memorized validation noise — the best_score_ is the max of 1000 noisy CV means, which is heavily inflated. The fix is (a) report nested CV instead of best_score_ for deployment estimates, (b) drastically reduce n_iter or use a more conservative search (Bayesian with fewer trials), (c) get more data — 200 rows is too few for aggressive search.</p>
+  </details>
+</div>
+</section>
+
+<section id="section-10">
+  <h2>10. Full Realistic Example: ColumnTransformer + Pipeline + RandomizedSearchCV</h2>
+  <p>Putting it all together. Below is a complete, runnable example on the Adult Census dataset, with mixed-type features, tunable preprocessing, tunable feature selection, tunable classifier, and caching for speed.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── full_pipeline_example.py ─────────────────────────────────────────────────
+import tempfile, time
+from joblib import Memory
+import numpy as np
+import pandas as pd
+from sklearn.datasets import fetch_openml
+from sklearn.model_selection import (train_test_split, RandomizedSearchCV,
+                                     StratifiedKFold)
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.impute import SimpleImputer
+from sklearn.feature_selection import SelectKBest, f_classif
+from sklearn.ensemble import RandomForestClassifier
+from scipy.stats import randint, loguniform
+
+# ─── Data ─────────────────────────────────────────────────────────────────────
+X, y = fetch_openml(name=&quot;adult&quot;, version=2, as_frame=True, return_X_y=True)
+X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2,
+                                          random_state=42, stratify=y)
+
+num_cols = X.select_dtypes(include=[&quot;int64&quot;, &quot;float64&quot;]).columns.tolist()
+cat_cols = X.select_dtypes(include=[&quot;object&quot;, &quot;category&quot;, &quot;string&quot;]).columns.tolist()
+
+# ─── Per-type preprocessing branches ─────────────────────────────────────────
+num_pipe = Pipeline([
+    (&quot;imputer&quot;, SimpleImputer(strategy=&quot;median&quot;)),
+    (&quot;scaler&quot;,  StandardScaler()),
+])
+cat_pipe = Pipeline([
+    (&quot;imputer&quot;, SimpleImputer(strategy=&quot;most_frequent&quot;)),
+    (&quot;encoder&quot;, OneHotEncoder(handle_unknown=&quot;infrequent_if_exist&quot;)),
+])
+pre = ColumnTransformer([
+    (&quot;num&quot;, num_pipe, num_cols),
+    (&quot;cat&quot;, cat_pipe, cat_cols),
+])
+
+# ─── Final pipeline with caching ─────────────────────────────────────────────
+memory = Memory(location=tempfile.mkdtemp(prefix=&quot;sklearn_cache_&quot;), verbose=0)
+pipe = Pipeline([
+    (&quot;pre&quot;,    pre),
+    (&quot;select&quot;, SelectKBest(score_func=f_classif)),
+    (&quot;clf&quot;,    RandomForestClassifier(n_estimators=200, n_jobs=-1, random_state=42)),
+], memory=memory)
+
+# ─── Joint search space ──────────────────────────────────────────────────────
+param_dist = {
+    &quot;pre__num__imputer__strategy&quot;:      [&quot;mean&quot;, &quot;median&quot;],
+    &quot;pre__cat__encoder__min_frequency&quot;: [0.0, 0.01, 0.05],
+    &quot;pre__cat__encoder__max_categories&quot;: [20, 50, None],
+    &quot;select__k&quot;:                        randint(10, 60),
+    &quot;clf__max_depth&quot;:                   randint(4, 20),
+    &quot;clf__min_samples_leaf&quot;:            randint(1, 16),
+    &quot;clf__max_features&quot;:                [&quot;sqrt&quot;, &quot;log2&quot;, 0.5],
+}
+
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+search = RandomizedSearchCV(pipe, param_dist, n_iter=40, cv=cv,
+                            scoring=&quot;accuracy&quot;, n_jobs=-1, random_state=42,
+                            verbose=1)
+
+t0 = time.time()
+search.fit(X_tr, y_tr)
+elapsed = time.time() - t0
+
+print(f&quot;\nBest CV accuracy: {search.best_score_:.4f}&quot;)
+print(f&quot;Best params: {search.best_params_}&quot;)
+print(f&quot;Test accuracy:    {search.score(X_te, y_te):.4f}&quot;)
+print(f&quot;Elapsed: {elapsed:.1f}s&quot;)
+
+memory.clear(warn=False)
+</pre></div>
+  <p>This is the pattern you should reach for by default on any new tabular problem. ColumnTransformer for per-type preprocessing, tunable encoders, tunable feature selection, tunable classifier, caching for speed. Add nested CV when you need an unbiased accuracy estimate for deployment; add Optuna when the search space has conditionals that <code>RandomizedSearchCV</code> cannot express cleanly.</p>
+</section>
+
+<div class="summary-box"><h3>Key Takeaways</h3><ul><li><strong>Always use Pipeline</strong> for hyperparameter search. Fitting a scaler outside CV is the most common production leakage bug — typically inflates CV accuracy by 1–3 points.</li><li><strong>Use the <code>step__param</code> naming</strong> (recursive: <code>outer__inner__param</code>) to address any parameter at any depth in a nested pipeline / ColumnTransformer structure.</li><li><strong>Preprocessing choices are hyperparameters</strong>: <code>pca__n_components</code>, <code>scaler__with_mean</code>, <code>select__k</code>, <code>poly__degree</code> all belong in the search space. Tuning them routinely buys 2–5 accuracy points.</li><li><strong>ColumnTransformer</strong> applies different preprocessing to different column subsets — essential for mixed-type data. Categorical encoders (OneHot, Ordinal, Target) each have tunable hyperparameters, especially <code>min_frequency</code> and <code>max_categories</code>.</li><li><strong>Feature selection is tunable</strong>: both <code>k</code> and <code>score_func</code> (f_classif vs mutual_info) for SelectKBest; <code>n_features_to_select</code> for RFE.</li><li><strong>joblib.Memory</strong> caches transformer fits to disk — invaluable for expensive transformers (TF-IDF, PCA on large data) during iterative search.</li><li><strong>Nested CV</strong> gives an unbiased accuracy estimate under tuning. Non-nested <code>best_score_</code> is optimistically biased by 1–5 points; always report nested CV when estimating deployment accuracy.</li></ul></div>
+
+<section id="resources"><h2>Useful Resources</h2><ul class="resource-list"><li><a href="https://pubmed.ncbi.nlm.nih.gov/16278908/">Varma &amp; Simon (2006) — Bias in error estimation when using cross-validation for model selection</a></li><li><a href="https://jmlr.org/papers/v11/cawley10a.html">Cawley &amp; Talbot (2010) — On Over-fitting in Model Selection and Subsequent Selection Bias in Performance Evaluation</a></li><li><a href="https://scikit-learn.org/stable/modules/compose.html">scikit-learn Pipeline documentation</a></li><li><a href="https://scikit-learn.org/stable/modules/generated/sklearn.compose.ColumnTransformer.html">scikit-learn ColumnTransformer documentation</a></li><li><a href="https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.TargetEncoder.html">scikit-learn TargetEncoder documentation (sklearn 1.3+)</a></li><li><a href="https://scikit-learn.org/stable/auto_examples/model_selection/plot_nested_cross_validation_iris.html">Scikit-learn example: nested vs non-nested CV</a></li><li><a href="https://joblib.readthedocs.io/en/latest/memory.html">joblib.Memory documentation</a></li></ul></section>
+
+  </article>
+</div>
+<div class="page-nav"><a href="intro.html" class="page-nav-btn prev"><span class="nav-dir">← Previous</span><span class="nav-title">Module 10</span></a><a href="assignment_task.html" class="page-nav-btn next"><span class="nav-dir">Next →</span><span class="nav-title">Assignment 10</span></a></div>
+<footer>
+  <div class="container">
+    <div style="font-size:1.5rem;font-weight:800;font-family:var(--display);color:var(--accent);margin-bottom:0.5rem">HyperTune</div>
+    <p style="color:var(--muted2);font-size:0.85rem;max-width:500px;margin:0 auto">The complete hyperparameter tuning reference for ML &amp; DL engineers. Covers scikit-learn, XGBoost, LightGBM, PyTorch, Optuna, Ray Tune, and beyond — from first principles to production.</p>
+    <div style="margin-top:2rem;font-size:0.78rem;color:var(--muted2)">Built for learning · Python 3.10+ · scikit-learn 1.4+ · Optuna 3.0+</div>
+  </div>
+</footer>
+<script>
+(function() {
+  const links = Array.from(document.querySelectorAll('.toc-link'));
+  const sections = links
+    .map(l => document.querySelector(l.getAttribute('href')))
+    .filter(Boolean);
+  if (!('IntersectionObserver' in window) || sections.length === 0) return;
+  const setActive = id => {
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+  };
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  sections.forEach(s => observer.observe(s));
+})();
+</script>
+</body>
+</html>

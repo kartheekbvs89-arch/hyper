@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assignment 07 — Halving vs Randomized Search — HyperTune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<style>
+
+:root {
+  --bg: #070b14; --bg2: #0c1220; --bg3: #111827;
+  --card: #131d2e; --card2: #1a2640;
+  --border: rgba(99,179,237,0.12); --border2: rgba(99,179,237,0.22);
+  --accent: #38bdf8; --accent2: #818cf8; --accent3: #34d399;
+  --accent4: #f59e0b; --accent5: #f472b6;
+  --text: #f0f6fc; --muted: #8899aa; --muted2: #64748b;
+  --code-bg: #0d1117;
+  --ff: 'Inter', sans-serif; --mono: 'JetBrains Mono', monospace;
+  --display: 'Sora', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,11,20,0.85);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:var(--display);font-weight:800;font-size:1.25rem;color:var(--accent);letter-spacing:-0.03em;text-decoration:none}
+.logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#000;padding:7px 18px;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85}
+
+/* LAYOUT */
+.page-layout { display: grid; grid-template-columns: 280px 1fr; gap: 3rem; max-width: 1200px; margin: 0 auto; padding: 5rem 2rem 5rem; padding-top: 80px; }
+@media(max-width: 900px) { .page-layout { grid-template-columns: 1fr; } .toc-sidebar { display: none; } }
+
+/* TOC SIDEBAR */
+.toc-sidebar { position: sticky; top: 80px; height: fit-content; max-height: calc(100vh - 100px); overflow-y: auto; }
+.toc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.75rem; }
+.toc-nav { display: flex; flex-direction: column; gap: 2px; }
+.toc-link { color: var(--muted); font-size: 0.82rem; text-decoration: none; padding: 4px 10px; border-left: 2px solid transparent; transition: all 0.15s; border-radius: 0 4px 4px 0; }
+.toc-link:hover, .toc-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(56,189,248,0.05); }
+.toc-link.toc-sub { font-size: 0.78rem; padding-left: 22px; }
+
+/* ARTICLE BODY */
+.article-body { min-width: 0; }
+.breadcrumb { font-size: 0.78rem; color: var(--muted2); margin-bottom: 1.5rem; }
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--accent); }
+.module-badge { display: inline-block; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: var(--accent); padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 1rem; }
+.article-title { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
+.article-meta { font-size: 0.83rem; color: var(--muted); margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+
+/* OUTLINE BOX */
+.outline-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 3rem; }
+.outline-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.75rem; color: var(--text); }
+.outline-list { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.85rem; }
+.outline-list a { color: var(--accent); text-decoration: none; }
+.outline-list a:hover { text-decoration: underline; }
+.outline-list li { margin: 4px 0; }
+.outline-list ul { margin: 4px 0; padding-left: 1rem; }
+
+/* ARTICLE PROSE */
+.article-body h2 { font-family: var(--display); font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; margin: 3rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); scroll-margin-top: 80px; }
+.article-body h3 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 80px; }
+.article-body h4 { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.article-body p { margin-bottom: 1.25rem; color: var(--muted); font-size: 0.97rem; line-height: 1.85; }
+.article-body strong { color: var(--text); font-weight: 600; }
+.article-body em { color: var(--accent3); font-style: italic; }
+.article-body ul, .article-body ol { margin: 0 0 1.25rem 1.5rem; color: var(--muted); font-size: 0.95rem; }
+.article-body li { margin-bottom: 6px; line-height: 1.75; }
+.article-body code { font-family: var(--mono); font-size: 0.82em; background: rgba(56,189,248,0.08); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
+.article-body a { color: var(--accent2); text-decoration: none; }
+.article-body a:hover { text-decoration: underline; }
+
+/* CODE BLOCKS */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+.code-block-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot.r { background: #ff5f57; } .code-dot.y { background: #ffbd2e; } .code-dot.g { background: #28c840; }
+.code-filename { font-family: var(--mono); font-size: 0.73rem; color: var(--muted2); margin-left: 8px; }
+.code-block pre { padding: 1.5rem; overflow-x: auto; margin: 0; font-family: var(--mono); font-size: 0.82rem; line-height: 1.8; color: #e2e8f0; }
+/* Syntax colors */
+.kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; }
+.num { color: #f78c6c; } .cm { color: #546e7a; font-style: italic; }
+.cls { color: #ffcb6b; } .imp { color: #89ddff; } .op { color: #89ddff; }
+
+/* CALLOUT BOXES */
+.callout { display: flex; gap: 1rem; border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; border-width: 1px; border-style: solid; }
+.callout-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+.callout-body { font-size: 0.88rem; line-height: 1.75; }
+.callout-body strong { font-weight: 600; }
+.callout-title { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+.callout.note { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.22); color: var(--muted); }
+.callout.note .callout-title, .callout.note strong { color: var(--accent); }
+.callout.warning { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.22); color: var(--muted); }
+.callout.warning .callout-title, .callout.warning strong { color: var(--accent4); }
+.callout.tip { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); color: var(--muted); }
+.callout.tip .callout-title, .callout.tip strong { color: var(--accent3); }
+.callout.important { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.22); color: var(--muted); }
+.callout.important .callout-title, .callout.important strong { color: var(--accent5); }
+
+/* MATH DISPLAY */
+.math-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.75rem; margin: 1.25rem 0; overflow-x: auto; font-size: 1.05rem; text-align: center; }
+.math-label { font-size: 0.72rem; color: var(--muted2); font-family: var(--mono); margin-top: 0.5rem; text-align: right; }
+
+/* INLINE FIGURE / DIAGRAM */
+.figure { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; margin: 2rem 0; text-align: center; }
+.figure-caption { font-size: 0.8rem; color: var(--muted2); margin-top: 1rem; font-style: italic; }
+
+/* DATA TABLE */
+.data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.85rem; }
+.data-table th { padding: 10px 14px; background: var(--card2); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); text-align: left; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(99,179,237,0.03); }
+
+/* SUMMARY BOX */
+.summary-box { background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(129,140,248,0.07)); border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 1.75rem 2rem; margin: 3rem 0 2rem; }
+.summary-box h3 { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+.summary-box ul { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.88rem; }
+.summary-box li { margin-bottom: 6px; line-height: 1.7; }
+
+/* RESOURCE LIST */
+.resource-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.resource-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.resource-list li::before { content: '\2192'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.resource-list a { color: var(--accent2); }
+
+/* PREV/NEXT NAV */
+.page-nav { display: flex; justify-content: space-between; gap: 1rem; padding: 2rem; max-width: 1200px; margin: 0 auto; border-top: 1px solid var(--border); }
+.page-nav-btn { display: flex; flex-direction: column; gap: 4px; padding: 1rem 1.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; transition: all 0.2s; max-width: 45%; }
+.page-nav-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.page-nav-btn .nav-dir { font-size: 0.72rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; }
+.page-nav-btn .nav-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.page-nav-btn.next { text-align: right; margin-left: auto; }
+
+/* QUIZ/EXERCISE BOX */
+.exercise-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin: 2rem 0; }
+.exercise-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent4); margin-bottom: 0.5rem; }
+.exercise-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; }
+.exercise-body { font-size: 0.88rem; color: var(--muted); line-height: 1.75; }
+
+/* QUIZ BOX */
+.quiz-box { background: rgba(129,140,248,0.06); border: 1px solid rgba(129,140,248,0.22); border-radius: 14px; padding: 1.5rem; margin: 1.5rem 0; }
+.quiz-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.5rem; }
+.quiz-question { font-size: 0.93rem; color: var(--text); margin-bottom: 0.75rem; font-weight: 500; }
+.quiz-answer { margin-top: 0.5rem; }
+.quiz-answer summary { cursor: pointer; font-size: 0.82rem; color: var(--accent2); font-weight: 600; }
+.quiz-answer p { margin-top: 0.5rem; font-size: 0.86rem; color: var(--muted); }
+
+/* CELL (for assignment files - jupyter style) */
+.jupyter-cell { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin: 1.5rem 0; overflow: hidden; }
+.cell-header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted2); font-family: var(--mono); }
+.cell-input-label { color: var(--accent4); font-weight: 600; }
+.cell-body { padding: 1rem 1.25rem; }
+.jupyter-cell pre { padding: 1rem 1.25rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; background: var(--code-bg); margin: 0; }
+.cell-prompt { color: var(--accent3); font-weight: 700; }
+
+/* GRADING RUBRIC */
+.rubric-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+.rubric-table th { background: var(--card2); padding: 10px 14px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); }
+.rubric-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+
+/* DETAILS (collapsible hints) */
+details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; }
+details summary { cursor: pointer; font-size: 0.85rem; color: var(--accent2); font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
+
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">Hyper<span>Tune</span></a>
+    <ul class="nav-links">
+
+    </ul>
+    <a href="../index.html#curriculum" class="nav-cta">Start Learning</a>
+  </div>
+</nav>
+<div class="page-layout">
+  <aside class="toc-sidebar">
+    <div class="toc-label">On this page</div>
+    <nav class="toc-nav">
+<a href="#overview" class="toc-link">Overview</a>
+<a href="#dataset" class="toc-link">Dataset &amp; Model</a>
+<a href="#task1" class="toc-link">Task 1 — Search Space Setup</a>
+<a href="#task2" class="toc-link">Task 2 — RandomizedSearchCV Baseline</a>
+<a href="#task3" class="toc-link">Task 3 — HalvingRandomSearchCV</a>
+<a href="#task4" class="toc-link">Task 4 — Bracket Elimination Plot</a>
+<a href="#task5" class="toc-link">Task 5 — η Sweep (Bonus)</a>
+<a href="#rubric" class="toc-link">Grading Rubric</a>
+<a href="#submit" class="toc-link">Submission</a>
+<a href="#resources" class="toc-link">Resources</a>
+    </nav>
+  </aside>
+  <article class="article-body">
+    <div class="breadcrumb"><a href="../index.html">HyperTune</a> › <a href="intro.html">Module 07</a> › Assignment 07</div>
+    <div class="article-header">
+      <div class="module-badge">Module 07 · Assignment</div>
+      <h1 class="article-title">Assignment 07 — Comparing HalvingRandomSearchCV with RandomizedSearchCV</h1>
+      <div class="article-meta">Difficulty: ★★★☆☆ · Est. time: 3–4 hours · Dataset: sklearn.datasets.load_digits + XGBoost</div>
+    </div>
+    <div class="outline-box">
+      <div class="outline-title">📋 Article Outline</div>
+      <ol class="outline-list">
+
+<li><a href="#overview">Assignment Overview</a></li>
+<li><a href="#dataset">Dataset &amp; Model</a></li>
+<li><a href="#task1">Task 1 — Set up the XGBClassifier Baseline</a></li>
+<li><a href="#task2">Task 2 — RandomizedSearchCV Baseline</a></li>
+<li><a href="#task3">Task 3 — HalvingRandomSearchCV with the Same Compute Budget</a></li>
+<li><a href="#task4">Task 4 — Plot the Bracket-by-Bracket Elimination</a></li>
+<li><a href="#task5">Task 5 (Bonus) — Vary η and Explain the Trade-off</a></li>
+<li><a href="#rubric">Grading Rubric</a></li>
+<li><a href="#submit">Submission Instructions</a></li>
+<li><a href="#resources">Resources</a></li>
+      </ol>
+    </div>
+
+<section id="overview">
+  <h2>Assignment Overview</h2>
+  <p>In this assignment you will empirically quantify the speedup that Hyperband provides over plain <code>RandomizedSearchCV</code> on a realistic tabular-classification problem. You will set up an <code>XGBClassifier</code> on the <code>load_digits</code> dataset, use <code>n_estimators</code> as the multi-fidelity budget axis, run <code>HalvingRandomSearchCV</code> with the same total compute budget as a <code>RandomizedSearchCV</code> baseline, and dissect the bracket-by-bracket elimination that Hyperband performs. The bonus task asks you to vary <code>η</code> and explain how the exploration-exploitation trade-off shifts.</p>
+  <p>Plan for 3–4 hours of focused work. Roughly: 30 minutes to set up the dataset and baseline, 1 hour to get <code>HalvingRandomSearchCV</code> running and producing a <code>cv_results_</code> DataFrame you can introspect, 1 hour to build the bracket-elimination plot and the comparison table, and 30–60 minutes on the bonus. If you get stuck on the bracket introspection, re-read Section 6 of the Hyperband article — the <code>iter</code> and <code>candidate_id</code> columns of <code>cv_results_</code> are the keys.</p>
+</section>
+
+<section id="dataset">
+  <h2>Dataset &amp; Model</h2>
+  <p>We use <code>sklearn.datasets.load_digits</code> — 1,797 samples, 64 pixel features, 10 classes. The model is <code>xgboost.XGBClassifier</code> with <code>n_estimators</code> as the budget axis. <code>n_estimators</code> is a natural choice because XGBoost is additive: <code>n_estimators=10</code> gives you a strictly cheaper, slightly worse version of the same model that <code>n_estimators=300</code> would produce, which is exactly the monotone budget-quality relationship Hyperband requires.</p>
+  <div class="jupyter-cell">
+  <div class="cell-header"><span class="cell-input-label">In [1]:</span> <span style="color:var(--muted2)">python</span></div>
+  <pre><span class="cell-prompt">&gt;&gt;&gt;</span> # Setup: install if needed, then load dataset and a baseline model.
+# !pip install xgboost&gt;=1.7 scikit-learn&gt;=1.3 pandas matplotlib
+
+import time
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from sklearn.datasets import load_digits
+from sklearn.model_selection import (train_test_split, StratifiedKFold,
+                                      RandomizedSearchCV)
+from sklearn.experimental import enable_successive_halving_search  # noqa
+from sklearn.model_selection import HalvingRandomSearchCV
+from sklearn.metrics import accuracy_score
+from xgboost import XGBClassifier
+
+X, y = load_digits(return_X_y=True)
+X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2,
+                                          random_state=42, stratify=y)
+print(f&quot;Train: {X_tr.shape}, Test: {X_te.shape}&quot;)
+print(f&quot;Classes: {np.unique(y)}, counts: {np.bincount(y)}&quot;)</pre>
+</div>
+</section>
+
+<section id="task1">
+  <h2>Task 1 — Set up the XGBClassifier Baseline</h2>
+  <p>Construct an <code>XGBClassifier</code> with reasonable defaults (<code>tree_method='hist'</code>, <code>n_jobs=-1</code>, <code>eval_metric='mlogloss'</code>, <code>random_state=42</code>). Define a 4-hyperparameter search space over <code>max_depth ∈ [3, 4, 5, 6, 7, 8]</code>, <code>learning_rate ∈ log-uniform [0.01, 0.3]</code>, <code>subsample ∈ [0.6, 0.7, 0.8, 0.9, 1.0]</code>, and <code>colsample_bytree ∈ [0.6, 0.7, 0.8, 0.9, 1.0]</code>. The budget axis is <code>n_estimators</code> with min=10, max=300.</p>
+  <div class="jupyter-cell">
+  <div class="cell-header"><span class="cell-input-label">In [2]:</span> <span style="color:var(--muted2)">python</span></div>
+  <pre><span class="cell-prompt">&gt;&gt;&gt;</span> # YOUR CODE HERE
+# 1. Define `base_model` (XGBClassifier with sensible defaults).
+# 2. Define `param_distributions` as a dict with the 4 hyperparameters above.
+# 3. Use scipy.stats.loguniform for the learning_rate.
+# 4. Print the search space.
+
+from scipy.stats import loguniform
+
+# YOUR CODE HERE
+pass</pre>
+</div>
+  <p><strong>Expected output:</strong> A printed summary of the search space, including the range of <code>learning_rate</code> and the discrete choices for the other hyperparameters. The total number of unique combinations is <code>6 × ∞ × 5 × 5</code> — infinite in principle, so we sample.</p>
+</section>
+
+<section id="task2">
+  <h2>Task 2 — RandomizedSearchCV Baseline</h2>
+  <p>Run <code>RandomizedSearchCV</code> with <code>n_iter=40</code>, <code>cv=3</code>, <code>n_estimators=300</code> fixed (the max budget), and <code>scoring='accuracy'</code>. Record the wall-clock time, the best CV score, the best params, and the test-set accuracy of the best model. This is your single-fidelity baseline — every candidate was trained to the full budget.</p>
+  <div class="jupyter-cell">
+  <div class="cell-header"><span class="cell-input-label">In [3]:</span> <span style="color:var(--muted2)">python</span></div>
+  <pre><span class="cell-prompt">&gt;&gt;&gt;</span> # YOUR CODE HERE
+# 1. Clone `base_model`, override n_estimators=300.
+# 2. Run RandomizedSearchCV with n_iter=40, cv=3, scoring=&#x27;accuracy&#x27;, random_state=42.
+# 3. Time the fit.
+# 4. Print: best CV score, best params, test accuracy, wall-clock seconds.
+
+# YOUR CODE HERE
+pass</pre>
+</div>
+  <p><strong>Expected output:</strong> Best CV accuracy around 0.95-0.97, test accuracy within ±1% of CV, wall-clock time somewhere in the 2-6 minute range depending on your CPU. Note the time carefully — you will need to give <code>HalvingRandomSearchCV</code> a comparable budget in Task 3.</p>
+</section>
+
+<section id="task3">
+  <h2>Task 3 — HalvingRandomSearchCV with the Same Compute Budget</h2>
+  <p>Now run <code>HalvingRandomSearchCV</code> with the same 4-hyperparameter search space, <code>resource='n_estimators'</code>, <code>max_resources=300</code>, <code>min_resources=10</code>, <code>factor=3</code> (η), <code>cv=3</code>, and <code>n_candidates='exhaust'</code> (which uses as many initial candidates as the budget allows). The total compute should be comparable to Task 2 — but Hyperband will explore many more candidates at low budgets and only fully train the survivors.</p>
+  <div class="jupyter-cell">
+  <div class="cell-header"><span class="cell-input-label">In [4]:</span> <span style="color:var(--muted2)">python</span></div>
+  <pre><span class="cell-prompt">&gt;&gt;&gt;</span> # YOUR CODE HERE
+# 1. Clone `base_model`.
+# 2. Run HalvingRandomSearchCV with the params above.
+# 3. Time the fit.
+# 4. Print: best CV score, best params, test accuracy, wall-clock seconds,
+#    and the total number of unique candidate_id values in cv_results_.
+
+# YOUR CODE HERE
+pass</pre>
+</div>
+  <p><strong>Expected output:</strong> Best CV and test accuracy within ±0.5% of Task 2's baseline (Hyperband should not lose meaningful accuracy). Wall-clock time <em>substantially</em> lower — typically 30-60% of Task 2's time. The number of unique candidates explored should be 2-4x larger than Task 2's 40, because most of them were killed at low budget.</p>
+</section>
+
+<section id="task4">
+  <h2>Task 4 — Plot the Bracket-by-Bracket Elimination</h2>
+  <p>Use the <code>cv_results_</code> DataFrame from Task 3 to plot the elimination sequence. For each round (<code>iter</code> column), report (a) how many candidates survived, (b) the mean test score across survivors, (c) the best score in that round, and (d) the per-candidate budget (<code>n_estimators</code>) used in that round. Make a plot with two panels: the left panel shows the number of survivors per round (bar chart), the right panel shows the score distribution per round (box plot or strip plot).</p>
+  <details><summary>Hint: cv_results_ columns</summary>
+    <p><code>cv_results_</code> has one row per (candidate, round) pair. Useful columns: <code>iter</code> (round number, 0-indexed), <code>candidate_id</code> (unique config identifier, stable across rounds), <code>mean_test_score</code>, <code>params</code> (the full config dict), <code>mean_fit_time</code>. To get the per-round budget, look at <code>params</code> and extract <code>n_estimators</code> for any row in that round — all candidates in the same round use the same budget.</p>
+  </details>
+  <div class="jupyter-cell">
+  <div class="cell-header"><span class="cell-input-label">In [5]:</span> <span style="color:var(--muted2)">python</span></div>
+  <pre><span class="cell-prompt">&gt;&gt;&gt;</span> # YOUR CODE HERE
+# 1. Convert halving.cv_results_ to a DataFrame.
+# 2. Group by `iter`. For each round, compute:
+#    - n_survivors = number of unique candidate_id values
+#    - mean_score, best_score = mean and max of mean_test_score
+#    - budget = the n_estimators value used in that round (extract from params)
+# 3. Print a round-by-round summary table.
+# 4. Plot: left = bar chart of n_survivors per round, right = boxplot of
+#    mean_test_score per round. Annotate each round with its budget.
+
+# YOUR CODE HERE
+pass</pre>
+</div>
+  <p><strong>Expected output:</strong> A summary table showing round 0 with ~80-150 candidates at budget 10 trees, round 1 with ~1/3 of those at budget 30, round 2 with ~1/9 at budget 90, round 3 with ~1/27 at budget 300. The score distribution should <em>widen</em> in early rounds (more candidates, more variance) and <em>narrow</em> in later rounds (only the best survived). The best score per round should be roughly monotone non-decreasing.</p>
+</section>
+
+<section id="task5">
+  <h2>Task 5 (Bonus) — Vary η and Explain the Trade-off</h2>
+  <p>Re-run Task 3 with <code>factor</code> (η) set to 3, 4, and 6. Keep <code>max_resources=300</code> and <code>min_resources=10</code> the same. For each η, record the total number of unique candidates explored, the number of SHA rounds, and the final test accuracy. Write a 4-5 sentence explanation of how the exploration-exploitation trade-off shifts as η changes.</p>
+  <details><summary>Hint: what to look for</summary>
+    <p>Large η means more aggressive elimination per round — each round keeps fewer candidates, so the total number of unique candidates per bracket is larger but most of them get only one or two rounds before being killed. Small η keeps more candidates per round, so each candidate gets more chances to recover from a bad early score, but the total number of unique candidates is smaller. The accuracy should be relatively insensitive to η in the [3, 6] range; the wall-clock time and the number of survivors per round are the things that change visibly.</p>
+  </details>
+  <div class="jupyter-cell">
+  <div class="cell-header"><span class="cell-input-label">In [6]:</span> <span style="color:var(--muted2)">python</span></div>
+  <pre><span class="cell-prompt">&gt;&gt;&gt;</span> # YOUR CODE HERE
+# Loop over factor in [3, 4, 6]:
+#   1. Run HalvingRandomSearchCV with that factor.
+#   2. Record: n_candidates_total, n_rounds, best_score, test_acc, wall_clock.
+# 3. Print a comparison table.
+# 4. Write your explanation in a markdown cell below.
+
+# YOUR CODE HERE
+pass</pre>
+</div>
+</section>
+
+<section id="rubric">
+  <h2>Grading Rubric</h2>
+  <table class="rubric-table">
+    <thead><tr><th>Task</th><th>Points</th><th>Criteria</th></tr></thead>
+    <tbody>
+      <tr><td>Task 1 — Search space setup</td><td>10</td><td>Correct 4-hyperparameter space, log-uniform learning rate, baseline model constructed with sensible defaults.</td></tr>
+      <tr><td>Task 2 — RandomizedSearchCV baseline</td><td>20</td><td>Correct n_iter=40, cv=3, n_estimators=300 fixed. Wall-clock time and best score recorded. Test accuracy within reasonable range.</td></tr>
+      <tr><td>Task 3 — HalvingRandomSearchCV</td><td>25</td><td>Correct budget parameters (min=10, max=300, factor=3, resource='n_estimators'). Comparable accuracy to Task 2, faster wall-clock. Number of unique candidates recorded.</td></tr>
+      <tr><td>Task 4 — Bracket elimination plot</td><td>30</td><td>Round-by-round summary table correct. Two-panel plot with survivor counts and score distributions. Budget per round annotated. Qualitative observations (score narrowing, monotone best score) noted.</td></tr>
+      <tr><td>Task 5 — η sweep (bonus)</td><td>15</td><td>All three η values run, comparison table produced. Explanation correctly identifies that larger η = more aggressive elimination = more candidates explored but fewer rounds per candidate.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="submit">
+  <h2>Submission Instructions</h2>
+  <p>Save your notebook as <code>assignment_07_[your_name].ipynb</code> and submit it via your course platform. Make sure every code cell runs from top to bottom without errors in a fresh kernel. If a Task 5 run is too slow on your machine, run it with a smaller <code>max_resources</code> (e.g. 150) and note that in your submission.</p>
+  <div class="callout tip"><div class="callout-icon">💡</div><div class="callout-body"><div class="callout-title">Stuck? Re-read the article.</div><p>Section 6 of the Hyperband article walks through <code>HalvingRandomSearchCV</code> in detail, including the <code>cv_results_</code> introspection that Task 4 needs. Section 4 explains the η trade-off that Task 5 asks about.</p></div></div>
+</section>
+
+<section id="resources"><h2>Useful Resources</h2><ul class="resource-list"><li><a href="https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.HalvingRandomSearchCV.html">scikit-learn — HalvingRandomSearchCV documentation</a></li><li><a href="https://xgboost.readthedocs.io/en/stable/python/python_api.html">XGBoost Python API reference</a></li><li><a href="https://arxiv.org/abs/1603.06560">Li et al. (2017) — Hyperband paper</a></li></ul></section>
+
+  </article>
+</div>
+<div class="page-nav"><a href="part1_hyperband.html" class="page-nav-btn prev"><span class="nav-dir">← Previous</span><span class="nav-title">Hyperband</span></a><a href="assignment_solution.html" class="page-nav-btn next"><span class="nav-dir">Next →</span><span class="nav-title">Assignment 07 Solution</span></a></div>
+<footer>
+  <div class="container">
+    <div style="font-size:1.5rem;font-weight:800;font-family:var(--display);color:var(--accent);margin-bottom:0.5rem">HyperTune</div>
+    <p style="color:var(--muted2);font-size:0.85rem;max-width:500px;margin:0 auto">The complete hyperparameter tuning reference for ML &amp; DL engineers. Covers scikit-learn, XGBoost, LightGBM, PyTorch, Optuna, Ray Tune, and beyond — from first principles to production.</p>
+    <div style="margin-top:2rem;font-size:0.78rem;color:var(--muted2)">Built for learning · Python 3.10+ · scikit-learn 1.4+ · Optuna 3.0+</div>
+  </div>
+</footer>
+<script>
+(function() {
+  const links = Array.from(document.querySelectorAll('.toc-link'));
+  const sections = links
+    .map(l => document.querySelector(l.getAttribute('href')))
+    .filter(Boolean);
+  if (!('IntersectionObserver' in window) || sections.length === 0) return;
+  const setActive = id => {
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+  };
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  sections.forEach(s => observer.observe(s));
+})();
+</script>
+</body>
+</html>

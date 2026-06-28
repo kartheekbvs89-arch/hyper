@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Optuna: The Define-By-Run API for Modern Hyperparameter Optimization — HyperTune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<style>
+
+:root {
+  --bg: #070b14; --bg2: #0c1220; --bg3: #111827;
+  --card: #131d2e; --card2: #1a2640;
+  --border: rgba(99,179,237,0.12); --border2: rgba(99,179,237,0.22);
+  --accent: #38bdf8; --accent2: #818cf8; --accent3: #34d399;
+  --accent4: #f59e0b; --accent5: #f472b6;
+  --text: #f0f6fc; --muted: #8899aa; --muted2: #64748b;
+  --code-bg: #0d1117;
+  --ff: 'Inter', sans-serif; --mono: 'JetBrains Mono', monospace;
+  --display: 'Sora', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,11,20,0.85);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:var(--display);font-weight:800;font-size:1.25rem;color:var(--accent);letter-spacing:-0.03em;text-decoration:none}
+.logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#000;padding:7px 18px;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85}
+
+/* LAYOUT */
+.page-layout { display: grid; grid-template-columns: 280px 1fr; gap: 3rem; max-width: 1200px; margin: 0 auto; padding: 5rem 2rem 5rem; padding-top: 80px; }
+@media(max-width: 900px) { .page-layout { grid-template-columns: 1fr; } .toc-sidebar { display: none; } }
+
+/* TOC SIDEBAR */
+.toc-sidebar { position: sticky; top: 80px; height: fit-content; max-height: calc(100vh - 100px); overflow-y: auto; }
+.toc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.75rem; }
+.toc-nav { display: flex; flex-direction: column; gap: 2px; }
+.toc-link { color: var(--muted); font-size: 0.82rem; text-decoration: none; padding: 4px 10px; border-left: 2px solid transparent; transition: all 0.15s; border-radius: 0 4px 4px 0; }
+.toc-link:hover, .toc-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(56,189,248,0.05); }
+.toc-link.toc-sub { font-size: 0.78rem; padding-left: 22px; }
+
+/* ARTICLE BODY */
+.article-body { min-width: 0; }
+.breadcrumb { font-size: 0.78rem; color: var(--muted2); margin-bottom: 1.5rem; }
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--accent); }
+.module-badge { display: inline-block; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: var(--accent); padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 1rem; }
+.article-title { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
+.article-meta { font-size: 0.83rem; color: var(--muted); margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+
+/* OUTLINE BOX */
+.outline-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 3rem; }
+.outline-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.75rem; color: var(--text); }
+.outline-list { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.85rem; }
+.outline-list a { color: var(--accent); text-decoration: none; }
+.outline-list a:hover { text-decoration: underline; }
+.outline-list li { margin: 4px 0; }
+.outline-list ul { margin: 4px 0; padding-left: 1rem; }
+
+/* ARTICLE PROSE */
+.article-body h2 { font-family: var(--display); font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; margin: 3rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); scroll-margin-top: 80px; }
+.article-body h3 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 80px; }
+.article-body h4 { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.article-body p { margin-bottom: 1.25rem; color: var(--muted); font-size: 0.97rem; line-height: 1.85; }
+.article-body strong { color: var(--text); font-weight: 600; }
+.article-body em { color: var(--accent3); font-style: italic; }
+.article-body ul, .article-body ol { margin: 0 0 1.25rem 1.5rem; color: var(--muted); font-size: 0.95rem; }
+.article-body li { margin-bottom: 6px; line-height: 1.75; }
+.article-body code { font-family: var(--mono); font-size: 0.82em; background: rgba(56,189,248,0.08); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
+.article-body a { color: var(--accent2); text-decoration: none; }
+.article-body a:hover { text-decoration: underline; }
+
+/* CODE BLOCKS */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+.code-block-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot.r { background: #ff5f57; } .code-dot.y { background: #ffbd2e; } .code-dot.g { background: #28c840; }
+.code-filename { font-family: var(--mono); font-size: 0.73rem; color: var(--muted2); margin-left: 8px; }
+.code-block pre { padding: 1.5rem; overflow-x: auto; margin: 0; font-family: var(--mono); font-size: 0.82rem; line-height: 1.8; color: #e2e8f0; }
+/* Syntax colors */
+.kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; }
+.num { color: #f78c6c; } .cm { color: #546e7a; font-style: italic; }
+.cls { color: #ffcb6b; } .imp { color: #89ddff; } .op { color: #89ddff; }
+
+/* CALLOUT BOXES */
+.callout { display: flex; gap: 1rem; border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; border-width: 1px; border-style: solid; }
+.callout-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+.callout-body { font-size: 0.88rem; line-height: 1.75; }
+.callout-body strong { font-weight: 600; }
+.callout-title { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+.callout.note { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.22); color: var(--muted); }
+.callout.note .callout-title, .callout.note strong { color: var(--accent); }
+.callout.warning { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.22); color: var(--muted); }
+.callout.warning .callout-title, .callout.warning strong { color: var(--accent4); }
+.callout.tip { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); color: var(--muted); }
+.callout.tip .callout-title, .callout.tip strong { color: var(--accent3); }
+.callout.important { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.22); color: var(--muted); }
+.callout.important .callout-title, .callout.important strong { color: var(--accent5); }
+
+/* MATH DISPLAY */
+.math-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.75rem; margin: 1.25rem 0; overflow-x: auto; font-size: 1.05rem; text-align: center; }
+.math-label { font-size: 0.72rem; color: var(--muted2); font-family: var(--mono); margin-top: 0.5rem; text-align: right; }
+
+/* INLINE FIGURE / DIAGRAM */
+.figure { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; margin: 2rem 0; text-align: center; }
+.figure-caption { font-size: 0.8rem; color: var(--muted2); margin-top: 1rem; font-style: italic; }
+
+/* DATA TABLE */
+.data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.85rem; }
+.data-table th { padding: 10px 14px; background: var(--card2); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); text-align: left; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(99,179,237,0.03); }
+
+/* SUMMARY BOX */
+.summary-box { background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(129,140,248,0.07)); border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 1.75rem 2rem; margin: 3rem 0 2rem; }
+.summary-box h3 { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+.summary-box ul { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.88rem; }
+.summary-box li { margin-bottom: 6px; line-height: 1.7; }
+
+/* RESOURCE LIST */
+.resource-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.resource-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.resource-list li::before { content: '\2192'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.resource-list a { color: var(--accent2); }
+
+/* PREV/NEXT NAV */
+.page-nav { display: flex; justify-content: space-between; gap: 1rem; padding: 2rem; max-width: 1200px; margin: 0 auto; border-top: 1px solid var(--border); }
+.page-nav-btn { display: flex; flex-direction: column; gap: 4px; padding: 1rem 1.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; transition: all 0.2s; max-width: 45%; }
+.page-nav-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.page-nav-btn .nav-dir { font-size: 0.72rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; }
+.page-nav-btn .nav-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.page-nav-btn.next { text-align: right; margin-left: auto; }
+
+/* QUIZ/EXERCISE BOX */
+.exercise-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin: 2rem 0; }
+.exercise-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent4); margin-bottom: 0.5rem; }
+.exercise-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; }
+.exercise-body { font-size: 0.88rem; color: var(--muted); line-height: 1.75; }
+
+/* QUIZ BOX */
+.quiz-box { background: rgba(129,140,248,0.06); border: 1px solid rgba(129,140,248,0.22); border-radius: 14px; padding: 1.5rem; margin: 1.5rem 0; }
+.quiz-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.5rem; }
+.quiz-question { font-size: 0.93rem; color: var(--text); margin-bottom: 0.75rem; font-weight: 500; }
+.quiz-answer { margin-top: 0.5rem; }
+.quiz-answer summary { cursor: pointer; font-size: 0.82rem; color: var(--accent2); font-weight: 600; }
+.quiz-answer p { margin-top: 0.5rem; font-size: 0.86rem; color: var(--muted); }
+
+/* CELL (for assignment files - jupyter style) */
+.jupyter-cell { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin: 1.5rem 0; overflow: hidden; }
+.cell-header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted2); font-family: var(--mono); }
+.cell-input-label { color: var(--accent4); font-weight: 600; }
+.cell-body { padding: 1rem 1.25rem; }
+.jupyter-cell pre { padding: 1rem 1.25rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; background: var(--code-bg); margin: 0; }
+.cell-prompt { color: var(--accent3); font-weight: 700; }
+
+/* GRADING RUBRIC */
+.rubric-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+.rubric-table th { background: var(--card2); padding: 10px 14px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); }
+.rubric-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+
+/* DETAILS (collapsible hints) */
+details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; }
+details summary { cursor: pointer; font-size: 0.85rem; color: var(--accent2); font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
+
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">Hyper<span>Tune</span></a>
+    <ul class="nav-links">
+
+    </ul>
+    <a href="../index.html#curriculum" class="nav-cta">Start Learning</a>
+  </div>
+</nav>
+<div class="page-layout">
+  <aside class="toc-sidebar">
+    <div class="toc-label">On this page</div>
+    <nav class="toc-nav">
+<a href="#section-1" class="toc-link">1. What Makes Optuna Different</a>
+<a href="#section-2" class="toc-link">2. TPE: The Tree-structured Parzen Estimator</a>
+<a href="#section-3" class="toc-link">3. The suggest_* Methods</a>
+<a href="#section-4" class="toc-link">4. Conditional Search Spaces</a>
+<a href="#section-5" class="toc-link">5. Samplers</a>
+<a href="#tpe-sampler" class="toc-link toc-sub">5.1 TPESampler</a>
+<a href="#cmaes-sampler" class="toc-link toc-sub">5.2 CmaEsSampler</a>
+<a href="#nsgaii-sampler" class="toc-link toc-sub">5.3 NSGAIISampler</a>
+<a href="#random-sampler" class="toc-link toc-sub">5.4 RandomSampler</a>
+<a href="#grid-sampler" class="toc-link toc-sub">5.5 GridSampler</a>
+<a href="#section-6" class="toc-link">6. Pruners</a>
+<a href="#median-pruner" class="toc-link toc-sub">6.1 MedianPruner</a>
+<a href="#hyperband-pruner" class="toc-link toc-sub">6.2 HyperbandPruner</a>
+<a href="#sh-pruner" class="toc-link toc-sub">6.3 SuccessiveHalvingPruner</a>
+<a href="#section-7" class="toc-link">7. Study Persistence</a>
+<a href="#section-8" class="toc-link">8. Visualizing a Study</a>
+<a href="#section-9" class="toc-link">9. Multi-Objective with NSGA-II</a>
+<a href="#resources" class="toc-link">Useful Resources</a>
+    </nav>
+  </aside>
+  <article class="article-body">
+    <div class="breadcrumb"><a href="../index.html">HyperTune</a> › <a href="intro.html">Module 06</a> › Optuna</div>
+    <div class="article-header">
+      <div class="module-badge">Module 06 · Bayesian Optimization</div>
+      <h1 class="article-title">Optuna: The Define-By-Run API for Modern Hyperparameter Optimization</h1>
+      <div class="article-meta">Part of the <strong>HyperTune</strong> open course · Estimated read time: 20 min · Python 3.10+ · Optuna 3.0+</div>
+    </div>
+    <div class="outline-box">
+      <div class="outline-title">📋 Article Outline</div>
+      <ol class="outline-list">
+
+<li><a href="#section-1">1. What Makes Optuna Different</a></li>
+<li><a href="#section-2">2. TPE: The Tree-structured Parzen Estimator</a></li>
+<li><a href="#section-3">3. The suggest_* Methods</a></li>
+<li><a href="#section-4">4. Conditional Search Spaces in Depth</a></li>
+<li><a href="#section-5">5. Samplers</a>
+  <ul>
+    <li><a href="#tpe-sampler">5.1 TPESampler (default)</a></li>
+    <li><a href="#cmaes-sampler">5.2 CmaEsSampler</a></li>
+    <li><a href="#nsgaii-sampler">5.3 NSGAIISampler</a></li>
+    <li><a href="#random-sampler">5.4 RandomSampler</a></li>
+    <li><a href="#grid-sampler">5.5 GridSampler</a></li>
+  </ul>
+</li>
+<li><a href="#section-6">6. Pruners: Cutting Bad Trials Early</a>
+  <ul>
+    <li><a href="#median-pruner">6.1 MedianPruner</a></li>
+    <li><a href="#hyperband-pruner">6.2 HyperbandPruner</a></li>
+    <li><a href="#sh-pruner">6.3 SuccessiveHalvingPruner</a></li>
+  </ul>
+</li>
+<li><a href="#section-7">7. Study Persistence</a></li>
+<li><a href="#section-8">8. Visualizing a Study</a></li>
+<li><a href="#section-9">9. Multi-Objective Optimization with NSGA-II</a></li>
+<li><a href="#resources">Useful Resources</a></li>
+      </ol>
+    </div>
+
+<section id="section-1">
+  <h2>1. What Makes Optuna Different</h2>
+  <p>Optuna, released by Preferred Networks in 2018, took one design decision that distinguishes it from every previous hyperparameter optimization library: <strong>the search space is not a static configuration object — it is ordinary Python code.</strong> This style is called <em>define-by-run</em>, and it changes what you can express.</p>
+  <p>In Hyperopt (the previous generation), you build a search space as a nested static data structure — a tree of <code>hp.choice</code>, <code>hp.loguniform</code>, and <code>hp.quniform</code> calls, evaluated by the library. In scikit-optimize, you build a dictionary of <code>Real</code>, <code>Integer</code>, and <code>Categorical</code> objects. Both approaches force you to declare the entire search space <em>before</em> you know what the sampled values will be.</p>
+  <p>Optuna inverts this. You write a single Python function — the <em>objective</em> — that calls <code>trial.suggest_float(...)</code> at the moment it needs a value. The sampler picks the value at runtime, hands it back, and the objective continues. This means the search space can be <em>conditional</em> on previous suggestions: if <code>optimizer='SGD'</code> was sampled, only then do you call <code>trial.suggest_float('momentum', 0, 1)</code>. The library never has to know about the conditional structure — it just records what was suggested and uses that record to update its model.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── define_by_run_demo.py ────────────────────────────────────────────────────
+# The entire search space lives inside the objective function. Conditional
+# structure is just Python `if`.
+
+import optuna
+
+def objective(trial: optuna.Trial) -&gt; float:
+    # 1. Always-suggested hyperparameters
+    optimizer = trial.suggest_categorical(&quot;optimizer&quot;, [&quot;adam&quot;, &quot;sgd&quot;])
+    lr = trial.suggest_float(&quot;lr&quot;, 1e-5, 1e-1, log=True)
+    n_layers = trial.suggest_int(&quot;n_layers&quot;, 1, 5)
+
+    # 2. Conditional: momentum ONLY makes sense for SGD
+    if optimizer == &quot;sgd&quot;:
+        momentum = trial.suggest_float(&quot;momentum&quot;, 0.0, 0.99)
+
+    # 3. Conditional: per-layer widths (variable-length search space!)
+    widths = [trial.suggest_int(f&quot;width_{i}&quot;, 16, 256, step=16)
+              for i in range(n_layers)]
+
+    # 4. Build and train model using the sampled values
+    # ... (model construction omitted) ...
+    val_loss = 0.0  # replace with real training
+    return val_loss
+
+study = optuna.create_study(direction=&quot;minimize&quot;, sampler=optuna.samplers.TPESampler(seed=42))
+study.optimize(objective, n_trials=50)
+</pre></div>
+  <p>Notice what just happened. The number of hyperparameters actually sampled varies trial-to-trial — a 1-layer model has 3 hyperparameters, a 5-layer model with SGD has 8. No static search-space object can express that. Optuna handles it natively because the search space <em>is</em> the execution trace of the objective function.</p>
+  <div class="callout tip"><div class="callout-icon">💡</div><div class="callout-body"><div class="callout-title">Define-by-run vs define-before-run</div><p>The naming is slightly confusing. <strong>Define-by-run</strong> (Optuna) means the search space is constructed <em>during</em> the objective evaluation, by calling <code>suggest_*</code> methods. <strong>Define-before-run</strong> (Hyperopt, skopt) means the search space is a static object passed to the optimizer. Optuna's approach is strictly more expressive — it can do everything define-before-run can do, plus conditional and variable-length spaces, with no extra syntax.</p></div></div>
+</section>
+
+<section id="section-2">
+  <h2>2. TPE: The Tree-structured Parzen Estimator</h2>
+  <p>Optuna's default sampler is the Tree-structured Parzen Estimator (TPE), introduced by Bergstra et al. in 2011. TPE is the reason Optuna can handle high-dimensional, mixed-type, conditional search spaces — exactly the regime where GP-based BO struggles. Understanding TPE requires one piece of probability that is worth getting right.</p>
+  <p>Recall that GP-based BO models $p(f \mid \mathbf{x})$ — the distribution of the objective given the inputs — and then uses the posterior mean and variance to drive the acquisition function. TPE inverts the modeling direction: instead of $p(y \mid \mathbf{x})$, TPE models $p(\mathbf{x} \mid y)$ — the distribution of <em>inputs</em> given the <em>output</em>. This sounds like a small change but it has enormous practical consequences.</p>
+  <p>Here is the recipe. After $n$ trials, pick a threshold $y^*$ at some percentile of the observed $y$ values (Optuna defaults to the 15th percentile for minimization). Split the observations into two sets: the "good" trials (those with $y &lt; y^*$) and the "bad" trials (those with $y \geq y^*$). Fit two density estimators:</p>
+  <ul>
+    <li><strong>$\ell(\mathbf{x}) = p(\mathbf{x} \mid y &lt; y^*)$</strong> — the density of hyperparameters that produced good outcomes.</li>
+    <li><strong>$g(\mathbf{x}) = p(\mathbf{x} \mid y \geq y^*)$</strong> — the density of hyperparameters that produced bad outcomes.</li>
+  </ul>
+  <p>Each density is a <em>Parzen estimator</em> — a mixture of kernels (Gaussians for continuous, categorical for discrete) centered on the observed points, with bandwidth chosen by leave-one-out likelihood. The "tree-structured" part refers to the fact that the densities factorize over the dimensions conditionally on the structure of the search space, which is exactly how TPE handles conditional hyperparameters natively.</p>
+  <div class="math-block">$$ \text{TPE samples } \mathbf{x}^* \text{ by maximizing } \quad \frac{\ell(\mathbf{x})}{g(\mathbf{x})} $$ <div class="math-label">Eq. 1 — The TPE acquisition. Sample many candidates from ℓ(x), evaluate g(x)/ℓ(x) for each, return the candidate with the highest ratio.</div></div>
+  <p>The next $\mathbf{x}$ to evaluate is the one that maximizes the ratio $\ell(\mathbf{x}) / g(\mathbf{x})$ — that is, the point that is <em>much more likely under the good-trial distribution than under the bad-trial distribution</em>. In practice this is done by drawing a large number of candidates from $\ell(\mathbf{x})$ and picking the one with the lowest $g(\mathbf{x}) / \ell(\mathbf{x})$, which is much cheaper than running an actual optimizer.</p>
+  <div class="figure">
+<svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:Inter;">
+  <defs>
+    <linearGradient id="goodGrad" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#34d399" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#34d399" stop-opacity="0.05"/>
+    </linearGradient>
+    <linearGradient id="badGrad" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#f472b6" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#f472b6" stop-opacity="0.05"/>
+    </linearGradient>
+  </defs>
+  <line x1="60" y1="240" x2="600" y2="240" stroke="#8899aa" stroke-width="1.5"/>
+  <line x1="60" y1="30" x2="60" y2="240" stroke="#8899aa" stroke-width="1.5"/>
+  <text x="330" y="270" fill="#8899aa" font-size="12" text-anchor="middle">hyperparameter value x</text>
+  <text x="22" y="135" fill="#8899aa" font-size="12" text-anchor="middle" transform="rotate(-90 22 135)">density</text>
+
+  <!-- Threshold y* -->
+  <line x1="60" y1="120" x2="600" y2="120" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="600" y="116" fill="#f59e0b" font-size="11" text-anchor="end">y* (15th percentile)</text>
+  <text x="600" y="132" fill="#f59e0b" font-size="10" text-anchor="end">↑ good (ℓ)   ↓ bad (g)</text>
+
+  <!-- l(x): good distribution — narrower, peaked on the good region -->
+  <path d="M 60 240 Q 150 235 200 180 Q 240 110 280 80 Q 320 60 360 80 Q 400 110 440 180 Q 490 235 600 240 Z" fill="url(#goodGrad)"/>
+  <path d="M 60 240 Q 150 235 200 180 Q 240 110 280 80 Q 320 60 360 80 Q 400 110 440 180 Q 490 235 600 240" stroke="#34d399" stroke-width="2.5" fill="none"/>
+  <text x="320" y="50" fill="#34d399" font-size="13" font-weight="700" text-anchor="middle">ℓ(x) = p(x | y &lt; y*)  (good)</text>
+
+  <!-- g(x): bad distribution — wider, flatter -->
+  <path d="M 60 240 Q 130 200 200 170 Q 280 145 360 140 Q 440 145 520 170 Q 570 200 600 240" stroke="#f472b6" stroke-width="2.5" fill="none" stroke-dasharray="0"/>
+  <path d="M 60 240 Q 130 200 200 170 Q 280 145 360 140 Q 440 145 520 170 Q 570 200 600 240 L 600 240 L 60 240 Z" fill="url(#badGrad)"/>
+  <text x="360" y="225" fill="#f472b6" font-size="13" font-weight="700" text-anchor="middle">g(x) = p(x | y ≥ y*)  (bad)</text>
+
+  <!-- Suggested next x: where ℓ/g is maximum -->
+  <line x1="320" y1="30" x2="320" y2="240" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="3 4"/>
+  <circle cx="320" cy="80" r="6" fill="#38bdf8"/>
+  <text x="330" y="100" fill="#38bdf8" font-size="12" font-weight="700">argmax ℓ(x)/g(x)</text>
+</svg>
+<div class="figure-caption">Figure 1 — TPE intuition. The green curve ℓ(x) is the density of hyperparameter values that produced good trials; the pink curve g(x) is the density of values that produced bad trials. The next sample is drawn from where ℓ/g is largest — typically near the mode of ℓ but far from the mode of g.</div></div>
+  <p>Why does this work so well in practice? Three reasons. First, TPE's per-dimension factorization means it scales to high dimensions without the kernel matrix blow-up of GPs. Second, the Parzen estimator handles mixed types (continuous, integer, categorical) by using different kernel types per dimension — no one-hot encoding needed. Third, conditional structure comes for free: if a hyperparameter is only suggested in some trials, the densities are conditioned on the parent hyperparameter's value automatically.</p>
+  <div class="callout note"><div class="callout-icon">📌</div><div class="callout-body"><div class="callout-title">TPE vs GP — when to prefer which</div><p>For most ML hyperparameter tuning problems with $\leq 50$ trials, GP-based BO and TPE find equally good solutions — TPE typically converges slightly slower but is more robust to noisy objectives. TPE pulls ahead decisively when: (a) the search space has categorical or conditional hyperparameters, (b) you want to run more than ~500 trials, (c) you have $&gt; 10$ dimensions, or (d) you need easy parallelization. GPs win when the search space is low-dimensional, fully continuous, and the budget is very tight ($&lt; 50$ trials).</p></div></div>
+</section>
+
+<section id="section-3">
+  <h2>3. The suggest_* Methods</h2>
+  <p>Optuna's <code>Trial</code> object exposes a small family of <code>suggest_*</code> methods. Each one says "I need a value for this hyperparameter, please pick one." The method you choose determines the type and the prior over values.</p>
+  <table class="data-table">
+    <thead><tr><th>Method</th><th>Returns</th><th>Common usage</th></tr></thead>
+    <tbody>
+      <tr><td><code>suggest_float(name, low, high)</code></td><td>float in [low, high]</td><td>dropout, subsample, momentum</td></tr>
+      <tr><td><code>suggest_float(name, low, high, log=True)</code></td><td>float, log-uniform</td><td>learning_rate, reg_lambda, alpha</td></tr>
+      <tr><td><code>suggest_float(name, low, high, step=0.1)</code></td><td>float, discretized</td><td>rare; use suggest_int instead</td></tr>
+      <tr><td><code>suggest_int(name, low, high)</code></td><td>int in [low, high]</td><td>n_estimators, max_depth, batch_size</td></tr>
+      <tr><td><code>suggest_int(name, low, high, log=True)</code></td><td>int, log-uniform</td><td>hidden_size when range spans orders</td></tr>
+      <tr><td><code>suggest_int(name, low, high, step=50)</code></td><td>int, stepped</td><td>n_estimators in {50, 100, 150, ...}</td></tr>
+      <tr><td><code>suggest_categorical(name, choices)</code></td><td>one of choices</td><td>optimizer, kernel, activation</td></tr>
+    </tbody>
+  </table>
+  <p>The <code>log=True</code> flag is critical for hyperparameters that span orders of magnitude. <code>learning_rate</code> typically lives in $[10^{-5}, 10^{-1}]$ — sampling linearly would put 99.9% of trials in $[10^{-2}, 10^{-1}]$ and almost never explore the small-learning-rate regime. Log-uniform sampling puts equal probability mass in each decade, which is what you want.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── suggest_methods.py ──────────────────────────────────────────────────────
+# All the suggest_* methods in one objective function.
+
+import optuna
+
+def objective(trial: optuna.Trial) -&gt; float:
+    # Continuous hyperparameters
+    lr = trial.suggest_float(&quot;lr&quot;, 1e-5, 1e-1, log=True)         # log-uniform
+    dropout = trial.suggest_float(&quot;dropout&quot;, 0.0, 0.5)           # uniform
+    weight_decay = trial.suggest_float(&quot;weight_decay&quot;, 1e-6, 1e-2, log=True)
+
+    # Integer hyperparameters
+    n_layers = trial.suggest_int(&quot;n_layers&quot;, 1, 6)
+    hidden = trial.suggest_int(&quot;hidden&quot;, 64, 512, step=64)       # {64, 128, ...}
+    batch_size = trial.suggest_int(&quot;batch_size&quot;, 16, 256, log=True)
+
+    # Categorical
+    optimizer = trial.suggest_categorical(&quot;optimizer&quot;, [&quot;adam&quot;, &quot;adamw&quot;, &quot;sgd&quot;])
+    activation = trial.suggest_categorical(&quot;activation&quot;, [&quot;relu&quot;, &quot;gelu&quot;, &quot;selu&quot;])
+
+    # Conditional
+    if optimizer == &quot;sgd&quot;:
+        momentum = trial.suggest_float(&quot;momentum&quot;, 0.0, 0.99)
+
+    # ... train and return val_loss ...
+    return 0.0
+
+study = optuna.create_study(direction=&quot;minimize&quot;)
+study.optimize(objective, n_trials=100)
+print(study.best_params)
+</pre></div>
+</section>
+
+<section id="section-4">
+  <h2>4. Conditional Search Spaces in Depth</h2>
+  <p>Conditional hyperparameters are the killer feature of define-by-run. A conditional hyperparameter is one that only exists when some other hyperparameter takes a particular value. Real ML pipelines are full of them:</p>
+  <ul>
+    <li><code>momentum</code> only matters if <code>optimizer='SGD'</code>.</li>
+    <li><code>poly_degree</code> only matters if <code>kernel='poly'</code>.</li>
+    <li><code>beta1</code> and <code>beta2</code> only matter if <code>optimizer='Adam'</code>.</li>
+    <li><code>per_layer_width</code> is a variable-length list whose length is set by <code>n_layers</code>.</li>
+  </ul>
+  <p>In a define-before-run library, expressing these conditionals requires awkward nested <code>hp.choice</code> calls and the search-space tree becomes brittle. In Optuna, conditional structure is just <code>if</code> statements — the most natural thing in Python.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── conditional_space.py ─────────────────────────────────────────────────────
+# Tune an SVM with a conditional kernel. poly_degree only matters when
+# kernel=&#x27;poly&#x27;; gamma only matters when kernel in (&#x27;rbf&#x27;, &#x27;poly&#x27;).
+
+import optuna
+from sklearn.datasets import load_breast_cancer
+from sklearn.svm import SVC
+from sklearn.model_selection import cross_val_score, StratifiedKFold
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
+
+X, y = load_breast_cancer(return_X_y=True)
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+def objective(trial: optuna.Trial) -&gt; float:
+    C = trial.suggest_float(&quot;C&quot;, 1e-2, 1e2, log=True)
+    kernel = trial.suggest_categorical(&quot;kernel&quot;, [&quot;linear&quot;, &quot;rbf&quot;, &quot;poly&quot;])
+
+    # Conditional: gamma only suggested for rbf and poly
+    if kernel in (&quot;rbf&quot;, &quot;poly&quot;):
+        gamma = trial.suggest_float(&quot;gamma&quot;, 1e-4, 1e1, log=True)
+    else:
+        gamma = &quot;scale&quot;   # default; not recorded as a hyperparameter
+
+    # Conditional: poly_degree only suggested for poly
+    if kernel == &quot;poly&quot;:
+        degree = trial.suggest_int(&quot;degree&quot;, 2, 5)
+
+    model = make_pipeline(
+        StandardScaler(),
+        SVC(C=C, kernel=kernel, gamma=gamma,
+            degree=degree if kernel == &quot;poly&quot; else 3,
+            random_state=42),
+    )
+    scores = cross_val_score(model, X, y, cv=cv, scoring=&quot;roc_auc&quot;, n_jobs=-1)
+    return -scores.mean()   # minimize negative AUC = maximize AUC
+
+study = optuna.create_study(direction=&quot;minimize&quot;)
+study.optimize(objective, n_trials=50)
+
+print(f&quot;Best AUC: {-study.best_value:.4f}&quot;)
+print(f&quot;Best params: {study.best_params}&quot;)
+# Note: best_params will NOT contain &#x27;gamma&#x27; if the best trial used kernel=&#x27;linear&#x27;.
+</pre></div>
+  <p>This works because Optuna records the <em>execution trace</em> — the actual sequence of <code>suggest_*</code> calls — for each trial. If a trial used <code>kernel='linear'</code>, that trial has no <code>gamma</code> in its trace, and TPE's density estimators automatically build a separate model for the <code>kernel='rbf'</code> / <code>kernel='poly'</code> subtree. This is what "tree-structured" in TPE means: the search space is a tree rooted at the always-suggested hyperparameters, with branches for each conditional sub-space.</p>
+</section>
+
+<section id="section-5">
+  <h2>5. Samplers</h2>
+  <p>The sampler is the algorithm that picks the next hyperparameters. Optuna ships with five samplers, each suited to a different regime.</p>
+
+  <h3 id="tpe-sampler">5.1 TPESampler (default)</h3>
+  <p>The default sampler. Fits the two Parzen densities ($\ell$ and $g$) and samples from $\ell / g$ as described in section 2. The right choice for &gt;90% of problems. Knobs: <code>n_startup_trials</code> (number of random trials before TPE kicks in, default 10), <code>n_ei_candidates</code> (number of candidates drawn from $\ell$ per iteration, default 24), <code>multivariate</code> (whether to model correlations between dimensions, default False — set True for a big quality boost on correlated spaces).</p>
+
+  <h3 id="cmaes-sampler">5.2 CmaEsSampler</h3>
+  <p>CMA-ES (Covariance Matrix Adaptation Evolution Strategy) is an evolutionary algorithm that maintains a multivariate Gaussian over the search space and adapts its covariance matrix to the empirical distribution of good samples. CMA-ES is the gold standard for <em>continuous, high-dimensional</em> optimization (&gt;20 params), where TPE's per-dimension factorization loses information about correlations. It does not handle categorical or conditional hyperparameters — for those you need a workaround like optimizing a continuous relaxation and rounding.</p>
+
+  <h3 id="nsgaii-sampler">5.3 NSGAIISampler</h3>
+  <p>NSGA-II (Non-dominated Sorting Genetic Algorithm II) is a multi-objective evolutionary algorithm. Use it when you have <em>multiple objectives</em> — for example, simultaneously minimizing validation loss <em>and</em> model size, or minimizing loss <em>and</em> inference latency. NSGA-II returns a Pareto front of solutions rather than a single best; the user then picks a point on the front that matches their trade-off. We show a full example in section 8.</p>
+
+  <h3 id="random-sampler">5.4 RandomSampler</h3>
+  <p>Uniform random sampling. Useful as a baseline (always run it alongside your fancy sampler to verify the fancy one is actually helping) and as the startup phase for TPE/CMA-ES during the first $n$ trials.</p>
+
+  <h3 id="grid-sampler">5.5 GridSampler</h3>
+  <p>Exhaustive enumeration over a discrete grid. Use it when you want to sweep a specific small subspace exhaustively — for example, to produce a clean visualization of the loss surface over two hyperparameters. Not appropriate for high-dimensional spaces (the grid blows up combinatorially).</p>
+
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── samplers.py ─────────────────────────────────────────────────────────────
+# All five samplers, side by side, on the same objective.
+
+import optuna
+
+def make_study(sampler_name: str) -&gt; optuna.Study:
+    if sampler_name == &quot;tpe&quot;:
+        sampler = optuna.samplers.TPESampler(seed=42, multivariate=True)
+    elif sampler_name == &quot;cmaes&quot;:
+        # CMA-ES only supports continuous params; use it for fully-continuous spaces
+        sampler = optuna.samplers.CmaEsSampler(seed=42)
+    elif sampler_name == &quot;nsgaii&quot;:
+        # Multi-objective: pass directions=[&quot;minimize&quot;, &quot;minimize&quot;] to create_study
+        sampler = optuna.samplers.NSGAIISampler(seed=42)
+    elif sampler_name == &quot;random&quot;:
+        sampler = optuna.samplers.RandomSampler(seed=42)
+    elif sampler_name == &quot;grid&quot;:
+        # Grid requires an explicit search_space dict passed at optimize() time
+        sampler = optuna.samplers.GridSampler(
+            search_space={&quot;lr&quot;: [1e-4, 1e-3, 1e-2, 1e-1],
+                          &quot;depth&quot;: [3, 5, 7, 9]})
+    else:
+        raise ValueError(sampler_name)
+    direction = [&quot;minimize&quot;, &quot;minimize&quot;] if sampler_name == &quot;nsgaii&quot; else &quot;minimize&quot;
+    return optuna.create_study(direction=direction, sampler=sampler)
+
+# Typical usage (single-objective):
+study = optuna.create_study(direction=&quot;minimize&quot;,
+                            sampler=optuna.samplers.TPESampler(seed=42, multivariate=True))
+study.optimize(objective, n_trials=100)
+</pre></div>
+  <div class="quiz-box">
+  <div class="quiz-label">🧠 Quick Check</div>
+  <p class="quiz-question">You are tuning a 30-layer Transformer with 25 continuous hyperparameters (no categoricals, no conditionals). You have a budget of 200 trials. Which sampler should you use, and why?</p>
+  <details class="quiz-answer">
+    <summary>Show Answer</summary>
+    <p>CmaEsSampler. With 25 continuous dimensions and no categorical/conditional structure, CMA-ES is the right tool: it scales to high-dimensional continuous spaces where TPE&#x27;s per-dimension factorization loses information about correlations, and where GP-based BO would choke on the O(n^3) kernel matrix cost. TPESampler would also work but typically converges slower on smooth high-dimensional continuous spaces. CMA-ES&#x27;s covariance adaptation is specifically designed for this regime.</p>
+  </details>
+</div>
+</section>
+
+<section id="section-6">
+  <h2>6. Pruners: Cutting Bad Trials Early</h2>
+  <p>Pruning is Optuna's other killer feature (alongside define-by-run). A <em>pruner</em> monitors intermediate results during a trial and kills the trial early if it is unlikely to beat the best-so-far. For iterative training (neural networks, gradient boosting), pruning can save 50–80% of compute budget by abandoning trials that are clearly converging to a bad solution.</p>
+  <p>Pruning works on the <em>learning curve</em> of a trial. You periodically call <code>trial.report(value, step)</code> with the current validation metric, then <code>trial.should_prune()</code> to ask the pruner whether to stop. If it returns True, you raise <code>TrialPruned</code> and Optuna moves on to the next trial.</p>
+
+  <h3 id="median-pruner">6.1 MedianPruner</h3>
+  <p>The simplest pruner. At each step, compares the trial's intermediate value to the median of all completed trials at the same step. If the trial is worse than the median, prune it. Aggressive but effective for fast iteration. Tunable via <code>n_startup_trials</code> (don't prune the first N trials), <code>n_warmup_steps</code> (don't prune before step N), and <code>interval_steps</code> (how often to check).</p>
+
+  <h3 id="hyperband-pruner">6.2 HyperbandPruner</h3>
+  <p>The most sophisticated built-in pruner. Hyperband allocates budget across many configurations using a multi-fidelity strategy: it starts many trials with small per-trial budgets, aggressively prunes the worst half, doubles the per-trial budget for survivors, and repeats. Theoretically grounded in the bandit literature. Often the best default for neural network training where each epoch is expensive.</p>
+
+  <h3 id="sh-pruner">6.3 SuccessiveHalvingPruner</h3>
+  <p>The simplest multi-fidelity pruner. Starts with $M$ trials, runs each for a small budget, keeps the top $M/2$, doubles the budget, repeats. Less adaptive than Hyperband but easier to reason about.</p>
+
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── pruning_demo.py ─────────────────────────────────────────────────────────
+# Train an XGBoost model with Hyperband pruning. report() is called after
+# every 10 boosting rounds; if the pruner thinks the trial is hopeless, we stop.
+
+import optuna
+import numpy as np
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import log_loss
+from xgboost import XGBClassifier
+
+X, y = load_breast_cancer(return_X_y=True)
+X_tr, X_val, y_tr, y_val = train_test_split(X, y, test_size=0.2,
+                                            random_state=42, stratify=y)
+
+def objective(trial: optuna.Trial) -&gt; float:
+    params = {
+        &quot;learning_rate&quot;: trial.suggest_float(&quot;learning_rate&quot;, 1e-3, 1e-1, log=True),
+        &quot;max_depth&quot;: trial.suggest_int(&quot;max_depth&quot;, 3, 10),
+        &quot;subsample&quot;: trial.suggest_float(&quot;subsample&quot;, 0.5, 1.0),
+        &quot;colsample_bytree&quot;: trial.suggest_float(&quot;colsample_bytree&quot;, 0.5, 1.0),
+        &quot;n_estimators&quot;: 1000,   # train to a high ceiling; let the pruner cut early
+        &quot;eval_metric&quot;: &quot;logloss&quot;,
+        &quot;tree_method&quot;: &quot;hist&quot;,
+        &quot;random_state&quot;: 42,
+        &quot;n_jobs&quot;: 1,
+    }
+    model = XGBClassifier(**params)
+
+    # Train incrementally, 50 trees at a time, reporting val logloss.
+    for step in range(0, 1000, 50):
+        model.fit(X_tr, y_tr,
+                  eval_set=[(X_val, y_val)],
+                  xgb_model=model if step &gt; 0 else None,
+                  num_boost_round=50,
+                  verbose=False)
+        val_loss = log_loss(y_val, model.predict_proba(X_val))
+        trial.report(val_loss, step=step)
+        if trial.should_prune():
+            raise optuna.TrialPruned()
+    return val_loss
+
+study = optuna.create_study(
+    direction=&quot;minimize&quot;,
+    sampler=optuna.samplers.TPESampler(seed=42),
+    pruner=optuna.pruners.HyperbandPruner(min_resource=50, max_resource=1000,
+                                          reduction_factor=3),
+)
+study.optimize(objective, n_trials=50, timeout=600)
+print(f&quot;Best val loss: {study.best_value:.4f}&quot;)
+print(f&quot;Pruned {sum(t.state == optuna.trial.TrialState.PRUNED for t in study.trials)} / &quot;
+      f&quot;{len(study.trials)} trials&quot;)
+</pre></div>
+  <p>Run this and you should see roughly half the trials get pruned before reaching 1000 boosting rounds — typically the pruner catches them after 100–200 rounds when their validation loss has clearly plateaued above the best-so-far. That is a 5–10× speedup over running every trial to completion.</p>
+</section>
+
+<section id="section-7">
+  <h2>7. Study Persistence</h2>
+  <p>Optuna studies live in memory by default, which means they vanish when your script exits. For long-running studies (overnight, multi-day) you want <em>persistence</em>: a way to resume the study across script restarts, crash recoveries, or even across machines. Optuna supports this via the <code>storage</code> argument to <code>create_study</code>.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── persistence.py ──────────────────────────────────────────────────────────
+# A SQLite-backed study. Re-running this script resumes the existing study
+# instead of starting over.
+
+import optuna
+
+storage = &quot;sqlite:///example_study.db&quot;
+study = optuna.create_study(
+    study_name=&quot;xgb_breast_cancer&quot;,
+    direction=&quot;minimize&quot;,
+    sampler=optuna.samplers.TPESampler(seed=42),
+    storage=storage,
+    load_if_exists=True,   # key flag: resume if study already exists
+)
+study.optimize(objective, n_trials=20)   # adds 20 more trials each run
+
+# Inspect from any process / machine with access to the .db file
+print(f&quot;Total trials so far: {len(study.trials)}&quot;)
+print(f&quot;Best value:          {study.best_value}&quot;)
+print(f&quot;Best params:         {study.best_params}&quot;)
+</pre></div>
+  <p>The <code>load_if_exists=True</code> flag is what makes resumption work: if a study with that name exists in the storage, Optuna loads it and continues; otherwise it creates a fresh one. SQLite is fine for single-machine studies; for distributed optimization across many workers, use the PostgreSQL or Redis backends (a <code>postgresql://...</code> or <code>redis://...</code> URL).</p>
+  <div class="callout tip"><div class="callout-icon">💡</div><div class="callout-body"><div class="callout-title">Distributed optimization with RDB storage</div><p>Once your study is backed by an RDB storage, you can run <em>multiple Optuna workers in parallel</em> — just point each worker at the same storage URL. Optuna handles trial de-duplication and sampler synchronization internally. This is the easiest way to parallelize hyperparameter search across a cluster: no extra code, just multiple processes hitting the same DB.</p></div></div>
+</section>
+
+<section id="section-8">
+  <h2>8. Visualizing a Study</h2>
+  <p>Optuna's <code>visualization</code> module is one of its most underrated features. After a study completes, a single line of code gives you an interactive plot showing the optimization history, the parameter importances, the slice plots, the contour plots, or the parallel coordinates. These plots are essential for understanding <em>why</em> the optimizer found what it found.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── visualization.py ────────────────────────────────────────────────────────
+# After running a 100-trial study, generate the four most useful plots.
+
+import optuna
+
+study = optuna.create_study(
+    direction=&quot;minimize&quot;,
+    sampler=optuna.samplers.TPESampler(seed=42),
+    storage=&quot;sqlite:///example_study.db&quot;,
+    load_if_exists=True,
+)
+# study.optimize(objective, n_trials=100)   # already run
+
+# 1. Optimization history — best value so far vs trial number.
+fig = optuna.visualization.plot_optimization_history(study)
+fig.write_html(&quot;opt_history.html&quot;)
+fig.write_image(&quot;opt_history.png&quot;)
+
+# 2. Contour plot — 2-D slice of the surrogate over any pair of hyperparameters.
+fig = optuna.visualization.plot_contour(
+    study, params=[&quot;learning_rate&quot;, &quot;max_depth&quot;]
+)
+fig.write_html(&quot;contour.html&quot;)
+
+# 3. Parallel coordinates — see which parameter values led to good trials.
+fig = optuna.visualization.plot_parallel_coordinate(study)
+fig.write_html(&quot;parallel.html&quot;)
+
+# 4. Parameter importances — which hyperparameters mattered most?
+# Uses fANOVA on the completed trials.
+importances = optuna.importance.get_param_importances(study)
+print(&quot;Hyperparameter importances (higher = more important):&quot;)
+for name, imp in importances.items():
+    print(f&quot;  {name:25s} {imp:.3f}&quot;)
+
+fig = optuna.visualization.plot_param_importances(study)
+fig.write_html(&quot;importances.html&quot;)
+</pre></div>
+  <p>The <code>plot_param_importances</code> output is the closest analog of scikit-learn's <code>feature_importances_</code> for hyperparameters. It runs a fANOVA decomposition on the completed trials and tells you which hyperparameters explained the most variance in the objective. For a typical XGBoost search you will see <code>learning_rate</code> and <code>max_depth</code> dominating, with <code>subsample</code> and <code>colsample_bytree</code> secondary, and <code>reg_lambda</code> usually least important. Knowing this lets you focus future searches on the dimensions that actually matter.</p>
+</section>
+
+<section id="section-9">
+  <h2>9. Multi-Objective Optimization with NSGA-II</h2>
+  <p>Real ML systems are rarely single-objective. You care about validation loss <em>and</em> inference latency <em>and</em> model size <em>and</em> training cost. Treating these as a single scalar (a weighted sum) is brittle — it requires choosing weights before you know the trade-off curve. Multi-objective optimization solves this properly: it returns a <em>Pareto front</em> — the set of solutions where no solution is strictly better than another on all objectives — and you pick the operating point afterwards.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── multi_objective.py ──────────────────────────────────────────────────────
+# Minimize (val_loss, model_size) jointly. NSGA-II returns a Pareto front.
+
+import optuna
+import numpy as np
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import cross_val_score, StratifiedKFold
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
+from sklearn.neural_network import MLPClassifier
+
+X, y = load_breast_cancer(return_X_y=True)
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+def objective(trial: optuna.Trial) -&gt; tuple[float, float]:
+    n_layers = trial.suggest_int(&quot;n_layers&quot;, 1, 4)
+    width = trial.suggest_int(&quot;width&quot;, 8, 128, step=8)
+    lr = trial.suggest_float(&quot;lr&quot;, 1e-4, 1e-1, log=True)
+    alpha = trial.suggest_float(&quot;alpha&quot;, 1e-6, 1e-1, log=True)
+
+    model = make_pipeline(
+        StandardScaler(),
+        MLPClassifier(hidden_layer_sizes=[width] * n_layers,
+                      learning_rate_init=lr, alpha=alpha,
+                      max_iter=500, random_state=42),
+    )
+    scores = cross_val_score(model, X, y, cv=cv, scoring=&quot;accuracy&quot;, n_jobs=-1)
+    val_loss = 1.0 - scores.mean()
+
+    # Model size proxy: total trainable parameters
+    # width * (input_dim + 1) + width * (width + 1) * (n_layers - 1) + (width + 1) * n_classes
+    n_params = width * (X.shape[1] + 1) + (n_layers - 1) * width * (width + 1) + width + 1
+    return val_loss, float(n_params)
+
+study = optuna.create_study(
+    directions=[&quot;minimize&quot;, &quot;minimize&quot;],   # multi-objective!
+    sampler=optuna.samplers.NSGAIISampler(seed=42),
+)
+study.optimize(objective, n_trials=100)
+
+# Pareto front: trials where no other trial is better on BOTH objectives.
+pareto = [t for t in study.best_trials]
+print(f&quot;Pareto front has {len(pareto)} solutions:&quot;)
+for t in pareto:
+    val_loss, n_params = t.values
+    print(f&quot;  trial {t.number:3d}  val_loss={val_loss:.4f}  params={n_params:&gt;7.0f}  &quot;
+          f&quot;params={t.params}&quot;)
+</pre></div>
+  <p>Run this and you will get a Pareto front of ~10–20 solutions spanning the trade-off curve: tiny models with high val_loss at one end, large models with low val_loss at the other, and a smooth frontier in between. You then pick the operating point that matches your deployment constraint — say, "the smallest model with val_loss &lt; 0.05." This is dramatically more useful than tuning a weighted objective and hoping you picked the right weight.</p>
+  <div class="callout important"><div class="callout-icon">🔥</div><div class="callout-body"><div class="callout-title">Multi-objective is not multi-task</div><p>Multi-objective optimization gives you a Pareto front of trade-offs between <em>competing</em> objectives. It is not the right tool if your objectives are <em>compatible</em> (e.g. training loss and validation loss — you want both low, and there is no trade-off curve, just a single best point). Use multi-objective only when there is a genuine trade-off: accuracy vs latency, accuracy vs model size, false positives vs false negatives.</p></div></div>
+</section>
+
+<div class="summary-box"><h3>🎯 Key Takeaways</h3><ul><li><strong>Optuna's define-by-run API</strong> makes the search space ordinary Python code, which means conditional and variable-length spaces are just <code>if</code> statements.</li><li><strong>TPE models $p(\mathbf{x} \mid y)$ instead of $p(y \mid \mathbf{x})$</strong>, splitting trials into "good" and "bad" sets and sampling where $\ell(\mathbf{x})/g(\mathbf{x})$ is largest. This is what makes TPE scale to high-dimensional mixed spaces.</li><li><strong>Use <code>suggest_float(..., log=True)</code></strong> for hyperparameters that span orders of magnitude (learning_rate, regularization). Linear sampling wastes trials in the wrong decade.</li><li><strong>Five samplers</strong>: TPESampler (default), CmaEsSampler (continuous high-dim), NSGAIISampler (multi-objective), RandomSampler (baseline), GridSampler (exhaustive on small subspaces).</li><li><strong>Pruners</strong> (Median, Hyperband, SuccessiveHalving) cut bad trials early — typically saving 50–80% of compute on iterative training. Always use HyperbandPruner for neural networks.</li><li><strong>RDB storage</strong> (<code>sqlite:///study.db</code>) gives you resumability and free distributed parallelism — point multiple workers at the same URL.</li><li><strong>Multi-objective with NSGA-II</strong> returns a Pareto front instead of a single best point, letting you pick the trade-off after seeing the frontier.</li></ul></div>
+
+<section id="resources"><h2>Useful Resources</h2><ul class="resource-list"><li><a href="https://arxiv.org/abs/1907.10902">Akiba, Sano, Yanase, Ohta &amp; Koyama (2019) — Optuna: A Next-generation Hyperparameter Optimization Framework (the original Optuna paper)</a></li><li><a href="https://papers.nips.cc/paper/4443-algorithms-for-hyper-parameter-optimization.pdf">Bergstra, Bardenet, Bengio &amp; Kégl (2011) — Algorithms for Hyper-Parameter Optimization (the NIPS paper that introduced TPE)</a></li><li><a href="http://proceedings.mlr.press/v28/bergstra13.pdf">Bergstra, Yamins &amp; Cox (2013) — Making a Science of Model Search: Hyperparameter Optimization in Hundreds of Dimensions for Vision Architectures (Hyperopt)</a></li><li><a href="https://arxiv.org/abs/1604.00772">Hansen (2016) — The CMA Evolution Strategy: A Programming Tutorial (CMA-ES reference)</a></li><li><a href="https://arxiv.org/abs/1603.06560">Li, Jamieson, DeSalvo, Rostamizadeh &amp; Talwalkar (2018) — Hyperband: A Novel Bandit-Based Approach to Hyperparameter Optimization</a></li><li><a href="https://optuna.readthedocs.io/en/stable/">Optuna official documentation</a></li><li><a href="https://github.com/optuna/optuna-examples">Optuna tutorial notebooks ( Pruvoic)</a></li><li><a href="https://arxiv.org/abs/1807.01774">Falkner, Klein &amp; Hutter (2018) — BOHB: Robust and Efficient Hyperparameter Optimization at Scale (combines BO and Hyperband)</a></li></ul></section>
+  </article>
+</div>
+<div class="page-nav"><a href="part1_bayesian_intuition.html" class="page-nav-btn prev"><span class="nav-dir">← Previous</span><span class="nav-title">Bayesian Optimization</span></a><a href="assignment_task.html" class="page-nav-btn next"><span class="nav-dir">Next →</span><span class="nav-title">Assignment 06</span></a></div>
+<footer>
+  <div class="container">
+    <div style="font-size:1.5rem;font-weight:800;font-family:var(--display);color:var(--accent);margin-bottom:0.5rem">HyperTune</div>
+    <p style="color:var(--muted2);font-size:0.85rem;max-width:500px;margin:0 auto">The complete hyperparameter tuning reference for ML &amp; DL engineers. Covers scikit-learn, XGBoost, LightGBM, PyTorch, Optuna, Ray Tune, and beyond — from first principles to production.</p>
+    <div style="margin-top:2rem;font-size:0.78rem;color:var(--muted2)">Built for learning · Python 3.10+ · scikit-learn 1.4+ · Optuna 3.0+</div>
+  </div>
+</footer>
+<script>
+(function() {
+  const links = Array.from(document.querySelectorAll('.toc-link'));
+  const sections = links
+    .map(l => document.querySelector(l.getAttribute('href')))
+    .filter(Boolean);
+  if (!('IntersectionObserver' in window) || sections.length === 0) return;
+  const setActive = id => {
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+  };
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  sections.forEach(s => observer.observe(s));
+})();
+</script>
+</body>
+</html>

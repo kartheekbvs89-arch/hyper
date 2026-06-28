@@ -1,0 +1,1471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HyperTune — Complete Hyperparameter Tuning Mastery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #070b14;
+  --bg2: #0c1220;
+  --bg3: #111827;
+  --card: #131d2e;
+  --card2: #1a2640;
+  --border: rgba(99,179,237,0.12);
+  --border2: rgba(99,179,237,0.22);
+  --accent: #38bdf8;
+  --accent2: #818cf8;
+  --accent3: #34d399;
+  --accent4: #f59e0b;
+  --accent5: #f472b6;
+  --text: #f0f6fc;
+  --muted: #8899aa;
+  --muted2: #64748b;
+  --code-bg: #0d1117;
+  --tag-ml: rgba(56,189,248,0.13);
+  --tag-dl: rgba(129,140,248,0.13);
+  --tag-adv: rgba(244,114,182,0.13);
+  --ff: 'Inter', sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+  --display: 'Sora', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,11,20,0.85);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:var(--display);font-weight:800;font-size:1.25rem;color:var(--accent);letter-spacing:-0.03em}
+.logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#000;padding:7px 18px;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85}
+
+/* HERO */
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:7rem 2rem 5rem;position:relative;overflow:hidden}
+.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(56,189,248,0.07) 0%,transparent 70%),radial-gradient(ellipse 50% 40% at 80% 80%,rgba(129,140,248,0.06) 0%,transparent 60%);pointer-events:none}
+.hero-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(56,189,248,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,0.04) 1px,transparent 1px);background-size:40px 40px;pointer-events:none}
+.hero-content{max-width:900px;position:relative}
+.hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,0.1);border:1px solid rgba(56,189,248,0.25);color:var(--accent);padding:5px 14px;border-radius:100px;font-size:0.78rem;font-weight:600;letter-spacing:0.04em;margin-bottom:2rem}
+.hero-badge::before{content:'';width:6px;height:6px;background:var(--accent);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+h1.hero-title{font-family:var(--display);font-size:clamp(2.8rem,7vw,5.5rem);font-weight:800;line-height:1.06;letter-spacing:-0.04em;margin-bottom:1.5rem}
+.ht{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-sub{font-size:1.15rem;color:var(--muted);max-width:640px;margin:0 auto 2.5rem;line-height:1.8}
+.hero-btns{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}
+.btn-primary{background:var(--accent);color:#000;padding:13px 28px;border-radius:10px;font-weight:700;font-size:0.95rem;text-decoration:none;transition:all 0.2s;display:inline-flex;align-items:center;gap:8px}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(56,189,248,0.35)}
+.btn-sec{background:transparent;color:var(--text);padding:13px 28px;border-radius:10px;font-weight:600;font-size:0.95rem;text-decoration:none;border:1px solid var(--border2);transition:all 0.2s}
+.btn-sec:hover{border-color:var(--accent);color:var(--accent)}
+.hero-stats{display:flex;gap:3rem;justify-content:center;margin-top:4rem;flex-wrap:wrap}
+.stat-item{text-align:center}
+.stat-num{font-family:var(--display);font-size:2rem;font-weight:800;color:var(--accent)}
+.stat-label{font-size:0.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-top:2px}
+
+/* SECTION */
+section{padding:5rem 2rem}
+.container{max-width:1280px;margin:0 auto}
+.section-label{font-size:0.75rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:0.75rem}
+.section-title{font-family:var(--display);font-size:clamp(1.8rem,4vw,2.8rem);font-weight:800;letter-spacing:-0.03em;margin-bottom:1rem}
+.section-sub{color:var(--muted);font-size:1.05rem;max-width:600px;margin-bottom:3rem}
+
+/* CURRICULUM */
+.curriculum-grid{display:grid;gap:2px}
+.module{background:var(--card);border-radius:14px;overflow:hidden;border:1px solid var(--border);transition:border-color 0.2s}
+.module:hover{border-color:var(--border2)}
+.module-header{display:flex;align-items:center;gap:1rem;padding:1.4rem 1.6rem;cursor:pointer;user-select:none}
+.module-num{font-family:var(--mono);font-size:0.75rem;font-weight:600;color:var(--muted2);width:28px}
+.module-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.module-info{flex:1}
+.module-title{font-weight:700;font-size:1rem;margin-bottom:2px}
+.module-meta{font-size:0.78rem;color:var(--muted)}
+.module-tag{font-size:0.68rem;font-weight:700;padding:3px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:0.04em}
+.tag-basics{background:rgba(52,211,153,0.12);color:#34d399}
+.tag-ml{background:rgba(56,189,248,0.12);color:#38bdf8}
+.tag-dl{background:rgba(129,140,248,0.12);color:#818cf8}
+.tag-adv{background:rgba(244,114,182,0.12);color:#f472b6}
+.tag-prod{background:rgba(245,158,11,0.12);color:#f59e0b}
+.module-toggle{color:var(--muted);transition:transform 0.3s;font-size:1.2rem}
+.module-body{display:none;padding:0 1.6rem 1.4rem;padding-left:5.5rem}
+.module-body.open{display:block}
+.lesson-list{list-style:none;display:grid;gap:4px}
+.lesson-item{display:flex;align-items:flex-start;gap:10px;font-size:0.88rem;color:var(--muted);padding:8px 12px;border-radius:8px;transition:background 0.15s}
+.lesson-item:hover{background:rgba(99,179,237,0.05);color:var(--text)}
+.lesson-dot{width:5px;height:5px;border-radius:50%;background:var(--accent);margin-top:7px;flex-shrink:0}
+.lesson-num{font-family:var(--mono);font-size:0.72rem;color:var(--muted2);min-width:26px;margin-top:1px}
+
+/* CODE BLOCKS */
+.code-section{background:var(--bg2);border-radius:0;padding:5rem 2rem}
+.code-tabs{display:flex;gap:4px;margin-bottom:0;background:var(--bg3);border-radius:12px 12px 0 0;padding:8px 8px 0;border:1px solid var(--border);border-bottom:none}
+.code-tab{padding:8px 16px;border-radius:8px 8px 0 0;font-size:0.82rem;font-weight:600;cursor:pointer;color:var(--muted);transition:all 0.2s;border:none;background:transparent;font-family:var(--mono)}
+.code-tab.active{background:var(--code-bg);color:var(--accent)}
+.code-window{background:var(--code-bg);border:1px solid var(--border);border-radius:0 12px 12px 12px;overflow:hidden;margin-bottom:1.5rem}
+.code-bar{display:flex;align-items:center;gap:8px;padding:10px 16px;background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border)}
+.dot{width:10px;height:10px;border-radius:50%}
+.dot.r{background:#ff5f57}.dot.y{background:#ffbd2e}.dot.g{background:#28c840}
+.code-filename{font-family:var(--mono);font-size:0.73rem;color:var(--muted2);margin-left:8px}
+.code-body{padding:1.5rem;overflow-x:auto}
+pre{font-family:var(--mono);font-size:0.82rem;line-height:1.75;color:#e2e8f0;white-space:pre}
+.c-kw{color:#c792ea}
+.c-fn{color:#82aaff}
+.c-str{color:#c3e88d}
+.c-num{color:#f78c6c}
+.c-cm{color:#546e7a;font-style:italic}
+.c-cls{color:#ffcb6b}
+.c-imp{color:#89ddff}
+.c-self{color:#f07178}
+
+/* CONCEPTS GRID */
+.concepts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.25rem;margin-top:3rem}
+.concept-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.75rem;transition:all 0.25s;position:relative;overflow:hidden}
+.concept-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--card-top, var(--accent));transition:opacity 0.2s;opacity:0}
+.concept-card:hover{border-color:var(--border2);transform:translateY(-3px)}
+.concept-card:hover::before{opacity:1}
+.concept-icon{font-size:2rem;margin-bottom:1rem}
+.concept-title{font-family:var(--display);font-size:1.05rem;font-weight:700;margin-bottom:0.5rem}
+.concept-desc{font-size:0.88rem;color:var(--muted);line-height:1.7}
+.concept-card.blue{--card-top:var(--accent)}
+.concept-card.purple{--card-top:var(--accent2)}
+.concept-card.green{--card-top:var(--accent3)}
+.concept-card.amber{--card-top:var(--accent4)}
+.concept-card.pink{--card-top:var(--accent5)}
+
+/* VISUAL EXPLAINER */
+.visual-block{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:2.5rem;margin:1.5rem 0}
+.vb-title{font-family:var(--display);font-weight:700;font-size:1.1rem;margin-bottom:1.5rem}
+
+/* SEARCH SPACE VIZ */
+.search-viz{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:1rem}
+.search-cell{border-radius:10px;padding:14px;font-size:0.8rem;font-weight:600;text-align:center;position:relative;transition:transform 0.2s;cursor:default}
+.search-cell:hover{transform:scale(1.05)}
+.search-cell .val{font-family:var(--mono);font-size:0.72rem;color:rgba(255,255,255,0.6);margin-top:4px}
+
+/* COMPARISON TABLE */
+.comp-table{width:100%;border-collapse:collapse;margin-top:1.5rem}
+.comp-table th{padding:10px 16px;font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted2);border-bottom:1px solid var(--border);text-align:left}
+.comp-table td{padding:12px 16px;font-size:0.88rem;border-bottom:1px solid var(--border);vertical-align:top}
+.comp-table tr:last-child td{border-bottom:none}
+.comp-table tr:hover td{background:rgba(99,179,237,0.03)}
+.badge-good{background:rgba(52,211,153,0.1);color:#34d399;padding:2px 8px;border-radius:5px;font-size:0.75rem;font-weight:600}
+.badge-ok{background:rgba(245,158,11,0.1);color:#f59e0b;padding:2px 8px;border-radius:5px;font-size:0.75rem;font-weight:600}
+.badge-bad{background:rgba(248,113,113,0.1);color:#f87171;padding:2px 8px;border-radius:5px;font-size:0.75rem;font-weight:600}
+.method-name{font-weight:700;color:var(--text)}
+
+/* TIPS */
+.tip-box{display:flex;gap:1rem;background:rgba(56,189,248,0.06);border:1px solid rgba(56,189,248,0.2);border-radius:12px;padding:1.25rem 1.5rem;margin:1.5rem 0}
+.tip-icon{font-size:1.3rem;flex-shrink:0}
+.tip-content{font-size:0.88rem;color:var(--muted);line-height:1.7}
+.tip-content strong{color:var(--accent);font-weight:600}
+.warn-box{background:rgba(245,158,11,0.06);border-color:rgba(245,158,11,0.2)}
+.warn-box .tip-content strong{color:var(--accent4)}
+
+/* PROGRESS PATH */
+.path-steps{display:flex;flex-direction:column;gap:0;position:relative;margin-top:2rem}
+.path-steps::before{content:'';position:absolute;left:22px;top:0;bottom:0;width:2px;background:linear-gradient(to bottom,var(--accent),var(--accent2),var(--accent5))}
+.path-step{display:flex;gap:1.25rem;padding:1.5rem 0;position:relative}
+.step-dot{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.9rem;flex-shrink:0;position:relative;z-index:1;border:2px solid var(--bg)}
+.step-body{flex:1}
+.step-title{font-weight:700;font-size:1rem;margin-bottom:0.25rem}
+.step-desc{font-size:0.85rem;color:var(--muted);line-height:1.7}
+
+/* ALGO CARDS */
+.algo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1.25rem;margin-top:2rem}
+.algo-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.6rem;transition:all 0.2s}
+.algo-card:hover{border-color:var(--border2)}
+.algo-head{display:flex;align-items:center;gap:10px;margin-bottom:1rem}
+.algo-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1.1rem}
+.algo-name{font-weight:700;font-size:0.95rem}
+.algo-complexity{font-size:0.72rem;font-family:var(--mono);color:var(--muted2)}
+.algo-body{font-size:0.83rem;color:var(--muted);line-height:1.7;margin-bottom:1rem}
+.algo-params{display:flex;flex-wrap:wrap;gap:6px}
+.algo-param{font-family:var(--mono);font-size:0.7rem;background:rgba(129,140,248,0.1);color:#a5b4fc;padding:3px 8px;border-radius:5px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+
+/* DIVIDER */
+.divider{height:1px;background:linear-gradient(to right,transparent,var(--border2),transparent);margin:1rem 0 2rem}
+
+/* PILL GRID */
+.pill-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:1.5rem}
+.pill{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:100px;padding:6px 14px;font-size:0.8rem;font-weight:500}
+.pill-dot{width:6px;height:6px;border-radius:50%}
+
+/* FORMULA */
+.formula{background:var(--code-bg);border:1px solid var(--border);border-radius:10px;padding:14px 20px;font-family:var(--mono);font-size:0.85rem;color:var(--accent3);margin:1rem 0;overflow-x:auto}
+
+/* HIGHLIGHT BOX */
+.highlight-box{background:linear-gradient(135deg,rgba(56,189,248,0.08),rgba(129,140,248,0.08));border:1px solid rgba(129,140,248,0.2);border-radius:14px;padding:2rem;margin:2rem 0}
+.highlight-box h3{font-family:var(--display);font-weight:700;margin-bottom:0.75rem}
+
+/* TWO COL */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start}
+@media(max-width:768px){.two-col{grid-template-columns:1fr}.nav-links{display:none}.search-viz{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <div class="logo">Hyper<span>Tune</span></div>
+    <ul class="nav-links">
+      <li><a href="#curriculum">Curriculum</a></li>
+      <li><a href="#concepts">Concepts</a></li>
+      <li><a href="#methods">Methods</a></li>
+      <li><a href="#code">Code</a></li>
+      <li><a href="#advanced">Advanced</a></li>
+    </ul>
+    <a href="#curriculum" class="nav-cta">Start Learning</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-content">
+    <div class="hero-badge">🎯 From Zero to Production-Ready</div>
+    <h1 class="hero-title">Master <span class="ht">Hyperparameter<br>Tuning</span> for ML & DL</h1>
+    <p class="hero-sub">The complete guide — from understanding what hyperparameters are, all the way to Optuna, Bayesian optimization, neural architecture search, and automated ML pipelines in Python & scikit-learn.</p>
+    <div class="hero-btns">
+      <a href="#curriculum" class="btn-primary">📚 Browse Curriculum →</a>
+      <a href="#code" class="btn-sec">⚡ Jump to Code</a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat-item"><div class="stat-num">12</div><div class="stat-label">Modules</div></div>
+      <div class="stat-item"><div class="stat-num">60+</div><div class="stat-label">Code Examples</div></div>
+      <div class="stat-item"><div class="stat-num">8</div><div class="stat-label">Search Methods</div></div>
+      <div class="stat-item"><div class="stat-num">ML+DL</div><div class="stat-label">Coverage</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- WHAT ARE HYPERPARAMETERS -->
+<section id="concepts">
+<div class="container">
+  <div class="section-label">Foundation</div>
+  <h2 class="section-title">What Are Hyperparameters?</h2>
+  <p class="section-sub">Before tuning, you need to deeply understand what you're tuning — and why it matters so much.</p>
+
+  <div class="two-col">
+    <div>
+      <div class="visual-block">
+        <div class="vb-title">Parameters vs Hyperparameters</div>
+        <table class="comp-table">
+          <thead><tr><th>Aspect</th><th>Parameters</th><th>Hyperparameters</th></tr></thead>
+          <tbody>
+            <tr><td>Learned by?</td><td>Model during training</td><td>You, before training</td></tr>
+            <tr><td>Examples</td><td>Weights, biases</td><td>learning rate, n_estimators</td></tr>
+            <tr><td>Updated via</td><td>Gradient descent</td><td>Search algorithms</td></tr>
+            <tr><td>Stored in</td><td>model.weights_</td><td>model.get_params()</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="tip-box">
+        <div class="tip-icon">💡</div>
+        <div class="tip-content"><strong>Key insight:</strong> Hyperparameters define the structure and learning process of a model. Getting them wrong means your model will never reach its potential — even with perfect data.</div>
+      </div>
+    </div>
+    <div>
+      <div class="visual-block">
+        <div class="vb-title">The Hyperparameter Tuning Loop</div>
+        <div class="path-steps" style="padding-left:0.5rem">
+          <div class="path-step">
+            <div class="step-dot" style="background:#1e40af;color:#93c5fd">1</div>
+            <div class="step-body"><div class="step-title">Define search space</div><div class="step-desc">Choose which hyperparameters to tune and their possible value ranges</div></div>
+          </div>
+          <div class="path-step">
+            <div class="step-dot" style="background:#14532d;color:#86efac">2</div>
+            <div class="step-body"><div class="step-title">Select search strategy</div><div class="step-desc">Grid, Random, Bayesian, Evolutionary — each has trade-offs</div></div>
+          </div>
+          <div class="path-step">
+            <div class="step-dot" style="background:#581c87;color:#d8b4fe">3</div>
+            <div class="step-body"><div class="step-title">Evaluate with cross-validation</div><div class="step-desc">Use k-fold CV to get reliable performance estimates</div></div>
+          </div>
+          <div class="path-step">
+            <div class="step-dot" style="background:#7c2d12;color:#fdba74">4</div>
+            <div class="step-body"><div class="step-title">Pick best configuration</div><div class="step-desc">Select the config that maximizes your chosen metric</div></div>
+          </div>
+          <div class="path-step">
+            <div class="step-dot" style="background:#881337;color:#fda4af">5</div>
+            <div class="step-body"><div class="step-title">Retrain & validate</div><div class="step-desc">Retrain on full data with best params, validate on held-out test set</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="concepts-grid">
+    <div class="concept-card blue">
+      <div class="concept-icon">🎛️</div>
+      <div class="concept-title">Model Complexity Hyperparams</div>
+      <div class="concept-desc">Control how powerful your model is — max_depth, n_estimators, C, gamma. Too high → overfitting. Too low → underfitting.</div>
+    </div>
+    <div class="concept-card purple">
+      <div class="concept-icon">📐</div>
+      <div class="concept-title">Regularization Hyperparams</div>
+      <div class="concept-desc">Alpha, lambda, dropout, L1/L2 penalties. These prevent overfitting by penalizing complex models during training.</div>
+    </div>
+    <div class="concept-card green">
+      <div class="concept-icon">⚡</div>
+      <div class="concept-title">Optimization Hyperparams</div>
+      <div class="concept-desc">Learning rate, batch size, momentum, weight decay. These control how the model learns — critical for deep learning.</div>
+    </div>
+    <div class="concept-card amber">
+      <div class="concept-icon">🏗️</div>
+      <div class="concept-title">Architecture Hyperparams</div>
+      <div class="concept-desc">Number of layers, hidden units, kernel size, number of heads. Define the structure of neural networks.</div>
+    </div>
+    <div class="concept-card pink">
+      <div class="concept-icon">🔁</div>
+      <div class="concept-title">Training Process Hyperparams</div>
+      <div class="concept-desc">Epochs, patience (early stopping), warmup steps, scheduler type. Control the training dynamics over time.</div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- CURRICULUM -->
+<section id="curriculum" style="background:var(--bg2)">
+<div class="container">
+  <div class="section-label">Full Curriculum</div>
+  <h2 class="section-title">All 12 Modules — Click to Expand</h2>
+  <p class="section-sub">From absolute basics to production-grade AutoML. Every module includes code, theory, and real examples.</p>
+
+  <div class="curriculum-grid" id="curriculumGrid">
+
+    <!-- Module 1 -->
+    <div class="module">
+      <div class="module-header" onclick="toggleModule(this)">
+        <span class="module-num">01</span>
+        <div class="module-icon" style="background:rgba(52,211,153,0.12)">🌱</div>
+        <div class="module-info">
+          <div class="module-title">Foundations of Hyperparameter Tuning</div>
+          <div class="module-meta">5 lessons · ~45 min</div>
+        </div>
+        <span class="module-tag tag-basics">Basics</span>
+        <span class="module-toggle">▾</span>
+      </div>
+      <div class="module-body">
+        <ul class="lesson-list">
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">1.1</span>Parameters vs Hyperparameters — the core distinction with examples from 5 models</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">1.2</span>The bias-variance tradeoff and how hyperparameters control it</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">1.3</span>Why overfitting happens and what hyperparameters prevent it</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">1.4</span>Cross-validation — k-fold, stratified, time-series — the foundation of reliable evaluation</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">1.5</span>Setting up your tuning environment: scikit-learn, pandas, matplotlib</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Module 2 -->
+    <div class="module">
+      <div class="module-header" onclick="toggleModule(this)">
+        <span class="module-num">02</span>
+        <div class="module-icon" style="background:rgba(56,189,248,0.12)">🔬</div>
+        <div class="module-info">
+          <div class="module-title">Grid Search — Exhaustive Tuning</div>
+          <div class="module-meta">4 lessons · ~35 min</div>
+        </div>
+        <span class="module-tag tag-ml">ML</span>
+        <span class="module-toggle">▾</span>
+      </div>
+      <div class="module-body">
+        <ul class="lesson-list">
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">2.1</span>How GridSearchCV works internally — the cross product explained visually</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">2.2</span>Implementing GridSearchCV on SVM, Random Forest, Logistic Regression</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">2.3</span>Extracting results: cv_results_, best_params_, best_score_</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">2.4</span>When Grid Search makes sense (and when it's too slow)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Module 3 -->
+    <div class="module">
+      <div class="module-header" onclick="toggleModule(this)">
+        <span class="module-num">03</span>
+        <div class="module-icon" style="background:rgba(56,189,248,0.12)">🎲</div>
+        <div class="module-info">
+          <div class="module-title">Random Search — Smart Sampling</div>
+          <div class="module-meta">4 lessons · ~30 min</div>
+        </div>
+        <span class="module-tag tag-ml">ML</span>
+        <span class="module-toggle">▾</span>
+      </div>
+      <div class="module-body">
+        <ul class="lesson-list">
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">3.1</span>Why Random Search beats Grid Search (Bergstra & Bengio, 2012 paper explained)</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">3.2</span>RandomizedSearchCV with scipy distributions — uniform, loguniform, randint</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">3.3</span>Setting n_iter, n_jobs=-1 for parallel execution</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">3.4</span>Visualizing the search space coverage — Grid vs Random</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Module 4 -->
+    <div class="module">
+      <div class="module-header" onclick="toggleModule(this)">
+        <span class="module-num">04</span>
+        <div class="module-icon" style="background:rgba(56,189,248,0.12)">🌲</div>
+        <div class="module-info">
+          <div class="module-title">Hyperparameters by Model Type — ML Deep Dive</div>
+          <div class="module-meta">8 lessons · ~90 min</div>
+        </div>
+        <span class="module-tag tag-ml">ML</span>
+        <span class="module-toggle">▾</span>
+      </div>
+      <div class="module-body">
+        <ul class="lesson-list">
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">4.1</span>Decision Trees: max_depth, min_samples_split, min_samples_leaf, max_features</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">4.2</span>Random Forests: n_estimators, max_features, bootstrap — what each really does</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">4.3</span>Gradient Boosting (sklearn): n_estimators, learning_rate, subsample — the triad</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">4.4</span>XGBoost hyperparams: colsample_bytree, gamma, reg_alpha, reg_lambda, scale_pos_weight</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">4.5</span>LightGBM: num_leaves, min_child_samples, feature_fraction, bagging_fraction</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">4.6</span>SVM: C, gamma, kernel — the geometric interpretation</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">4.7</span>Logistic Regression: C, penalty, solver compatibility matrix</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">4.8</span>KNN: n_neighbors, weights, metric — distance function matters</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Module 5 -->
+    <div class="module">
+      <div class="module-header" onclick="toggleModule(this)">
+        <span class="module-num">05</span>
+        <div class="module-icon" style="background:rgba(129,140,248,0.12)">🧠</div>
+        <div class="module-info">
+          <div class="module-title">Deep Learning Hyperparameters — Neural Networks</div>
+          <div class="module-meta">9 lessons · ~120 min</div>
+        </div>
+        <span class="module-tag tag-dl">DL</span>
+        <span class="module-toggle">▾</span>
+      </div>
+      <div class="module-body">
+        <ul class="lesson-list">
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">5.1</span>Learning rate — the most critical DL hyperparameter and learning rate schedules</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">5.2</span>Batch size — its effect on gradient noise, memory, and generalization</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">5.3</span>Network depth and width — how to choose hidden layers and units</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">5.4</span>Activation functions: ReLU, LeakyReLU, GELU, SiLU — when to use which</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">5.5</span>Dropout rate: theory and practical values (0.1–0.5)</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">5.6</span>Weight initialization: glorot, he, orthogonal — why initialization matters</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">5.7</span>Optimizer hyperparams: Adam beta1/beta2/epsilon, SGD momentum, weight decay</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">5.8</span>Batch normalization and layer normalization hyperparameters</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">5.9</span>Early stopping: patience, min_delta, restore_best_weights</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Module 6 -->
+    <div class="module">
+      <div class="module-header" onclick="toggleModule(this)">
+        <span class="module-num">06</span>
+        <div class="module-icon" style="background:rgba(129,140,248,0.12)">🔵</div>
+        <div class="module-info">
+          <div class="module-title">Bayesian Optimization — Intelligent Search</div>
+          <div class="module-meta">6 lessons · ~75 min</div>
+        </div>
+        <span class="module-tag tag-dl">DL</span>
+        <span class="module-toggle">▾</span>
+      </div>
+      <div class="module-body">
+        <ul class="lesson-list">
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">6.1</span>Gaussian Processes for function approximation — the math made intuitive</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">6.2</span>Acquisition functions: EI (Expected Improvement), UCB, PI — what they optimize</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">6.3</span>scikit-optimize (skopt) — BayesSearchCV in practice</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">6.4</span>Optuna: define-by-run API, trial.suggest_float / suggest_int / suggest_categorical</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">6.5</span>Optuna samplers: TPE, CMA-ES, NSGA-II for multi-objective</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">6.6</span>Hyperopt: Tree-structured Parzen Estimator (TPE) from scratch</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Module 7 -->
+    <div class="module">
+      <div class="module-header" onclick="toggleModule(this)">
+        <span class="module-num">07</span>
+        <div class="module-icon" style="background:rgba(244,114,182,0.12)">🚀</div>
+        <div class="module-info">
+          <div class="module-title">Advanced Search Strategies</div>
+          <div class="module-meta">6 lessons · ~80 min</div>
+        </div>
+        <span class="module-tag tag-adv">Advanced</span>
+        <span class="module-toggle">▾</span>
+      </div>
+      <div class="module-body">
+        <ul class="lesson-list">
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">7.1</span>Hyperband: multi-fidelity optimization — early stopping meets random search</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">7.2</span>BOHB (Bayesian Optimization + HyperBand) — the best of both worlds</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">7.3</span>Successive Halving and SuccessiveHalvingCV in sklearn</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">7.4</span>Evolutionary algorithms (CMA-ES) for hyperparameter optimization</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">7.5</span>Population-Based Training (PBT) for deep learning</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">7.6</span>Quasi-random sequences: Sobol, Halton — better coverage than random</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Module 8 -->
+    <div class="module">
+      <div class="module-header" onclick="toggleModule(this)">
+        <span class="module-num">08</span>
+        <div class="module-icon" style="background:rgba(56,189,248,0.12)">📊</div>
+        <div class="module-info">
+          <div class="module-title">Learning Rate Scheduling Mastery</div>
+          <div class="module-meta">5 lessons · ~50 min</div>
+        </div>
+        <span class="module-tag tag-dl">DL</span>
+        <span class="module-toggle">▾</span>
+      </div>
+      <div class="module-body">
+        <ul class="lesson-list">
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">8.1</span>Learning rate range test (LR finder) — find the optimal LR in 5 minutes</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">8.2</span>Step decay, exponential decay, polynomial decay schedulers</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">8.3</span>Cosine annealing and warm restarts (SGDR) — cyclical LR schedules</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">8.4</span>Linear warmup + cosine decay (used in BERT, GPT, ViT)</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">8.5</span>ReduceLROnPlateau — adaptive scheduling based on validation loss</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Module 9 -->
+    <div class="module">
+      <div class="module-header" onclick="toggleModule(this)">
+        <span class="module-num">09</span>
+        <div class="module-icon" style="background:rgba(244,114,182,0.12)">🤖</div>
+        <div class="module-info">
+          <div class="module-title">AutoML & Neural Architecture Search</div>
+          <div class="module-meta">5 lessons · ~70 min</div>
+        </div>
+        <span class="module-tag tag-adv">Advanced</span>
+        <span class="module-toggle">▾</span>
+      </div>
+      <div class="module-body">
+        <ul class="lesson-list">
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">9.1</span>Auto-sklearn: automated algorithm selection + hyperparameter optimization</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">9.2</span>FLAML: fast lightweight AutoML by Microsoft — practical usage</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">9.3</span>KerasTuner for neural architecture search with Keras/TensorFlow</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">9.4</span>Optuna + PyTorch — full DL tuning pipeline end-to-end</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">9.5</span>NAS concepts: differentiable NAS (DARTS), one-shot models</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Module 10 -->
+    <div class="module">
+      <div class="module-header" onclick="toggleModule(this)">
+        <span class="module-num">10</span>
+        <div class="module-icon" style="background:rgba(245,158,11,0.12)">🔧</div>
+        <div class="module-info">
+          <div class="module-title">Pipeline Integration & Best Practices</div>
+          <div class="module-meta">5 lessons · ~55 min</div>
+        </div>
+        <span class="module-tag tag-prod">Production</span>
+        <span class="module-toggle">▾</span>
+      </div>
+      <div class="module-body">
+        <ul class="lesson-list">
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">10.1</span>Tuning inside sklearn Pipelines: preprocessing + model in one search</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">10.2</span>Nested cross-validation: inner loop for tuning, outer for evaluation</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">10.3</span>Avoiding data leakage in hyperparameter tuning — the subtle traps</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">10.4</span>Feature selection as a hyperparameter: SelectKBest, RFE in the search</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">10.5</span>Caching with Memory() to speed up repeated pipeline fits</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Module 11 -->
+    <div class="module">
+      <div class="module-header" onclick="toggleModule(this)">
+        <span class="module-num">11</span>
+        <div class="module-icon" style="background:rgba(244,114,182,0.12)">📈</div>
+        <div class="module-info">
+          <div class="module-title">Analysis & Visualization of Tuning Results</div>
+          <div class="module-meta">4 lessons · ~40 min</div>
+        </div>
+        <span class="module-tag tag-adv">Advanced</span>
+        <span class="module-toggle">▾</span>
+      </div>
+      <div class="module-body">
+        <ul class="lesson-list">
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">11.1</span>Plotting parallel coordinates for hyperparameter importance</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">11.2</span>Hyperparameter importance with fANOVA and Optuna's importance plot</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">11.3</span>Contour plots: 2D interaction between hyperparameters</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">11.4</span>Convergence plots — when to stop tuning</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Module 12 -->
+    <div class="module">
+      <div class="module-header" onclick="toggleModule(this)">
+        <span class="module-num">12</span>
+        <div class="module-icon" style="background:rgba(245,158,11,0.12)">🏭</div>
+        <div class="module-info">
+          <div class="module-title">Production-Grade Tuning at Scale</div>
+          <div class="module-meta">5 lessons · ~65 min</div>
+        </div>
+        <span class="module-tag tag-prod">Production</span>
+        <span class="module-toggle">▾</span>
+      </div>
+      <div class="module-body">
+        <ul class="lesson-list">
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">12.1</span>MLflow + Optuna: experiment tracking for hyperparameter runs</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">12.2</span>Ray Tune: distributed hyperparameter tuning on clusters</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">12.3</span>W&B Sweeps: Bayesian + random + grid with real-time dashboard</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">12.4</span>Cost-aware hyperparameter optimization: balancing accuracy vs inference speed</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">12.5</span>Reproducing tuning results: seeds, determinism, and experiment logging</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div>
+</section>
+
+<!-- METHODS COMPARISON -->
+<section id="methods">
+<div class="container">
+  <div class="section-label">Search Methods</div>
+  <h2 class="section-title">All Tuning Methods Compared</h2>
+  <p class="section-sub">Choose the right method based on your budget, model complexity, and time constraints.</p>
+
+  <div class="visual-block">
+    <table class="comp-table">
+      <thead>
+        <tr>
+          <th>Method</th>
+          <th>How it works</th>
+          <th>Best for</th>
+          <th>Speed</th>
+          <th>Quality</th>
+          <th>Library</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="method-name">Grid Search</span></td>
+          <td style="font-size:0.82rem;color:var(--muted)">Exhaustively tries every combination in the grid</td>
+          <td style="font-size:0.82rem;color:var(--muted)">&lt;3 hyperparams, small search space</td>
+          <td><span class="badge-bad">Very slow</span></td>
+          <td><span class="badge-good">Exhaustive</span></td>
+          <td><code style="font-size:0.75rem">GridSearchCV</code></td>
+        </tr>
+        <tr>
+          <td><span class="method-name">Random Search</span></td>
+          <td style="font-size:0.82rem;color:var(--muted)">Randomly samples from distributions</td>
+          <td style="font-size:0.82rem;color:var(--muted)">Many hyperparams, limited budget</td>
+          <td><span class="badge-ok">Moderate</span></td>
+          <td><span class="badge-ok">Good</span></td>
+          <td><code style="font-size:0.75rem">RandomizedSearchCV</code></td>
+        </tr>
+        <tr>
+          <td><span class="method-name">Bayesian (GP)</span></td>
+          <td style="font-size:0.82rem;color:var(--muted)">Builds a surrogate model of the objective function</td>
+          <td style="font-size:0.82rem;color:var(--muted)">Expensive evals, continuous params</td>
+          <td><span class="badge-ok">Moderate</span></td>
+          <td><span class="badge-good">Excellent</span></td>
+          <td><code style="font-size:0.75rem">skopt</code></td>
+        </tr>
+        <tr>
+          <td><span class="method-name">TPE (Optuna)</span></td>
+          <td style="font-size:0.82rem;color:var(--muted)">Tree-structured Parzen Estimators model good/bad configs</td>
+          <td style="font-size:0.82rem;color:var(--muted)">General purpose, mixed spaces</td>
+          <td><span class="badge-good">Fast</span></td>
+          <td><span class="badge-good">Excellent</span></td>
+          <td><code style="font-size:0.75rem">optuna</code></td>
+        </tr>
+        <tr>
+          <td><span class="method-name">Hyperband</span></td>
+          <td style="font-size:0.82rem;color:var(--muted)">Multi-fidelity: allocate budget to promising configs</td>
+          <td style="font-size:0.82rem;color:var(--muted)">DL with early stopping possible</td>
+          <td><span class="badge-good">Very fast</span></td>
+          <td><span class="badge-ok">Good</span></td>
+          <td><code style="font-size:0.75rem">ray[tune]</code></td>
+        </tr>
+        <tr>
+          <td><span class="method-name">CMA-ES</span></td>
+          <td style="font-size:0.82rem;color:var(--muted)">Evolution strategy with covariance matrix adaptation</td>
+          <td style="font-size:0.82rem;color:var(--muted)">Continuous, high-dim search spaces</td>
+          <td><span class="badge-ok">Moderate</span></td>
+          <td><span class="badge-good">Excellent</span></td>
+          <td><code style="font-size:0.75rem">optuna / cmaes</code></td>
+        </tr>
+        <tr>
+          <td><span class="method-name">Successive Halving</span></td>
+          <td style="font-size:0.82rem;color:var(--muted)">Eliminates poor configs early, promotes survivors</td>
+          <td style="font-size:0.82rem;color:var(--muted)">Large candidate pools, fast evals</td>
+          <td><span class="badge-good">Very fast</span></td>
+          <td><span class="badge-ok">Good</span></td>
+          <td><code style="font-size:0.75rem">HalvingGridSearchCV</code></td>
+        </tr>
+        <tr>
+          <td><span class="method-name">PBT</span></td>
+          <td style="font-size:0.82rem;color:var(--muted)">Population trains in parallel; weak agents copy strong ones</td>
+          <td style="font-size:0.82rem;color:var(--muted)">Large DL models, RL training</td>
+          <td><span class="badge-good">Parallel</span></td>
+          <td><span class="badge-good">Excellent</span></td>
+          <td><code style="font-size:0.75rem">ray[tune]</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- HOW BAYESIAN WORKS VISUALLY -->
+  <div class="highlight-box">
+    <h3>🔵 How Bayesian Optimization Works — Intuition</h3>
+    <p style="color:var(--muted);font-size:0.9rem;margin-bottom:1.5rem">Imagine you're trying to find the tallest mountain in a fog. You can only query one point at a time. Bayesian optimization builds a <strong style="color:var(--accent)">probabilistic map</strong> of the landscape after each query and decides intelligently where to look next.</p>
+    <div class="search-viz">
+      <div class="search-cell" style="background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.2)">
+        <div style="color:var(--accent);font-size:1.3rem">🗺️</div>
+        <div style="margin-top:6px;font-size:0.82rem;color:var(--text)">Surrogate Model</div>
+        <div class="val">Gaussian Process approximates the true objective function</div>
+      </div>
+      <div class="search-cell" style="background:rgba(129,140,248,0.08);border:1px solid rgba(129,140,248,0.2)">
+        <div style="color:var(--accent2);font-size:1.3rem">⚡</div>
+        <div style="margin-top:6px;font-size:0.82rem;color:var(--text)">Acquisition Function</div>
+        <div class="val">EI balances exploitation (near known best) + exploration (uncertain regions)</div>
+      </div>
+      <div class="search-cell" style="background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.2)">
+        <div style="color:var(--accent3);font-size:1.3rem">🎯</div>
+        <div style="margin-top:6px;font-size:0.82rem;color:var(--text)">Update & Repeat</div>
+        <div class="val">Evaluate the point, update the model, pick next point. Gets smarter each step.</div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- CODE SECTION -->
+<section id="code" style="background:var(--bg2);padding:5rem 2rem">
+<div class="container">
+  <div class="section-label">Code Examples</div>
+  <h2 class="section-title">Complete Python Implementations</h2>
+  <p class="section-sub">Every method, fully implemented and ready to run. Copy → paste → tune.</p>
+
+  <!-- GRID SEARCH -->
+  <div style="margin-bottom:3rem">
+    <h3 style="font-size:1.15rem;font-weight:700;margin-bottom:1rem;color:var(--accent3)">Module 2 — Grid Search</h3>
+    <div class="code-window">
+      <div class="code-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><div class="code-filename">grid_search.py</div></div>
+      <div class="code-body"><pre><span class="c-imp">from</span> <span class="c-cls">sklearn.model_selection</span> <span class="c-imp">import</span> GridSearchCV, StratifiedKFold
+<span class="c-imp">from</span> <span class="c-cls">sklearn.ensemble</span> <span class="c-imp">import</span> RandomForestClassifier
+<span class="c-imp">from</span> <span class="c-cls">sklearn.datasets</span> <span class="c-imp">import</span> load_breast_cancer
+<span class="c-imp">from</span> <span class="c-cls">sklearn.preprocessing</span> <span class="c-imp">import</span> StandardScaler
+<span class="c-imp">from</span> <span class="c-cls">sklearn.pipeline</span> <span class="c-imp">import</span> Pipeline
+<span class="c-imp">import</span> <span class="c-cls">pandas</span> <span class="c-imp">as</span> pd
+
+<span class="c-cm"># Load data</span>
+X, y = load_breast_cancer(return_X_y=<span class="c-kw">True</span>)
+
+<span class="c-cm"># Build a pipeline: scaler + model (prevents data leakage!)</span>
+pipe = Pipeline([
+    (<span class="c-str">'scaler'</span>, StandardScaler()),
+    (<span class="c-str">'rf'</span>, RandomForestClassifier(random_state=<span class="c-num">42</span>, n_jobs=-<span class="c-num">1</span>))
+])
+
+<span class="c-cm"># Define the hyperparameter grid</span>
+<span class="c-cm"># NOTE: prefix param name with step name + '__'</span>
+param_grid = {
+    <span class="c-str">'rf__n_estimators'</span>: [<span class="c-num">100</span>, <span class="c-num">200</span>, <span class="c-num">300</span>],
+    <span class="c-str">'rf__max_depth'</span>: [<span class="c-kw">None</span>, <span class="c-num">5</span>, <span class="c-num">10</span>, <span class="c-num">20</span>],
+    <span class="c-str">'rf__min_samples_split'</span>: [<span class="c-num">2</span>, <span class="c-num">5</span>, <span class="c-num">10</span>],
+    <span class="c-str">'rf__max_features'</span>: [<span class="c-str">'sqrt'</span>, <span class="c-str">'log2'</span>, <span class="c-num">0.5</span>],
+}
+<span class="c-cm"># Total combinations: 3 × 4 × 3 × 3 = 108 fits × 5 folds = 540 models</span>
+
+<span class="c-cm"># Stratified k-fold ensures class balance in each fold</span>
+cv = StratifiedKFold(n_splits=<span class="c-num">5</span>, shuffle=<span class="c-kw">True</span>, random_state=<span class="c-num">42</span>)
+
+grid_search = GridSearchCV(
+    estimator=pipe,
+    param_grid=param_grid,
+    cv=cv,
+    scoring=<span class="c-str">'roc_auc'</span>,      <span class="c-cm"># Use AUC for imbalanced data</span>
+    n_jobs=-<span class="c-num">1</span>,              <span class="c-cm"># Use all CPU cores</span>
+    verbose=<span class="c-num">1</span>,
+    return_train_score=<span class="c-kw">True</span>  <span class="c-cm"># Detect overfitting</span>
+)
+
+grid_search.fit(X, y)
+
+<span class="c-cm"># Results</span>
+<span class="c-fn">print</span>(<span class="c-str">f"Best AUC: {grid_search.best_score_:.4f}"</span>)
+<span class="c-fn">print</span>(<span class="c-str">f"Best params: {grid_search.best_params_}"</span>)
+
+<span class="c-cm"># All results as DataFrame — great for analysis</span>
+results = pd.DataFrame(grid_search.cv_results_)
+results_sorted = results.sort_values(<span class="c-str">'rank_test_score'</span>)
+<span class="c-fn">print</span>(results_sorted[[
+    <span class="c-str">'param_rf__n_estimators'</span>, <span class="c-str">'param_rf__max_depth'</span>,
+    <span class="c-str">'mean_test_score'</span>, <span class="c-str">'std_test_score'</span>,
+    <span class="c-str">'mean_train_score'</span>  <span class="c-cm"># Compare train vs val to detect overfit</span>
+]].head(<span class="c-num">10</span>))
+
+<span class="c-cm"># Get the best fitted model — ready for prediction!</span>
+best_model = grid_search.best_estimator_</pre></div>
+    </div>
+
+    <div class="tip-box">
+      <div class="tip-icon">💡</div>
+      <div class="tip-content"><strong>Pro tip:</strong> Always put your scaler inside the Pipeline before running GridSearchCV. If you scale first and then search, you're leaking test fold statistics into training — your results will be overly optimistic!</div>
+    </div>
+  </div>
+
+  <!-- RANDOM SEARCH -->
+  <div style="margin-bottom:3rem">
+    <h3 style="font-size:1.15rem;font-weight:700;margin-bottom:1rem;color:var(--accent)">Module 3 — Random Search with Distributions</h3>
+    <div class="code-window">
+      <div class="code-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><div class="code-filename">random_search.py</div></div>
+      <div class="code-body"><pre><span class="c-imp">from</span> <span class="c-cls">sklearn.model_selection</span> <span class="c-imp">import</span> RandomizedSearchCV
+<span class="c-imp">from</span> <span class="c-cls">sklearn.ensemble</span> <span class="c-imp">import</span> GradientBoostingClassifier
+<span class="c-imp">from</span> <span class="c-cls">scipy.stats</span> <span class="c-imp">import</span> loguniform, uniform, randint
+<span class="c-imp">import</span> <span class="c-cls">numpy</span> <span class="c-imp">as</span> np
+
+<span class="c-cm"># ── Key insight ──────────────────────────────────────────────────────────────
+# Use DISTRIBUTIONS, not lists, for continuous hyperparameters.
+# loguniform is essential for learning_rate — you want to explore
+# 0.001, 0.01, 0.1 equally, not just the endpoints.
+# ─────────────────────────────────────────────────────────────────────────────</span>
+
+param_dist = {
+    <span class="c-str">'n_estimators'</span>: randint(<span class="c-num">100</span>, <span class="c-num">1000</span>),           <span class="c-cm"># Integer uniform [100, 1000)</span>
+    <span class="c-str">'learning_rate'</span>: loguniform(<span class="c-num">1e-4</span>, <span class="c-num">0.5</span>),         <span class="c-cm"># Log scale! 0.0001 to 0.5</span>
+    <span class="c-str">'max_depth'</span>: randint(<span class="c-num">2</span>, <span class="c-num">12</span>),
+    <span class="c-str">'subsample'</span>: uniform(<span class="c-num">0.5</span>, <span class="c-num">0.5</span>),                <span class="c-cm"># Uniform [0.5, 1.0]</span>
+    <span class="c-str">'min_samples_leaf'</span>: randint(<span class="c-num">1</span>, <span class="c-num">20</span>),
+    <span class="c-str">'max_features'</span>: uniform(<span class="c-num">0.3</span>, <span class="c-num">0.7</span>),             <span class="c-cm"># [0.3, 1.0]</span>
+    <span class="c-str">'min_samples_split'</span>: randint(<span class="c-num">2</span>, <span class="c-num">20</span>),
+}
+
+rs = RandomizedSearchCV(
+    GradientBoostingClassifier(random_state=<span class="c-num">42</span>),
+    param_distributions=param_dist,
+    n_iter=<span class="c-num">100</span>,           <span class="c-cm"># 100 random samples (vs 1000s for grid)</span>
+    cv=<span class="c-num">5</span>,
+    scoring=<span class="c-str">'f1_weighted'</span>,
+    n_jobs=-<span class="c-num">1</span>,
+    random_state=<span class="c-num">42</span>,      <span class="c-cm"># Reproducibility</span>
+    verbose=<span class="c-num">2</span>
+)
+rs.fit(X_train, y_train)
+
+<span class="c-cm"># Visualize search coverage</span>
+<span class="c-imp">import</span> <span class="c-cls">matplotlib.pyplot</span> <span class="c-imp">as</span> plt
+results = pd.DataFrame(rs.cv_results_)
+
+fig, axes = plt.subplots(<span class="c-num">1</span>, <span class="c-num">2</span>, figsize=(<span class="c-num">12</span>, <span class="c-num">4</span>))
+axes[<span class="c-num">0</span>].scatter(
+    results[<span class="c-str">'param_learning_rate'</span>].astype(<span class="c-fn">float</span>),
+    results[<span class="c-str">'mean_test_score'</span>],
+    c=results[<span class="c-str">'param_max_depth'</span>].astype(<span class="c-fn">float</span>),
+    cmap=<span class="c-str">'viridis'</span>, alpha=<span class="c-num">0.7</span>
+)
+axes[<span class="c-num">0</span>].set_xscale(<span class="c-str">'log'</span>)
+axes[<span class="c-num">0</span>].set_xlabel(<span class="c-str">'Learning Rate (log scale)'</span>)
+axes[<span class="c-num">0</span>].set_ylabel(<span class="c-str">'CV Score'</span>)
+plt.tight_layout()
+plt.savefig(<span class="c-str">'random_search_results.png'</span>, dpi=<span class="c-num">150</span>)</pre></div>
+    </div>
+  </div>
+
+  <!-- OPTUNA -->
+  <div style="margin-bottom:3rem">
+    <h3 style="font-size:1.15rem;font-weight:700;margin-bottom:1rem;color:var(--accent2)">Module 6 — Optuna (Bayesian / TPE)</h3>
+    <div class="code-window">
+      <div class="code-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><div class="code-filename">optuna_xgboost.py</div></div>
+      <div class="code-body"><pre><span class="c-imp">import</span> <span class="c-cls">optuna</span>
+<span class="c-imp">from</span> <span class="c-cls">optuna.samplers</span> <span class="c-imp">import</span> TPESampler
+<span class="c-imp">import</span> <span class="c-cls">xgboost</span> <span class="c-imp">as</span> xgb
+<span class="c-imp">from</span> <span class="c-cls">sklearn.model_selection</span> <span class="c-imp">import</span> cross_val_score
+
+<span class="c-cm"># Optuna's "define-by-run" API — the search space IS the function</span>
+<span class="c-kw">def</span> <span class="c-fn">objective</span>(trial):
+    <span class="c-cm"># ── Suggest hyperparameters for this trial ──────────────────────────────</span>
+    params = {
+        <span class="c-str">'n_estimators'</span>: trial.suggest_int(<span class="c-str">'n_estimators'</span>, <span class="c-num">100</span>, <span class="c-num">1000</span>, step=<span class="c-num">50</span>),
+        <span class="c-str">'max_depth'</span>: trial.suggest_int(<span class="c-str">'max_depth'</span>, <span class="c-num">3</span>, <span class="c-num">12</span>),
+        <span class="c-str">'learning_rate'</span>: trial.suggest_float(<span class="c-str">'learning_rate'</span>, <span class="c-num">1e-4</span>, <span class="c-num">0.3</span>, log=<span class="c-kw">True</span>),
+        <span class="c-str">'subsample'</span>: trial.suggest_float(<span class="c-str">'subsample'</span>, <span class="c-num">0.5</span>, <span class="c-num">1.0</span>),
+        <span class="c-str">'colsample_bytree'</span>: trial.suggest_float(<span class="c-str">'colsample_bytree'</span>, <span class="c-num">0.4</span>, <span class="c-num">1.0</span>),
+        <span class="c-str">'reg_alpha'</span>: trial.suggest_float(<span class="c-str">'reg_alpha'</span>, <span class="c-num">1e-8</span>, <span class="c-num">10.0</span>, log=<span class="c-kw">True</span>),
+        <span class="c-str">'reg_lambda'</span>: trial.suggest_float(<span class="c-str">'reg_lambda'</span>, <span class="c-num">1e-8</span>, <span class="c-num">10.0</span>, log=<span class="c-kw">True</span>),
+        <span class="c-str">'gamma'</span>: trial.suggest_float(<span class="c-str">'gamma'</span>, <span class="c-num">0</span>, <span class="c-num">5</span>),
+        <span class="c-str">'min_child_weight'</span>: trial.suggest_int(<span class="c-str">'min_child_weight'</span>, <span class="c-num">1</span>, <span class="c-num">10</span>),
+        <span class="c-str">'tree_method'</span>: <span class="c-str">'hist'</span>,   <span class="c-cm"># Fast histogram-based training</span>
+        <span class="c-str">'eval_metric'</span>: <span class="c-str">'logloss'</span>,
+        <span class="c-str">'random_state'</span>: <span class="c-num">42</span>,
+    }
+    model = xgb.XGBClassifier(**params)
+    scores = cross_val_score(model, X, y, cv=<span class="c-num">5</span>, scoring=<span class="c-str">'roc_auc'</span>, n_jobs=-<span class="c-num">1</span>)
+    <span class="c-kw">return</span> scores.mean()   <span class="c-cm"># Optuna maximizes this by default</span>
+
+<span class="c-cm"># Create and run the study</span>
+study = optuna.create_study(
+    direction=<span class="c-str">'maximize'</span>,
+    sampler=TPESampler(seed=<span class="c-num">42</span>),
+    study_name=<span class="c-str">'xgb_tuning'</span>,
+    <span class="c-cm"># storage='sqlite:///optuna_study.db'  # Persist to disk!</span>
+)
+
+<span class="c-cm"># Add pruning callback — kills bad trials early (like early stopping)</span>
+study.optimize(
+    objective,
+    n_trials=<span class="c-num">150</span>,
+    timeout=<span class="c-num">600</span>,          <span class="c-cm"># Stop after 600 seconds</span>
+    show_progress_bar=<span class="c-kw">True</span>
+)
+
+<span class="c-fn">print</span>(<span class="c-str">f"\nBest trial: {study.best_trial.number}"</span>)
+<span class="c-fn">print</span>(<span class="c-str">f"Best AUC:   {study.best_value:.4f}"</span>)
+<span class="c-fn">print</span>(<span class="c-str">f"Best params:"</span>)
+<span class="c-kw">for</span> key, val <span class="c-kw">in</span> study.best_params.items():
+    <span class="c-fn">print</span>(<span class="c-str">f"  {key}: {val}"</span>)
+
+<span class="c-cm"># ── Visualizations ───────────────────────────────────────────────────────────</span>
+<span class="c-imp">from</span> <span class="c-cls">optuna.visualization</span> <span class="c-imp">import</span> (
+    plot_optimization_history,
+    plot_param_importances,
+    plot_contour,
+    plot_parallel_coordinate
+)
+plot_optimization_history(study).show()    <span class="c-cm"># Convergence</span>
+plot_param_importances(study).show()       <span class="c-cm"># Which param matters most?</span>
+plot_contour(study, params=[<span class="c-str">'learning_rate'</span>, <span class="c-str">'max_depth'</span>]).show()
+plot_parallel_coordinate(study).show()    <span class="c-cm"># All params, all trials</span></pre></div>
+    </div>
+  </div>
+
+  <!-- DEEP LEARNING -->
+  <div style="margin-bottom:3rem">
+    <h3 style="font-size:1.15rem;font-weight:700;margin-bottom:1rem;color:var(--accent5)">Module 5 — Deep Learning Hyperparameter Tuning (PyTorch + Optuna)</h3>
+    <div class="code-window">
+      <div class="code-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><div class="code-filename">dl_tuning_pytorch.py</div></div>
+      <div class="code-body"><pre><span class="c-imp">import</span> <span class="c-cls">optuna</span>
+<span class="c-imp">import</span> <span class="c-cls">torch</span>
+<span class="c-imp">import</span> <span class="c-cls">torch.nn</span> <span class="c-imp">as</span> nn
+<span class="c-imp">import</span> <span class="c-cls">torch.optim</span> <span class="c-imp">as</span> optim
+<span class="c-imp">from</span> <span class="c-cls">torch.utils.data</span> <span class="c-imp">import</span> DataLoader, TensorDataset
+
+device = torch.device(<span class="c-str">'cuda'</span> <span class="c-kw">if</span> torch.cuda.is_available() <span class="c-kw">else</span> <span class="c-str">'cpu'</span>)
+
+<span class="c-kw">def</span> <span class="c-fn">build_model</span>(trial, input_dim):
+    <span class="c-cm">"""Dynamically build network based on trial suggestions."""</span>
+    <span class="c-cm"># Tune the number of layers itself!</span>
+    n_layers = trial.suggest_int(<span class="c-str">'n_layers'</span>, <span class="c-num">1</span>, <span class="c-num">5</span>)
+    dropout = trial.suggest_float(<span class="c-str">'dropout'</span>, <span class="c-num">0.1</span>, <span class="c-num">0.5</span>)
+    activation_name = trial.suggest_categorical(<span class="c-str">'activation'</span>, [<span class="c-str">'relu'</span>, <span class="c-str">'leaky_relu'</span>, <span class="c-str">'gelu'</span>])
+    activations = {<span class="c-str">'relu'</span>: nn.ReLU(), <span class="c-str">'leaky_relu'</span>: nn.LeakyReLU(<span class="c-num">0.1</span>), <span class="c-str">'gelu'</span>: nn.GELU()}
+
+    layers = []
+    in_features = input_dim
+    <span class="c-kw">for</span> i <span class="c-kw">in</span> <span class="c-fn">range</span>(n_layers):
+        out_features = trial.suggest_int(<span class="c-str">f'n_units_l{i}'</span>, <span class="c-num">32</span>, <span class="c-num">512</span>, log=<span class="c-kw">True</span>)
+        layers += [
+            nn.Linear(in_features, out_features),
+            nn.BatchNorm1d(out_features),
+            activations[activation_name],
+            nn.Dropout(dropout),
+        ]
+        in_features = out_features
+    layers.append(nn.Linear(in_features, <span class="c-num">1</span>))
+    <span class="c-kw">return</span> nn.Sequential(*layers)
+
+<span class="c-kw">def</span> <span class="c-fn">objective</span>(trial):
+    <span class="c-cm"># ── Architecture ──────────────────────────────────────────────────────────</span>
+    model = <span class="c-fn">build_model</span>(trial, input_dim=X_train.shape[<span class="c-num">1</span>]).to(device)
+
+    <span class="c-cm"># ── Optimizer ─────────────────────────────────────────────────────────────</span>
+    optimizer_name = trial.suggest_categorical(<span class="c-str">'optimizer'</span>, [<span class="c-str">'Adam'</span>, <span class="c-str">'AdamW'</span>, <span class="c-str">'SGD'</span>])
+    lr = trial.suggest_float(<span class="c-str">'lr'</span>, <span class="c-num">1e-5</span>, <span class="c-num">1e-1</span>, log=<span class="c-kw">True</span>)
+    weight_decay = trial.suggest_float(<span class="c-str">'weight_decay'</span>, <span class="c-num">1e-6</span>, <span class="c-num">1e-2</span>, log=<span class="c-kw">True</span>)
+
+    <span class="c-kw">if</span> optimizer_name == <span class="c-str">'SGD'</span>:
+        momentum = trial.suggest_float(<span class="c-str">'momentum'</span>, <span class="c-num">0.8</span>, <span class="c-num">0.99</span>)
+        optimizer = optim.SGD(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
+    <span class="c-kw">else</span>:
+        optimizer = <span class="c-fn">getattr</span>(optim, optimizer_name)(
+            model.parameters(), lr=lr, weight_decay=weight_decay
+        )
+
+    <span class="c-cm"># ── Scheduler ─────────────────────────────────────────────────────────────</span>
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=<span class="c-num">50</span>)
+    batch_size = trial.suggest_categorical(<span class="c-str">'batch_size'</span>, [<span class="c-num">32</span>, <span class="c-num">64</span>, <span class="c-num">128</span>, <span class="c-num">256</span>])
+
+    <span class="c-cm"># ── Training loop ─────────────────────────────────────────────────────────</span>
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=<span class="c-kw">True</span>)
+    criterion = nn.BCEWithLogitsLoss()
+
+    <span class="c-kw">for</span> epoch <span class="c-kw">in</span> <span class="c-fn">range</span>(<span class="c-num">50</span>):
+        model.train()
+        <span class="c-kw">for</span> Xb, yb <span class="c-kw">in</span> train_loader:
+            optimizer.zero_grad()
+            loss = <span class="c-fn">criterion</span>(model(Xb).squeeze(), yb.float())
+            loss.backward()
+            nn.utils.clip_grad_norm_(model.parameters(), <span class="c-num">1.0</span>)  <span class="c-cm"># Gradient clipping</span>
+            optimizer.step()
+        scheduler.step()
+
+        <span class="c-cm"># Pruning: kill bad trials early using intermediate values</span>
+        val_loss = <span class="c-fn">evaluate</span>(model, val_loader, criterion)
+        trial.report(val_loss, epoch)
+        <span class="c-kw">if</span> trial.should_prune():
+            <span class="c-kw">raise</span> optuna.exceptions.TrialPruned()
+
+    <span class="c-kw">return</span> <span class="c-fn">evaluate</span>(model, val_loader, criterion)
+
+<span class="c-cm"># Pruner kills poor trials before they finish training</span>
+study = optuna.create_study(
+    direction=<span class="c-str">'minimize'</span>,
+    pruner=optuna.pruners.MedianPruner(n_startup_trials=<span class="c-num">10</span>, n_warmup_steps=<span class="c-num">20</span>)
+)
+study.optimize(objective, n_trials=<span class="c-num">100</span>, timeout=<span class="c-num">3600</span>)</pre></div>
+    </div>
+  </div>
+
+  <!-- SKLEARN SUCCESSIVE HALVING -->
+  <div style="margin-bottom:3rem">
+    <h3 style="font-size:1.15rem;font-weight:700;margin-bottom:1rem;color:var(--accent4)">Module 7 — Successive Halving (Built into sklearn!)</h3>
+    <div class="code-window">
+      <div class="code-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><div class="code-filename">successive_halving.py</div></div>
+      <div class="code-body"><pre><span class="c-imp">from</span> <span class="c-cls">sklearn.experimental</span> <span class="c-imp">import</span> enable_halving_search_cv  <span class="c-cm"># Enable first!</span>
+<span class="c-imp">from</span> <span class="c-cls">sklearn.model_selection</span> <span class="c-imp">import</span> HalvingRandomSearchCV
+<span class="c-imp">from</span> <span class="c-cls">sklearn.ensemble</span> <span class="c-imp">import</span> RandomForestClassifier
+<span class="c-imp">from</span> <span class="c-cls">scipy.stats</span> <span class="c-imp">import</span> randint, uniform
+
+<span class="c-cm"># ── How Successive Halving works ─────────────────────────────────────────────
+# Round 1: 512 candidates, each trained on 1/8 of data → keep top 50%
+# Round 2: 256 candidates, each trained on 1/4 of data → keep top 50%
+# Round 3: 128 candidates, each trained on 1/2 of data → keep top 50%
+# Round 4: 64  candidates, each trained on full data   → pick winner!
+# Much cheaper than running all 512 on full data.
+# ─────────────────────────────────────────────────────────────────────────────</span>
+
+param_dist = {
+    <span class="c-str">'n_estimators'</span>: randint(<span class="c-num">50</span>, <span class="c-num">500</span>),
+    <span class="c-str">'max_depth'</span>: randint(<span class="c-num">2</span>, <span class="c-num">20</span>),
+    <span class="c-str">'min_samples_split'</span>: randint(<span class="c-num">2</span>, <span class="c-num">20</span>),
+    <span class="c-str">'min_samples_leaf'</span>: randint(<span class="c-num">1</span>, <span class="c-num">10</span>),
+    <span class="c-str">'max_features'</span>: uniform(<span class="c-num">0.2</span>, <span class="c-num">0.8</span>),
+}
+
+sh = HalvingRandomSearchCV(
+    RandomForestClassifier(n_jobs=-<span class="c-num">1</span>, random_state=<span class="c-num">42</span>),
+    param_distributions=param_dist,
+    n_candidates=<span class="c-num">512</span>,     <span class="c-cm"># Start with 512 random configs</span>
+    factor=<span class="c-num">2</span>,             <span class="c-cm"># Halve each round (keep top 50%)</span>
+    resource=<span class="c-str">'n_samples'</span>, <span class="c-cm"># Increase training data each round</span>
+    min_resources=<span class="c-str">'exhaust'</span>,
+    aggressive_elimination=<span class="c-kw">True</span>,
+    cv=<span class="c-num">5</span>,
+    scoring=<span class="c-str">'accuracy'</span>,
+    n_jobs=-<span class="c-num">1</span>,
+    random_state=<span class="c-num">42</span>
+)
+
+sh.fit(X_train, y_train)
+
+<span class="c-cm"># Inspect rounds</span>
+results = pd.DataFrame(sh.cv_results_)
+<span class="c-fn">print</span>(results[[<span class="c-str">'iter'</span>, <span class="c-str">'n_resources'</span>, <span class="c-str">'mean_test_score'</span>, <span class="c-str">'n_candidates_'</span>]])
+<span class="c-fn">print</span>(<span class="c-str">f"\nBest: {sh.best_score_:.4f} with {sh.best_params_}"</span>)</pre></div>
+    </div>
+  </div>
+
+  <!-- PIPELINE TUNING -->
+  <div style="margin-bottom:3rem">
+    <h3 style="font-size:1.15rem;font-weight:700;margin-bottom:1rem;color:var(--accent3)">Module 10 — Full Pipeline Tuning + Nested CV</h3>
+    <div class="code-window">
+      <div class="code-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><div class="code-filename">nested_cv_pipeline.py</div></div>
+      <div class="code-body"><pre><span class="c-imp">from</span> <span class="c-cls">sklearn.pipeline</span> <span class="c-imp">import</span> Pipeline
+<span class="c-imp">from</span> <span class="c-cls">sklearn.preprocessing</span> <span class="c-imp">import</span> StandardScaler, PowerTransformer
+<span class="c-imp">from</span> <span class="c-cls">sklearn.decomposition</span> <span class="c-imp">import</span> PCA
+<span class="c-imp">from</span> <span class="c-cls">sklearn.feature_selection</span> <span class="c-imp">import</span> SelectFromModel
+<span class="c-imp">from</span> <span class="c-cls">sklearn.svm</span> <span class="c-imp">import</span> SVC
+<span class="c-imp">from</span> <span class="c-cls">sklearn.model_selection</span> <span class="c-imp">import</span> cross_val_score, StratifiedKFold, RandomizedSearchCV
+<span class="c-imp">from</span> <span class="c-cls">scipy.stats</span> <span class="c-imp">import</span> loguniform
+
+<span class="c-cm"># Full pipeline: transformation + feature selection + model</span>
+pipe = Pipeline([
+    (<span class="c-str">'scaler'</span>, PowerTransformer(method=<span class="c-str">'yeo-johnson'</span>)),
+    (<span class="c-str">'feat_sel'</span>, SelectFromModel(RandomForestClassifier(n_estimators=<span class="c-num">50</span>, n_jobs=-<span class="c-num">1</span>))),
+    (<span class="c-str">'pca'</span>, PCA()),
+    (<span class="c-str">'clf'</span>, SVC(probability=<span class="c-kw">True</span>))
+])
+
+<span class="c-cm"># Tune everything — preprocessing AND model hyperparams together</span>
+param_dist = {
+    <span class="c-str">'feat_sel__threshold'</span>: [<span class="c-str">'mean'</span>, <span class="c-str">'median'</span>, <span class="c-str">'0.5*mean'</span>],
+    <span class="c-str">'feat_sel__estimator__max_depth'</span>: randint(<span class="c-num">2</span>, <span class="c-num">8</span>),
+    <span class="c-str">'pca__n_components'</span>: uniform(<span class="c-num">0.7</span>, <span class="c-num">0.29</span>),          <span class="c-cm"># % variance to retain</span>
+    <span class="c-str">'clf__C'</span>: loguniform(<span class="c-num">1e-3</span>, <span class="c-num">1e3</span>),
+    <span class="c-str">'clf__gamma'</span>: loguniform(<span class="c-num">1e-4</span>, <span class="c-num">1e1</span>),
+    <span class="c-str">'clf__kernel'</span>: [<span class="c-str">'rbf'</span>, <span class="c-str">'poly'</span>, <span class="c-str">'sigmoid'</span>],
+}
+
+<span class="c-cm"># ── NESTED CROSS-VALIDATION ────────────────────────────────────────────────
+# Inner CV: hyperparameter selection (avoid overfitting search)
+# Outer CV: unbiased performance estimate
+# If you just use inner CV score → you're leaking! Nested CV is the fix.
+# ──────────────────────────────────────────────────────────────────────────</span>
+
+outer_cv = StratifiedKFold(n_splits=<span class="c-num">5</span>, shuffle=<span class="c-kw">True</span>, random_state=<span class="c-num">42</span>)
+inner_cv = StratifiedKFold(n_splits=<span class="c-num">3</span>, shuffle=<span class="c-kw">True</span>, random_state=<span class="c-num">0</span>)
+
+search = RandomizedSearchCV(
+    pipe, param_dist, n_iter=<span class="c-num">50</span>,
+    cv=inner_cv, scoring=<span class="c-str">'roc_auc'</span>, n_jobs=-<span class="c-num">1</span>, random_state=<span class="c-num">42</span>
+)
+
+<span class="c-cm"># Outer loop gives unbiased generalization estimate</span>
+nested_scores = cross_val_score(search, X, y, cv=outer_cv, scoring=<span class="c-str">'roc_auc'</span>, n_jobs=-<span class="c-num">1</span>)
+<span class="c-fn">print</span>(<span class="c-str">f"Nested CV AUC: {nested_scores.mean():.4f} ± {nested_scores.std():.4f}"</span>)
+<span class="c-cm"># This is your HONEST model performance estimate!</span>
+
+<span class="c-cm"># Final model: train on all data with best params</span>
+search.fit(X, y)
+final_model = search.best_estimator_
+<span class="c-fn">print</span>(<span class="c-str">f"Final best params: {search.best_params_}"</span>)</pre></div>
+    </div>
+    <div class="tip-box warn-box">
+      <div class="tip-icon">⚠️</div>
+      <div class="tip-content"><strong>Critical pitfall:</strong> If you tune on your test set (or use the inner CV score as your final estimate), you've overfit your hyperparameters. Nested CV gives you an unbiased estimate of how well your tuning will generalize to truly new data.</div>
+    </div>
+  </div>
+
+  <!-- LEARNING RATE SCHEDULING -->
+  <div style="margin-bottom:3rem">
+    <h3 style="font-size:1.15rem;font-weight:700;margin-bottom:1rem;color:var(--accent4)">Module 8 — Learning Rate Finder + Cosine Warmup</h3>
+    <div class="code-window">
+      <div class="code-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><div class="code-filename">lr_scheduling.py</div></div>
+      <div class="code-body"><pre><span class="c-imp">import</span> <span class="c-cls">torch</span>, <span class="c-cls">math</span>
+<span class="c-imp">import</span> <span class="c-cls">torch.optim</span> <span class="c-imp">as</span> optim
+
+<span class="c-cm"># ── Learning Rate Range Test (LR Finder) ──────────────────────────────────
+# Start with tiny LR, exponentially increase, plot loss.
+# The LR just before loss starts rising is your best LR.
+# Rule of thumb: use LR = (peak / 10) for training.
+# ──────────────────────────────────────────────────────────────────────────</span>
+<span class="c-kw">def</span> <span class="c-fn">lr_range_test</span>(model, train_loader, criterion, start_lr=<span class="c-num">1e-7</span>, end_lr=<span class="c-num">10</span>, num_iter=<span class="c-num">100</span>):
+    optimizer = optim.SGD(model.parameters(), lr=start_lr)
+    lr_mult = (end_lr / start_lr) ** (<span class="c-num">1</span> / num_iter)
+    lrs, losses = [], []
+    best_loss = <span class="c-fn">float</span>(<span class="c-str">'inf'</span>)
+
+    <span class="c-kw">for</span> i, (Xb, yb) <span class="c-kw">in</span> <span class="c-fn">enumerate</span>(train_loader):
+        <span class="c-kw">if</span> i >= num_iter: <span class="c-kw">break</span>
+        loss = <span class="c-fn">criterion</span>(model(Xb), yb)
+        optimizer.zero_grad(); loss.backward(); optimizer.step()
+        lrs.append(optimizer.param_groups[<span class="c-num">0</span>][<span class="c-str">'lr'</span>])
+        losses.append(loss.item())
+        best_loss = <span class="c-fn">min</span>(best_loss, loss.item())
+        <span class="c-kw">if</span> loss.item() > <span class="c-num">4</span> * best_loss: <span class="c-kw">break</span>   <span class="c-cm"># Stop if loss explodes</span>
+        <span class="c-kw">for</span> g <span class="c-kw">in</span> optimizer.param_groups: g[<span class="c-str">'lr'</span>] *= lr_mult
+    <span class="c-kw">return</span> lrs, losses
+
+<span class="c-cm"># ── Linear Warmup + Cosine Decay (used in Transformers) ───────────────────</span>
+<span class="c-kw">def</span> <span class="c-fn">get_cosine_schedule_with_warmup</span>(optimizer, num_warmup_steps, num_training_steps, min_lr=<span class="c-num">0</span>):
+    <span class="c-kw">def</span> <span class="c-fn">lr_lambda</span>(step):
+        <span class="c-kw">if</span> step < num_warmup_steps:
+            <span class="c-kw">return</span> step / <span class="c-fn">max</span>(<span class="c-num">1</span>, num_warmup_steps)  <span class="c-cm"># Linear warmup</span>
+        progress = (step - num_warmup_steps) / <span class="c-fn">max</span>(<span class="c-num">1</span>, num_training_steps - num_warmup_steps)
+        <span class="c-kw">return</span> <span class="c-fn">max</span>(min_lr, <span class="c-num">0.5</span> * (<span class="c-num">1</span> + math.cos(math.pi * progress)))  <span class="c-cm"># Cosine decay</span>
+    <span class="c-kw">return</span> optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
+
+<span class="c-cm"># Usage: warmup for 10% of steps, cosine decay for the rest</span>
+optimizer = optim.AdamW(model.parameters(), lr=<span class="c-num">3e-4</span>, weight_decay=<span class="c-num">0.01</span>)
+scheduler = <span class="c-fn">get_cosine_schedule_with_warmup</span>(
+    optimizer,
+    num_warmup_steps=<span class="c-fn">int</span>(<span class="c-num">0.1</span> * total_steps),
+    num_training_steps=total_steps
+)
+
+<span class="c-cm"># In training loop:</span>
+<span class="c-kw">for</span> step, (Xb, yb) <span class="c-kw">in</span> <span class="c-fn">enumerate</span>(train_loader):
+    loss = <span class="c-fn">criterion</span>(model(Xb), yb)
+    optimizer.zero_grad(); loss.backward()
+    nn.utils.clip_grad_norm_(model.parameters(), <span class="c-num">1.0</span>)
+    optimizer.step()
+    scheduler.step()   <span class="c-cm"># Call after optimizer.step()!</span></pre></div>
+    </div>
+  </div>
+
+</div>
+</section>
+
+<!-- ADVANCED SECTION -->
+<section id="advanced">
+<div class="container">
+  <div class="section-label">Advanced Topics</div>
+  <h2 class="section-title">Algorithm Deep Dives</h2>
+  <p class="section-sub">Go beyond the sklearn API and understand what's happening under the hood.</p>
+
+  <div class="algo-grid">
+    <div class="algo-card">
+      <div class="algo-head">
+        <div class="algo-icon" style="background:rgba(56,189,248,0.12);font-size:1.1rem">🎰</div>
+        <div>
+          <div class="algo-name">Random Forest</div>
+          <div class="algo-complexity">10–30 hyperparams · High impact</div>
+        </div>
+      </div>
+      <div class="algo-body">The most important hyperparams are <code style="font-size:0.78rem;color:var(--accent)">n_estimators</code>, <code style="font-size:0.78rem;color:var(--accent)">max_features</code>, and <code style="font-size:0.78rem;color:var(--accent)">max_depth</code>. More trees rarely hurts (just slower). Start with <code style="font-size:0.78rem;color:var(--accent)">max_features='sqrt'</code> for classification, <code style="font-size:0.78rem;color:var(--accent)">'auto'</code> for regression. <code style="font-size:0.78rem;color:var(--accent)">min_samples_leaf=4</code> often improves stability on noisy data.</div>
+      <div class="algo-params">
+        <span class="algo-param">n_estimators: 100–1000</span>
+        <span class="algo-param">max_depth: None–20</span>
+        <span class="algo-param">max_features: sqrt, 0.3–0.8</span>
+        <span class="algo-param">min_samples_leaf: 1–10</span>
+        <span class="algo-param">bootstrap: True/False</span>
+      </div>
+    </div>
+
+    <div class="algo-card">
+      <div class="algo-head">
+        <div class="algo-icon" style="background:rgba(129,140,248,0.12)">🚀</div>
+        <div>
+          <div class="algo-name">XGBoost / LightGBM</div>
+          <div class="algo-complexity">15+ hyperparams · Critical tuning</div>
+        </div>
+      </div>
+      <div class="algo-body">The key triad is <code style="font-size:0.78rem;color:var(--accent2)">learning_rate</code> × <code style="font-size:0.78rem;color:var(--accent2)">n_estimators</code> × <code style="font-size:0.78rem;color:var(--accent2)">max_depth</code>. Lower LR requires more trees. Use early stopping instead of tuning n_estimators. For XGB, <code style="font-size:0.78rem;color:var(--accent2)">colsample_bytree</code> and <code style="font-size:0.78rem;color:var(--accent2)">subsample</code> control stochasticity and prevent overfitting. LightGBM's <code style="font-size:0.78rem;color:var(--accent2)">num_leaves</code> replaces max_depth for finer control.</div>
+      <div class="algo-params">
+        <span class="algo-param">learning_rate: 0.01–0.3</span>
+        <span class="algo-param">max_depth: 3–10</span>
+        <span class="algo-param">gamma / min_gain: 0–5</span>
+        <span class="algo-param">reg_alpha/lambda: log-scale</span>
+        <span class="algo-param">colsample_bytree: 0.4–1.0</span>
+      </div>
+    </div>
+
+    <div class="algo-card">
+      <div class="algo-head">
+        <div class="algo-icon" style="background:rgba(244,114,182,0.12)">🧠</div>
+        <div>
+          <div class="algo-name">Neural Networks (DL)</div>
+          <div class="algo-complexity">20+ hyperparams · Architecture NAS</div>
+        </div>
+      </div>
+      <div class="algo-body">Learning rate dominates everything — use a LR finder first. Batch size affects gradient noise: smaller = more noise = better generalization but slower. For depth vs width: deeper networks learn more abstract features; wider layers expand capacity. Always use batch norm for deep nets. Weight decay (1e-4 to 1e-2) is often more useful than dropout for structured data.</div>
+      <div class="algo-params">
+        <span class="algo-param">lr: 1e-5–1e-1 (log)</span>
+        <span class="algo-param">batch_size: 32–512</span>
+        <span class="algo-param">n_layers: 1–8</span>
+        <span class="algo-param">hidden_dim: 32–2048 (log)</span>
+        <span class="algo-param">dropout: 0.1–0.5</span>
+        <span class="algo-param">weight_decay: 1e-5–1e-2</span>
+      </div>
+    </div>
+
+    <div class="algo-card">
+      <div class="algo-head">
+        <div class="algo-icon" style="background:rgba(52,211,153,0.12)">📐</div>
+        <div>
+          <div class="algo-name">SVM</div>
+          <div class="algo-complexity">3–4 key hyperparams · Geometric</div>
+        </div>
+      </div>
+      <div class="algo-body"><code style="font-size:0.78rem;color:var(--accent3)">C</code> controls the margin hardness vs misclassification trade-off. <code style="font-size:0.78rem;color:var(--accent3)">gamma</code> defines the influence radius of each training point — high gamma = tight fit = overfit. Always search both on log scale. The <code style="font-size:0.78rem;color:var(--accent3)">C-gamma</code> grid is the classic SVM search space. Scale your features first — SVM is not scale-invariant!</div>
+      <div class="algo-params">
+        <span class="algo-param">C: 1e-3–1e3 (log)</span>
+        <span class="algo-param">gamma: 1e-4–10 (log)</span>
+        <span class="algo-param">kernel: rbf, poly, linear</span>
+        <span class="algo-param">degree: 2–5 (poly only)</span>
+      </div>
+    </div>
+
+    <div class="algo-card">
+      <div class="algo-head">
+        <div class="algo-icon" style="background:rgba(245,158,11,0.12)">⚡</div>
+        <div>
+          <div class="algo-name">Transformers (BERT/GPT)</div>
+          <div class="algo-complexity">Fine-tuning hyperparams · Critical</div>
+        </div>
+      </div>
+      <div class="algo-body">For fine-tuning: LR is the #1 factor — try 1e-5 to 5e-5. Use linear warmup (10% of steps) + linear or cosine decay. Batch size × gradient accumulation = effective batch size (32–256 typical). Too many epochs → catastrophic forgetting of pretraining. Usually 2–5 epochs is enough. Layer-wise LR decay (LLRD) helps: lower layers get smaller LR.</div>
+      <div class="algo-params">
+        <span class="algo-param">lr: 1e-5–5e-5</span>
+        <span class="algo-param">warmup_ratio: 0.06–0.1</span>
+        <span class="algo-param">weight_decay: 0.01</span>
+        <span class="algo-param">epochs: 2–5</span>
+        <span class="algo-param">LLRD: 0.8–0.95 per layer</span>
+      </div>
+    </div>
+
+    <div class="algo-card">
+      <div class="algo-head">
+        <div class="algo-icon" style="background:rgba(244,114,182,0.12)">🔵</div>
+        <div>
+          <div class="algo-name">Bayesian Opt (Gaussian Process)</div>
+          <div class="algo-complexity">Surrogate model tuning</div>
+        </div>
+      </div>
+      <div class="algo-body">The GP surrogate itself has hyperparams: the kernel (Matérn 5/2 is default in skopt), length scales, and noise level. The acquisition function κ (UCB) or ξ (EI) controls exploration. More exploration early → exploit later. For high-dim spaces (&gt;20 params), GP doesn't scale well — use TPE or CMA-ES instead.</div>
+      <div class="algo-params">
+        <span class="algo-param">n_initial_points: 10–20</span>
+        <span class="algo-param">acq_func: EI, UCB, PI</span>
+        <span class="algo-param">kappa (UCB): 1.96</span>
+        <span class="algo-param">xi (EI/PI): 0.01</span>
+        <span class="algo-param">kernel: Matern(nu=2.5)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- FORMULAS -->
+  <div style="margin-top:4rem">
+    <div class="section-label">Key Formulas</div>
+    <h3 style="font-size:1.3rem;font-weight:700;margin-bottom:2rem">Important Mathematical Relationships</h3>
+    <div class="two-col">
+      <div>
+        <p style="font-size:0.85rem;color:var(--muted);margin-bottom:0.5rem">Expected Improvement acquisition function:</p>
+        <div class="formula">EI(x) = (μ(x) − f* − ξ) · Φ(Z) + σ(x) · φ(Z)<br>where Z = (μ(x) − f* − ξ) / σ(x)</div>
+        <p style="font-size:0.85rem;color:var(--muted);margin-bottom:0.5rem">Cosine annealing LR schedule:</p>
+        <div class="formula">η_t = η_min + ½(η_max − η_min)(1 + cos(πt/T_max))</div>
+      </div>
+      <div>
+        <p style="font-size:0.85rem;color:var(--muted);margin-bottom:0.5rem">Hyperband bracket schedule:</p>
+        <div class="formula">s_max = ⌊log_η(B/R)⌋<br>n_i = ⌈(n · η^i) / (s+1-i)⌉, r_i = R · η^(i-s)</div>
+        <p style="font-size:0.85rem;color:var(--muted);margin-bottom:0.5rem">L1 + L2 Elastic Net regularization:</p>
+        <div class="formula">Loss = MSE + α·ρ·||w||₁ + α·(1-ρ)/2·||w||₂²</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRACTICAL TIPS -->
+  <div style="margin-top:4rem">
+    <div class="section-label">Best Practices</div>
+    <h3 style="font-size:1.3rem;font-weight:700;margin-bottom:1.5rem">The Rules Every ML Engineer Knows</h3>
+
+    <div class="pill-grid">
+      <div class="pill"><div class="pill-dot" style="background:#34d399"></div>Always use log-scale for learning rate, C, gamma, alpha</div>
+      <div class="pill"><div class="pill-dot" style="background:#38bdf8"></div>Scale features before SVM, KNN, logistic regression</div>
+      <div class="pill"><div class="pill-dot" style="background:#818cf8"></div>Use CV inside the pipeline, never before it</div>
+      <div class="pill"><div class="pill-dot" style="background:#f59e0b"></div>Tune n_estimators last (more is usually better)</div>
+      <div class="pill"><div class="pill-dot" style="background:#f472b6"></div>For DL: fix LR first, then tune architecture</div>
+      <div class="pill"><div class="pill-dot" style="background:#34d399"></div>Use Optuna's pruning — it cuts tuning time by 10×</div>
+      <div class="pill"><div class="pill-dot" style="background:#38bdf8"></div>Nested CV for unbiased performance estimates</div>
+      <div class="pill"><div class="pill-dot" style="background:#818cf8"></div>Check train vs val score to detect overfitting</div>
+      <div class="pill"><div class="pill-dot" style="background:#f59e0b"></div>Use n_jobs=-1 everywhere you can</div>
+      <div class="pill"><div class="pill-dot" style="background:#f472b6"></div>Set random_state for reproducibility</div>
+      <div class="pill"><div class="pill-dot" style="background:#34d399"></div>Plot optimization history to know when to stop</div>
+      <div class="pill"><div class="pill-dot" style="background:#38bdf8"></div>fANOVA to find which hyperparams actually matter</div>
+    </div>
+
+    <div class="warn-box tip-box" style="margin-top:2rem">
+      <div class="tip-icon">⚠️</div>
+      <div class="tip-content"><strong>The hardest lesson:</strong> Hyperparameter tuning is NOT a substitute for good feature engineering, data cleaning, or picking the right model family. Get your baseline solid first, then tune. Squeezing 0.001 AUC with 10 hours of Bayesian search when your data has errors is wasted effort.</div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- LEARNING PATH -->
+<section style="background:var(--bg2)">
+<div class="container">
+  <div class="section-label">Your Journey</div>
+  <h2 class="section-title">Recommended Learning Path</h2>
+  <p class="section-sub">Follow this sequence for the fastest path from beginner to production-ready.</p>
+
+  <div class="path-steps">
+    <div class="path-step">
+      <div class="step-dot" style="background:rgba(52,211,153,0.2);color:#34d399;border-color:var(--bg2)">🌱</div>
+      <div class="step-body">
+        <div class="step-title">Week 1 — Foundations (Modules 1–3)</div>
+        <div class="step-desc">Understand bias-variance tradeoff. Master cross-validation. Implement GridSearchCV and RandomizedSearchCV on 3 different models. Learn scipy distributions for random search. Goal: run a complete tuning experiment end-to-end.</div>
+      </div>
+    </div>
+    <div class="path-step">
+      <div class="step-dot" style="background:rgba(56,189,248,0.2);color:#38bdf8;border-color:var(--bg2)">📚</div>
+      <div class="step-body">
+        <div class="step-title">Week 2 — Model-Specific Knowledge (Module 4)</div>
+        <div class="step-desc">Go deep on Random Forest, XGBoost, LightGBM, SVM hyperparameters. Know what each hyperparameter does geometrically and mathematically. Tune each model on a real dataset (Kaggle's titanic or house prices).</div>
+      </div>
+    </div>
+    <div class="path-step">
+      <div class="step-dot" style="background:rgba(129,140,248,0.2);color:#818cf8;border-color:var(--bg2)">🧠</div>
+      <div class="step-body">
+        <div class="step-title">Week 3 — Deep Learning Hyperparams (Module 5 + 8)</div>
+        <div class="step-desc">Learn learning rate finders, cosine warmup, dropout, weight initialization. Build a complete PyTorch training loop with scheduler + early stopping. Tune a CNN on CIFAR-10 manually first to build intuition.</div>
+      </div>
+    </div>
+    <div class="path-step">
+      <div class="step-dot" style="background:rgba(244,114,182,0.2);color:#f472b6;border-color:var(--bg2)">🔵</div>
+      <div class="step-body">
+        <div class="step-title">Week 4 — Bayesian Optimization (Modules 6–7)</div>
+        <div class="step-desc">Implement Optuna on XGBoost, then on a PyTorch model. Enable pruning with MedianPruner. Try Successive Halving. Compare convergence speed vs RandomizedSearchCV. Visualize all optimization results.</div>
+      </div>
+    </div>
+    <div class="path-step">
+      <div class="step-dot" style="background:rgba(245,158,11,0.2);color:#f59e0b;border-color:var(--bg2)">🏭</div>
+      <div class="step-body">
+        <div class="step-title">Week 5–6 — Production Grade (Modules 9–12)</div>
+        <div class="step-desc">Nested CV for unbiased evaluation. Pipeline integration with feature selection. MLflow or W&B for tracking. Ray Tune for distributed search. Build your own AutoML wrapper. Deploy with best model.</div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- QUICK REFERENCE -->
+<section>
+<div class="container">
+  <div class="section-label">Quick Reference</div>
+  <h2 class="section-title">When to Use Which Method</h2>
+
+  <div class="concepts-grid">
+    <div class="concept-card blue" style="--card-top:#38bdf8">
+      <div style="font-size:1.5rem;margin-bottom:0.75rem">🔢</div>
+      <div class="concept-title">Use Grid Search when...</div>
+      <div class="concept-desc">You have ≤3 hyperparameters, a small search space, need exhaustive coverage, or are verifying a specific hypothesis about a range of values. Fast with small grids.</div>
+    </div>
+    <div class="concept-card green" style="--card-top:#34d399">
+      <div style="font-size:1.5rem;margin-bottom:0.75rem">🎲</div>
+      <div class="concept-title">Use Random Search when...</div>
+      <div class="concept-desc">You have 5+ hyperparameters, a limited evaluation budget, or continuous search spaces. Set n_iter = 50–200 with scipy distributions. Often 60× faster than grid.</div>
+    </div>
+    <div class="concept-card purple" style="--card-top:#818cf8">
+      <div style="font-size:1.5rem;margin-bottom:0.75rem">🔵</div>
+      <div class="concept-title">Use Bayesian Opt when...</div>
+      <div class="concept-desc">Each model evaluation is expensive (≥30s), you have a moderate search space (3–15 params), and need the best possible result within a fixed trial budget of 50–200 runs.</div>
+    </div>
+    <div class="concept-card amber" style="--card-top:#f59e0b">
+      <div style="font-size:1.5rem;margin-bottom:0.75rem">⚡</div>
+      <div class="concept-title">Use Hyperband/SH when...</div>
+      <div class="concept-desc">You're training deep learning models where early stopping is meaningful. You have many candidate configs and want to eliminate losers early. Use with Ray Tune or Optuna.</div>
+    </div>
+    <div class="concept-card pink" style="--card-top:#f472b6">
+      <div style="font-size:1.5rem;margin-bottom:0.75rem">🤖</div>
+      <div class="concept-title">Use AutoML when...</div>
+      <div class="concept-desc">You need a strong baseline fast, you're exploring multiple algorithm families at once, or you're in early-stage experimentation. Auto-sklearn, FLAML, or H2O handle model selection + tuning together.</div>
+    </div>
+  </div>
+</div>
+</section>
+
+<footer>
+  <div class="container">
+    <div style="font-size:1.5rem;font-weight:800;font-family:var(--display);color:var(--accent);margin-bottom:0.5rem">HyperTune</div>
+    <p style="color:var(--muted2);font-size:0.85rem;max-width:500px;margin:0 auto">The complete hyperparameter tuning reference for ML & DL engineers. Covers scikit-learn, XGBoost, LightGBM, PyTorch, Optuna, Ray Tune, and beyond — from first principles to production.</p>
+    <div style="margin-top:2rem;font-size:0.78rem;color:var(--muted2)">Built for learning · Python 3.10+ · scikit-learn 1.4+ · Optuna 3.0+</div>
+  </div>
+</footer>
+
+<script>
+function toggleModule(header) {
+  const body = header.nextElementSibling;
+  const toggle = header.querySelector('.module-toggle');
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  toggle.style.transform = isOpen ? '' : 'rotate(180deg)';
+  toggle.style.color = isOpen ? '' : 'var(--accent)';
+}
+</script>
+</body>
+</html>

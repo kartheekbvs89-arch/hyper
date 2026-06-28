@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assignment 10 — Nested CV with Pipeline Tuning — HyperTune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<style>
+
+:root {
+  --bg: #070b14; --bg2: #0c1220; --bg3: #111827;
+  --card: #131d2e; --card2: #1a2640;
+  --border: rgba(99,179,237,0.12); --border2: rgba(99,179,237,0.22);
+  --accent: #38bdf8; --accent2: #818cf8; --accent3: #34d399;
+  --accent4: #f59e0b; --accent5: #f472b6;
+  --text: #f0f6fc; --muted: #8899aa; --muted2: #64748b;
+  --code-bg: #0d1117;
+  --ff: 'Inter', sans-serif; --mono: 'JetBrains Mono', monospace;
+  --display: 'Sora', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,11,20,0.85);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:var(--display);font-weight:800;font-size:1.25rem;color:var(--accent);letter-spacing:-0.03em;text-decoration:none}
+.logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#000;padding:7px 18px;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85}
+
+/* LAYOUT */
+.page-layout { display: grid; grid-template-columns: 280px 1fr; gap: 3rem; max-width: 1200px; margin: 0 auto; padding: 5rem 2rem 5rem; padding-top: 80px; }
+@media(max-width: 900px) { .page-layout { grid-template-columns: 1fr; } .toc-sidebar { display: none; } }
+
+/* TOC SIDEBAR */
+.toc-sidebar { position: sticky; top: 80px; height: fit-content; max-height: calc(100vh - 100px); overflow-y: auto; }
+.toc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.75rem; }
+.toc-nav { display: flex; flex-direction: column; gap: 2px; }
+.toc-link { color: var(--muted); font-size: 0.82rem; text-decoration: none; padding: 4px 10px; border-left: 2px solid transparent; transition: all 0.15s; border-radius: 0 4px 4px 0; }
+.toc-link:hover, .toc-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(56,189,248,0.05); }
+.toc-link.toc-sub { font-size: 0.78rem; padding-left: 22px; }
+
+/* ARTICLE BODY */
+.article-body { min-width: 0; }
+.breadcrumb { font-size: 0.78rem; color: var(--muted2); margin-bottom: 1.5rem; }
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--accent); }
+.module-badge { display: inline-block; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: var(--accent); padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 1rem; }
+.article-title { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
+.article-meta { font-size: 0.83rem; color: var(--muted); margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+
+/* OUTLINE BOX */
+.outline-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 3rem; }
+.outline-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.75rem; color: var(--text); }
+.outline-list { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.85rem; }
+.outline-list a { color: var(--accent); text-decoration: none; }
+.outline-list a:hover { text-decoration: underline; }
+.outline-list li { margin: 4px 0; }
+.outline-list ul { margin: 4px 0; padding-left: 1rem; }
+
+/* ARTICLE PROSE */
+.article-body h2 { font-family: var(--display); font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; margin: 3rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); scroll-margin-top: 80px; }
+.article-body h3 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 80px; }
+.article-body h4 { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.article-body p { margin-bottom: 1.25rem; color: var(--muted); font-size: 0.97rem; line-height: 1.85; }
+.article-body strong { color: var(--text); font-weight: 600; }
+.article-body em { color: var(--accent3); font-style: italic; }
+.article-body ul, .article-body ol { margin: 0 0 1.25rem 1.5rem; color: var(--muted); font-size: 0.95rem; }
+.article-body li { margin-bottom: 6px; line-height: 1.75; }
+.article-body code { font-family: var(--mono); font-size: 0.82em; background: rgba(56,189,248,0.08); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
+.article-body a { color: var(--accent2); text-decoration: none; }
+.article-body a:hover { text-decoration: underline; }
+
+/* CODE BLOCKS */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+.code-block-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot.r { background: #ff5f57; } .code-dot.y { background: #ffbd2e; } .code-dot.g { background: #28c840; }
+.code-filename { font-family: var(--mono); font-size: 0.73rem; color: var(--muted2); margin-left: 8px; }
+.code-block pre { padding: 1.5rem; overflow-x: auto; margin: 0; font-family: var(--mono); font-size: 0.82rem; line-height: 1.8; color: #e2e8f0; }
+/* Syntax colors */
+.kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; }
+.num { color: #f78c6c; } .cm { color: #546e7a; font-style: italic; }
+.cls { color: #ffcb6b; } .imp { color: #89ddff; } .op { color: #89ddff; }
+
+/* CALLOUT BOXES */
+.callout { display: flex; gap: 1rem; border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; border-width: 1px; border-style: solid; }
+.callout-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+.callout-body { font-size: 0.88rem; line-height: 1.75; }
+.callout-body strong { font-weight: 600; }
+.callout-title { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+.callout.note { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.22); color: var(--muted); }
+.callout.note .callout-title, .callout.note strong { color: var(--accent); }
+.callout.warning { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.22); color: var(--muted); }
+.callout.warning .callout-title, .callout.warning strong { color: var(--accent4); }
+.callout.tip { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); color: var(--muted); }
+.callout.tip .callout-title, .callout.tip strong { color: var(--accent3); }
+.callout.important { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.22); color: var(--muted); }
+.callout.important .callout-title, .callout.important strong { color: var(--accent5); }
+
+/* MATH DISPLAY */
+.math-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.75rem; margin: 1.25rem 0; overflow-x: auto; font-size: 1.05rem; text-align: center; }
+.math-label { font-size: 0.72rem; color: var(--muted2); font-family: var(--mono); margin-top: 0.5rem; text-align: right; }
+
+/* INLINE FIGURE / DIAGRAM */
+.figure { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; margin: 2rem 0; text-align: center; }
+.figure-caption { font-size: 0.8rem; color: var(--muted2); margin-top: 1rem; font-style: italic; }
+
+/* DATA TABLE */
+.data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.85rem; }
+.data-table th { padding: 10px 14px; background: var(--card2); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); text-align: left; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(99,179,237,0.03); }
+
+/* SUMMARY BOX */
+.summary-box { background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(129,140,248,0.07)); border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 1.75rem 2rem; margin: 3rem 0 2rem; }
+.summary-box h3 { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+.summary-box ul { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.88rem; }
+.summary-box li { margin-bottom: 6px; line-height: 1.7; }
+
+/* RESOURCE LIST */
+.resource-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.resource-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.resource-list li::before { content: '\2192'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.resource-list a { color: var(--accent2); }
+
+/* PREV/NEXT NAV */
+.page-nav { display: flex; justify-content: space-between; gap: 1rem; padding: 2rem; max-width: 1200px; margin: 0 auto; border-top: 1px solid var(--border); }
+.page-nav-btn { display: flex; flex-direction: column; gap: 4px; padding: 1rem 1.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; transition: all 0.2s; max-width: 45%; }
+.page-nav-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.page-nav-btn .nav-dir { font-size: 0.72rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; }
+.page-nav-btn .nav-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.page-nav-btn.next { text-align: right; margin-left: auto; }
+
+/* QUIZ/EXERCISE BOX */
+.exercise-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin: 2rem 0; }
+.exercise-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent4); margin-bottom: 0.5rem; }
+.exercise-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; }
+.exercise-body { font-size: 0.88rem; color: var(--muted); line-height: 1.75; }
+
+/* QUIZ BOX */
+.quiz-box { background: rgba(129,140,248,0.06); border: 1px solid rgba(129,140,248,0.22); border-radius: 14px; padding: 1.5rem; margin: 1.5rem 0; }
+.quiz-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.5rem; }
+.quiz-question { font-size: 0.93rem; color: var(--text); margin-bottom: 0.75rem; font-weight: 500; }
+.quiz-answer { margin-top: 0.5rem; }
+.quiz-answer summary { cursor: pointer; font-size: 0.82rem; color: var(--accent2); font-weight: 600; }
+.quiz-answer p { margin-top: 0.5rem; font-size: 0.86rem; color: var(--muted); }
+
+/* CELL (for assignment files - jupyter style) */
+.jupyter-cell { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin: 1.5rem 0; overflow: hidden; }
+.cell-header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted2); font-family: var(--mono); }
+.cell-input-label { color: var(--accent4); font-weight: 600; }
+.cell-body { padding: 1rem 1.25rem; }
+.jupyter-cell pre { padding: 1rem 1.25rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; background: var(--code-bg); margin: 0; }
+.cell-prompt { color: var(--accent3); font-weight: 700; }
+
+/* GRADING RUBRIC */
+.rubric-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+.rubric-table th { background: var(--card2); padding: 10px 14px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); }
+.rubric-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+
+/* DETAILS (collapsible hints) */
+details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; }
+details summary { cursor: pointer; font-size: 0.85rem; color: var(--accent2); font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
+
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">Hyper<span>Tune</span></a>
+    <ul class="nav-links">
+
+    </ul>
+    <a href="../index.html#curriculum" class="nav-cta">Start Learning</a>
+  </div>
+</nav>
+<div class="page-layout">
+  <aside class="toc-sidebar">
+    <div class="toc-label">On this page</div>
+    <nav class="toc-nav">
+<a href="#overview" class="toc-link">Overview</a>
+<a href="#dataset" class="toc-link">Dataset</a>
+<a href="#task1" class="toc-link">Task 1 — ColumnTransformer + Pipeline</a>
+<a href="#task2" class="toc-link">Task 2 — Non-Nested Search</a>
+<a href="#task3" class="toc-link">Task 3 — Nested CV</a>
+<a href="#task4" class="toc-link">Task 4 — Quantify the Bias</a>
+<a href="#task5" class="toc-link">Task 5 — joblib.Memory (Bonus)</a>
+<a href="#rubric" class="toc-link">Grading Rubric</a>
+<a href="#submit" class="toc-link">Submission</a>
+<a href="#resources" class="toc-link">Resources</a>
+    </nav>
+  </aside>
+  <article class="article-body">
+    <div class="breadcrumb"><a href="../index.html">HyperTune</a> › <a href="intro.html">Module 10</a> › Assignment 10</div>
+    <div class="article-header">
+      <div class="module-badge">Module 10 · Assignment</div>
+      <h1 class="article-title">Assignment 10 — Nested CV with Pipeline Tuning on a Mixed-Type Dataset</h1>
+      <div class="article-meta">Difficulty: ★★★☆☆ · Est. time: 3–4 hours · Dataset: OpenML adult (version=2)</div>
+    </div>
+    <div class="outline-box">
+      <div class="outline-title">📋 Article Outline</div>
+      <ol class="outline-list">
+
+<li><a href="#overview">Assignment Overview</a></li>
+<li><a href="#dataset">Dataset</a></li>
+<li><a href="#task1">Task 1 — Build the ColumnTransformer + Pipeline</a></li>
+<li><a href="#task2">Task 2 — Non-Nested RandomizedSearchCV</a></li>
+<li><a href="#task3">Task 3 — Nested CV</a></li>
+<li><a href="#task4">Task 4 — Quantify the Bias</a></li>
+<li><a href="#task5">Task 5 (Bonus) — Add joblib.Memory and Measure Speedup</a></li>
+<li><a href="#rubric">Grading Rubric</a></li>
+<li><a href="#submit">Submission Instructions</a></li>
+<li><a href="#resources">Resources</a></li>
+      </ol>
+    </div>
+
+<section id="overview">
+  <h2>Assignment Overview</h2>
+  <p>In this assignment you will build a realistic mixed-type pipeline on the Adult Census dataset, tune it with RandomizedSearchCV, and then quantify the optimistic bias of non-nested CV by running nested CV on the same setup. The bonus task adds <code>joblib.Memory</code> caching and measures the resulting speedup.</p>
+  <p>Designed for 3–4 hours of work. The slow step is the nested CV — it takes roughly 5× the wall-clock of non-nested CV because each outer fold re-runs the full inner search. Plan accordingly: start the bonus task in the background while you write up your analysis of tasks 1–5.</p>
+</section>
+
+<section id="dataset">
+  <h2>Dataset</h2>
+  <p>We use the Adult Census dataset (<code>fetch_openml(name='adult', version=2)</code>) — ~49,000 rows, 14 mixed-type features (5 numeric, 9 categorical), binary target (income &lt;=50K vs &gt;50K). It is the canonical "mixed-type tabular" benchmark: high-cardinality categoricals (native_country, occupation), missing values (workclass, occupation), and imbalanced classes (~76% vs ~24%). Adult Census is rich enough to make every preprocessing choice matter and large enough that the nested CV takes 5–15 minutes — long enough to be a real experiment, short enough to run on a laptop.</p>
+  <div class="jupyter-cell">
+  <div class="cell-header"><span class="cell-input-label">In [1]:</span> <span style="color:var(--muted2)">python</span></div>
+  <pre><span class="cell-prompt">&gt;&gt;&gt;</span> # Load and inspect Adult Census
+from sklearn.datasets import fetch_openml
+import pandas as pd
+
+X, y = fetch_openml(name=&quot;adult&quot;, version=2, as_frame=True, return_X_y=True)
+print(f&quot;X.shape = {X.shape}&quot;)
+print(f&quot;\nDtypes:\n{X.dtypes.value_counts()}&quot;)
+print(f&quot;\nMissing values per column:\n{X.isna().sum()[X.isna().sum() &gt; 0]}&quot;)
+print(f&quot;\nTarget distribution:\n{y.value_counts(normalize=True)}&quot;)
+print(f&quot;\nCategorical cardinalities:&quot;)
+for c in X.select_dtypes(include=[&quot;object&quot;, &quot;category&quot;, &quot;string&quot;]).columns:
+    print(f&quot;  {c:20s}: {X[c].nunique()} unique values&quot;)</pre>
+</div>
+</section>
+
+<section id="task1">
+  <h2>Task 1 — Build the ColumnTransformer + Pipeline</h2>
+  <p>Build a <code>ColumnTransformer</code> with two branches: (a) <code>OneHotEncoder(handle_unknown='infrequent_if_exist', min_frequency=0.01)</code> for categorical columns, (b) <code>SimpleImputer(strategy='median')</code> + <code>StandardScaler()</code> for numeric columns. Wrap it in a <code>Pipeline</code> with <code>SelectKBest(score_func=f_classif)</code> and <code>RandomForestClassifier(n_estimators=200, n_jobs=-1, random_state=42)</code>. Fit it once with default <code>k=10</code> and report the 5-fold CV accuracy to confirm the pipeline runs end-to-end.</p>
+  <div class="jupyter-cell">
+  <div class="cell-header"><span class="cell-input-label">In [2]:</span> <span style="color:var(--muted2)">python</span></div>
+  <pre><span class="cell-prompt">&gt;&gt;&gt;</span> # YOUR CODE HERE
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.impute import SimpleImputer
+from sklearn.feature_selection import SelectKBest, f_classif
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import cross_val_score, StratifiedKFold
+
+# YOUR CODE HERE
+# 1. Identify num_cols and cat_cols from X.dtypes.
+# 2. Build ColumnTransformer with two branches as described.
+# 3. Build Pipeline: pre -&gt; select -&gt; clf.
+# 4. Run 5-fold StratifiedKFold CV with default k=10; print mean accuracy.
+pass</pre>
+</div>
+  <p><strong>Expected output:</strong> 5-fold CV accuracy around 0.85–0.86 with default <code>k=10</code>. The pipeline should fit and score in under 60 seconds. If it takes much longer, check that you set <code>n_jobs=-1</code> on the RandomForest and that <code>OneHotEncoder</code> is using <code>handle_unknown='infrequent_if_exist'</code> (otherwise high-cardinality categoricals will explode the dimensionality).</p>
+</section>
+
+<section id="task2">
+  <h2>Task 2 — Non-Nested RandomizedSearchCV</h2>
+  <p>Run <code>RandomizedSearchCV(pipe, param_dist, n_iter=30, cv=5, ...)</code> on the train split, with the following search space:</p>
+  <ul>
+    <li><code>select__k</code>: integer from 5 to 30</li>
+    <li><code>select__score_func</code>: <code>f_classif</code> vs <code>mutual_info_classif</code> (use the wrapper pattern from section 7 of the article)</li>
+    <li><code>clf__max_depth</code>: integer from 4 to 16</li>
+    <li><code>clf__min_samples_leaf</code>: integer from 1 to 16</li>
+    <li><code>clf__max_features</code>: <code>"sqrt"</code>, <code>"log2"</code>, <code>0.5</code></li>
+  </ul>
+  <p>Record the <code>best_score_</code> (the non-nested estimate) and the <code>best_params_</code>.</p>
+  <div class="jupyter-cell">
+  <div class="cell-header"><span class="cell-input-label">In [3]:</span> <span style="color:var(--muted2)">python</span></div>
+  <pre><span class="cell-prompt">&gt;&gt;&gt;</span> # YOUR CODE HERE
+from sklearn.model_selection import RandomizedSearchCV
+from scipy.stats import randint
+
+# YOUR CODE HERE
+# 1. Define param_dist as described.
+# 2. Run RandomizedSearchCV with n_iter=30, cv=StratifiedKFold(5, shuffle=True, random_state=42),
+#    scoring=&#x27;accuracy&#x27;, n_jobs=-1, random_state=42.
+# 3. Print best_score_, best_params_, and elapsed time.
+# 4. Score on the held-out test set for an additional sanity check.
+pass</pre>
+</div>
+  <p><strong>Expected output:</strong> <code>best_score_</code> around 0.86–0.87 (slightly higher than the default-config CV from Task 1, because the search found a better config). Test accuracy within 1 point of CV accuracy. Total runtime ~2–5 minutes depending on your machine.</p>
+</section>
+
+<section id="task3">
+  <h2>Task 3 — Nested CV</h2>
+  <p>Now wrap the <em>entire</em> <code>RandomizedSearchCV</code> from Task 2 in an outer 5-fold CV using <code>cross_val_score(search, X, y, cv=outer_cv, scoring='accuracy')</code>. Use a 3-fold inner CV (instead of the 5-fold from Task 2) to keep total runtime manageable: 5 outer × 3 inner × 30 iters = 450 fits. Compare the mean of the outer-fold scores to the <code>best_score_</code> from Task 2 — the difference is the optimistic bias.</p>
+  <div class="jupyter-cell">
+  <div class="cell-header"><span class="cell-input-label">In [4]:</span> <span style="color:var(--muted2)">python</span></div>
+  <pre><span class="cell-prompt">&gt;&gt;&gt;</span> # YOUR CODE HERE
+from sklearn.model_selection import cross_val_score, KFold
+
+# YOUR CODE HERE
+# 1. Create inner_cv = StratifiedKFold(3, shuffle=True, random_state=42)
+# 2. Create outer_cv = StratifiedKFold(5, shuffle=True, random_state=42)
+# 3. Rebuild RandomizedSearchCV with cv=inner_cv (same n_iter=30, same param_dist).
+# 4. cross_val_score(search, X, y, cv=outer_cv, scoring=&#x27;accuracy&#x27;, n_jobs=1)
+#    (set n_jobs=1 here; the inner search already uses n_jobs=-1)
+# 5. Print: nested_score.mean(), nested_score.std(), optimistic bias = best_score_ - nested_score.mean()
+pass</pre>
+</div>
+  <p><strong>Expected output:</strong> Nested CV mean accuracy around 0.85–0.86 (lower than the non-nested 0.86–0.87), with an optimistic bias of 1–2 accuracy points. Total runtime 5–15 minutes. The variance across outer folds should be small (std ~0.003–0.008) because Adult Census is a relatively large dataset — on smaller data, the variance would be much higher.</p>
+  <div class="callout tip"><div class="callout-icon">💡</div><div class="callout-body"><div class="callout-title">Use n_jobs=1 for the outer CV</div><p>Set <code>n_jobs=1</code> on the outer <code>cross_val_score</code> and let <code>n_jobs=-1</code> on the inner <code>RandomizedSearchCV</code> do the parallelism. Nesting two levels of <code>joblib.Parallel</code> can oversubscribe your CPU and actually slow things down. The rule: parallelize the innermost level only.</p></div></div>
+</section>
+
+<section id="task4">
+  <h2>Task 4 — Quantify the Bias</h2>
+  <p>Write 2–3 sentences explaining (a) the size of the optimistic bias you observed, (b) whether it would be larger or smaller if you used <code>n_iter=300</code> instead of 30, and (c) whether it would be larger or smaller on a 1,000-row subsample of Adult Census. Use Markdown cells in your notebook; no code required.</p>
+  <div class="jupyter-cell">
+  <div class="cell-header"><span class="cell-input-label">In [5]:</span> <span style="color:var(--muted2)">python</span></div>
+  <pre><span class="cell-prompt">&gt;&gt;&gt;</span> # Markdown cell — write your analysis here.
+# (a) Observed bias size and direction.
+# (b) What would happen with n_iter=300 instead of 30?
+# (c) What would happen on a 1000-row subsample?
+
+# Replace this comment with your written analysis.</pre>
+</div>
+</section>
+
+<section id="task5">
+  <h2>Task 5 (Bonus) — Add joblib.Memory and Measure Speedup</h2>
+  <p>Add <code>memory=Memory(location=...)</code> to your Pipeline from Task 1. Re-run the non-nested <code>RandomizedSearchCV</code> from Task 2 and time it. Then re-run it a second time (without changing anything) and time that too — the second run should be significantly faster because the transformer fits are cached on disk. Report the speedup ratio.</p>
+  <div class="jupyter-cell">
+  <div class="cell-header"><span class="cell-input-label">In [6]:</span> <span style="color:var(--muted2)">python</span></div>
+  <pre><span class="cell-prompt">&gt;&gt;&gt;</span> # YOUR CODE HERE
+import tempfile, time
+from joblib import Memory
+
+# YOUR CODE HERE
+# 1. Create Memory(location=tempfile.mkdtemp(prefix=&#x27;sklearn_cache_&#x27;)).
+# 2. Rebuild your pipeline with memory=memory.
+# 3. Time the first RandomizedSearchCV.fit() (cold cache).
+# 4. Time the second RandomizedSearchCV.fit() (warm cache).
+# 5. Report speedup = cold_time / warm_time.
+# 6. memory.clear(warn=False) when done.
+pass</pre>
+</div>
+  <p><strong>Expected output:</strong> The speedup depends on how much of the pipeline's fit time is in the transformer vs the classifier. For this Adult Census pipeline, expect a 1.5–3× speedup on the second run. The bigger the dataset and the more expensive the transformer (TF-IDF instead of OneHotEncoder, PCA on 10K features, …), the bigger the speedup.</p>
+</section>
+
+<section id="rubric">
+  <h2>Grading Rubric</h2>
+  <table class="rubric-table">
+    <thead><tr><th>Task</th><th>Points</th><th>Criteria</th></tr></thead>
+    <tbody>
+      <tr><td>Task 1 — ColumnTransformer + Pipeline</td><td>20</td><td>Both branches correctly built. min_frequency=0.01 set. Pipeline runs end-to-end. Default CV accuracy reported and reasonable (~0.85).</td></tr>
+      <tr><td>Task 2 — Non-nested RandomizedSearchCV</td><td>20</td><td>All 5 hyperparameters in the search space. score_func made tunable via the wrapper pattern. n_iter=30, seed set. best_score_ and best_params_ reported.</td></tr>
+      <tr><td>Task 3 — Nested CV</td><td>25</td><td>Outer 5-fold + inner 3-fold structure correct. n_jobs=1 on outer, n_jobs=-1 on inner. Nested mean and std reported. Optimistic bias computed and reasonable (~1–3 points).</td></tr>
+      <tr><td>Task 4 — Quantify the bias</td><td>15</td><td>All three sub-questions answered with correct reasoning. (b) and (c) require understanding why more iterations and smaller datasets respectively inflate the bias.</td></tr>
+      <tr><td>Task 5 — joblib.Memory bonus</td><td>20</td><td>Memory correctly attached to Pipeline. Cold-cache and warm-cache times both reported. Speedup ratio computed and reasonable (&gt;1.0). Cache cleared at end.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="submit">
+  <h2>Submission Instructions</h2>
+  <p>Save your notebook as <code>assignment_10_[your_name].ipynb</code> and submit via your course platform. Every code cell must run in a fresh kernel from top to bottom. If the nested CV in Task 3 takes longer than 30 minutes on your machine, you may reduce <code>n_iter</code> to 15 — note this in your submission.</p>
+  <div class="callout tip"><div class="callout-icon">💡</div><div class="callout-body"><div class="callout-title">Start the nested CV early</div><p>Task 3 takes 5–15 minutes wall-clock on a typical laptop. Start it running in the background while you write your Task 4 analysis and attempt the Task 5 bonus. <code>joblib.Parallel</code> will saturate your CPU, so do not expect to do other compute-heavy work at the same time — but writing Markdown analysis is fine.</p></div></div>
+</section>
+
+<section id="resources"><h2>Useful Resources</h2><ul class="resource-list"><li><a href="https://scikit-learn.org/stable/modules/compose.html">scikit-learn Pipeline tutorial</a></li><li><a href="https://scikit-learn.org/stable/auto_examples/compose/plot_column_transformer_mixed_types.html">scikit-learn ColumnTransformer tutorial</a></li><li><a href="https://scikit-learn.org/stable/auto_examples/model_selection/plot_nested_cross_validation_iris.html">Scikit-learn nested CV example</a></li><li><a href="https://pubmed.ncbi.nlm.nih.gov/16278908/">Varma &amp; Simon (2006) — Bias in error estimation when using CV for model selection</a></li><li><a href="https://www.openml.org/d/1590">OpenML Adult Census dataset page</a></li><li><a href="https://joblib.readthedocs.io/en/latest/memory.html">joblib.Memory documentation</a></li></ul></section>
+
+  </article>
+</div>
+<div class="page-nav"><a href="part1_pipeline_tuning.html" class="page-nav-btn prev"><span class="nav-dir">← Previous</span><span class="nav-title">Pipeline Tuning</span></a><a href="assignment_solution.html" class="page-nav-btn next"><span class="nav-dir">Next →</span><span class="nav-title">Assignment 10 Solution</span></a></div>
+<footer>
+  <div class="container">
+    <div style="font-size:1.5rem;font-weight:800;font-family:var(--display);color:var(--accent);margin-bottom:0.5rem">HyperTune</div>
+    <p style="color:var(--muted2);font-size:0.85rem;max-width:500px;margin:0 auto">The complete hyperparameter tuning reference for ML &amp; DL engineers. Covers scikit-learn, XGBoost, LightGBM, PyTorch, Optuna, Ray Tune, and beyond — from first principles to production.</p>
+    <div style="margin-top:2rem;font-size:0.78rem;color:var(--muted2)">Built for learning · Python 3.10+ · scikit-learn 1.4+ · Optuna 3.0+</div>
+  </div>
+</footer>
+<script>
+(function() {
+  const links = Array.from(document.querySelectorAll('.toc-link'));
+  const sections = links
+    .map(l => document.querySelector(l.getAttribute('href')))
+    .filter(Boolean);
+  if (!('IntersectionObserver' in window) || sections.length === 0) return;
+  const setActive = id => {
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+  };
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  sections.forEach(s => observer.observe(s));
+})();
+</script>
+</body>
+</html>

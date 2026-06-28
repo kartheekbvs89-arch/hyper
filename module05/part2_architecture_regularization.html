@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture Hyperparameters — HyperTune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<style>
+
+:root {
+  --bg: #070b14; --bg2: #0c1220; --bg3: #111827;
+  --card: #131d2e; --card2: #1a2640;
+  --border: rgba(99,179,237,0.12); --border2: rgba(99,179,237,0.22);
+  --accent: #38bdf8; --accent2: #818cf8; --accent3: #34d399;
+  --accent4: #f59e0b; --accent5: #f472b6;
+  --text: #f0f6fc; --muted: #8899aa; --muted2: #64748b;
+  --code-bg: #0d1117;
+  --ff: 'Inter', sans-serif; --mono: 'JetBrains Mono', monospace;
+  --display: 'Sora', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,11,20,0.85);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:var(--display);font-weight:800;font-size:1.25rem;color:var(--accent);letter-spacing:-0.03em;text-decoration:none}
+.logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#000;padding:7px 18px;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85}
+
+/* LAYOUT */
+.page-layout { display: grid; grid-template-columns: 280px 1fr; gap: 3rem; max-width: 1200px; margin: 0 auto; padding: 5rem 2rem 5rem; padding-top: 80px; }
+@media(max-width: 900px) { .page-layout { grid-template-columns: 1fr; } .toc-sidebar { display: none; } }
+
+/* TOC SIDEBAR */
+.toc-sidebar { position: sticky; top: 80px; height: fit-content; max-height: calc(100vh - 100px); overflow-y: auto; }
+.toc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.75rem; }
+.toc-nav { display: flex; flex-direction: column; gap: 2px; }
+.toc-link { color: var(--muted); font-size: 0.82rem; text-decoration: none; padding: 4px 10px; border-left: 2px solid transparent; transition: all 0.15s; border-radius: 0 4px 4px 0; }
+.toc-link:hover, .toc-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(56,189,248,0.05); }
+.toc-link.toc-sub { font-size: 0.78rem; padding-left: 22px; }
+
+/* ARTICLE BODY */
+.article-body { min-width: 0; }
+.breadcrumb { font-size: 0.78rem; color: var(--muted2); margin-bottom: 1.5rem; }
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--accent); }
+.module-badge { display: inline-block; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: var(--accent); padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 1rem; }
+.article-title { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
+.article-meta { font-size: 0.83rem; color: var(--muted); margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+
+/* OUTLINE BOX */
+.outline-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 3rem; }
+.outline-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.75rem; color: var(--text); }
+.outline-list { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.85rem; }
+.outline-list a { color: var(--accent); text-decoration: none; }
+.outline-list a:hover { text-decoration: underline; }
+.outline-list li { margin: 4px 0; }
+.outline-list ul { margin: 4px 0; padding-left: 1rem; }
+
+/* ARTICLE PROSE */
+.article-body h2 { font-family: var(--display); font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; margin: 3rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); scroll-margin-top: 80px; }
+.article-body h3 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 80px; }
+.article-body h4 { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.article-body p { margin-bottom: 1.25rem; color: var(--muted); font-size: 0.97rem; line-height: 1.85; }
+.article-body strong { color: var(--text); font-weight: 600; }
+.article-body em { color: var(--accent3); font-style: italic; }
+.article-body ul, .article-body ol { margin: 0 0 1.25rem 1.5rem; color: var(--muted); font-size: 0.95rem; }
+.article-body li { margin-bottom: 6px; line-height: 1.75; }
+.article-body code { font-family: var(--mono); font-size: 0.82em; background: rgba(56,189,248,0.08); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
+.article-body a { color: var(--accent2); text-decoration: none; }
+.article-body a:hover { text-decoration: underline; }
+
+/* CODE BLOCKS */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+.code-block-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot.r { background: #ff5f57; } .code-dot.y { background: #ffbd2e; } .code-dot.g { background: #28c840; }
+.code-filename { font-family: var(--mono); font-size: 0.73rem; color: var(--muted2); margin-left: 8px; }
+.code-block pre { padding: 1.5rem; overflow-x: auto; margin: 0; font-family: var(--mono); font-size: 0.82rem; line-height: 1.8; color: #e2e8f0; }
+/* Syntax colors */
+.kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; }
+.num { color: #f78c6c; } .cm { color: #546e7a; font-style: italic; }
+.cls { color: #ffcb6b; } .imp { color: #89ddff; } .op { color: #89ddff; }
+
+/* CALLOUT BOXES */
+.callout { display: flex; gap: 1rem; border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; border-width: 1px; border-style: solid; }
+.callout-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+.callout-body { font-size: 0.88rem; line-height: 1.75; }
+.callout-body strong { font-weight: 600; }
+.callout-title { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+.callout.note { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.22); color: var(--muted); }
+.callout.note .callout-title, .callout.note strong { color: var(--accent); }
+.callout.warning { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.22); color: var(--muted); }
+.callout.warning .callout-title, .callout.warning strong { color: var(--accent4); }
+.callout.tip { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); color: var(--muted); }
+.callout.tip .callout-title, .callout.tip strong { color: var(--accent3); }
+.callout.important { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.22); color: var(--muted); }
+.callout.important .callout-title, .callout.important strong { color: var(--accent5); }
+
+/* MATH DISPLAY */
+.math-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.75rem; margin: 1.25rem 0; overflow-x: auto; font-size: 1.05rem; text-align: center; }
+.math-label { font-size: 0.72rem; color: var(--muted2); font-family: var(--mono); margin-top: 0.5rem; text-align: right; }
+
+/* INLINE FIGURE / DIAGRAM */
+.figure { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; margin: 2rem 0; text-align: center; }
+.figure-caption { font-size: 0.8rem; color: var(--muted2); margin-top: 1rem; font-style: italic; }
+
+/* DATA TABLE */
+.data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.85rem; }
+.data-table th { padding: 10px 14px; background: var(--card2); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); text-align: left; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(99,179,237,0.03); }
+
+/* SUMMARY BOX */
+.summary-box { background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(129,140,248,0.07)); border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 1.75rem 2rem; margin: 3rem 0 2rem; }
+.summary-box h3 { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+.summary-box ul { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.88rem; }
+.summary-box li { margin-bottom: 6px; line-height: 1.7; }
+
+/* RESOURCE LIST */
+.resource-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.resource-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.resource-list li::before { content: '\2192'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.resource-list a { color: var(--accent2); }
+
+/* PREV/NEXT NAV */
+.page-nav { display: flex; justify-content: space-between; gap: 1rem; padding: 2rem; max-width: 1200px; margin: 0 auto; border-top: 1px solid var(--border); }
+.page-nav-btn { display: flex; flex-direction: column; gap: 4px; padding: 1rem 1.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; transition: all 0.2s; max-width: 45%; }
+.page-nav-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.page-nav-btn .nav-dir { font-size: 0.72rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; }
+.page-nav-btn .nav-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.page-nav-btn.next { text-align: right; margin-left: auto; }
+
+/* QUIZ/EXERCISE BOX */
+.exercise-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin: 2rem 0; }
+.exercise-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent4); margin-bottom: 0.5rem; }
+.exercise-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; }
+.exercise-body { font-size: 0.88rem; color: var(--muted); line-height: 1.75; }
+
+/* QUIZ BOX */
+.quiz-box { background: rgba(129,140,248,0.06); border: 1px solid rgba(129,140,248,0.22); border-radius: 14px; padding: 1.5rem; margin: 1.5rem 0; }
+.quiz-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.5rem; }
+.quiz-question { font-size: 0.93rem; color: var(--text); margin-bottom: 0.75rem; font-weight: 500; }
+.quiz-answer { margin-top: 0.5rem; }
+.quiz-answer summary { cursor: pointer; font-size: 0.82rem; color: var(--accent2); font-weight: 600; }
+.quiz-answer p { margin-top: 0.5rem; font-size: 0.86rem; color: var(--muted); }
+
+/* CELL (for assignment files - jupyter style) */
+.jupyter-cell { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin: 1.5rem 0; overflow: hidden; }
+.cell-header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted2); font-family: var(--mono); }
+.cell-input-label { color: var(--accent4); font-weight: 600; }
+.cell-body { padding: 1rem 1.25rem; }
+.jupyter-cell pre { padding: 1rem 1.25rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; background: var(--code-bg); margin: 0; }
+.cell-prompt { color: var(--accent3); font-weight: 700; }
+
+/* GRADING RUBRIC */
+.rubric-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+.rubric-table th { background: var(--card2); padding: 10px 14px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); }
+.rubric-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+
+/* DETAILS (collapsible hints) */
+details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; }
+details summary { cursor: pointer; font-size: 0.85rem; color: var(--accent2); font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
+
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">Hyper<span>Tune</span></a>
+    <ul class="nav-links">
+
+    </ul>
+    <a href="../index.html#curriculum" class="nav-cta">Start Learning</a>
+  </div>
+</nav>
+<div class="page-layout">
+  <aside class="toc-sidebar">
+    <div class="toc-label">On this page</div>
+    <nav class="toc-nav">
+<a href="#section-1" class="toc-link">1. Batch Size</a>
+<a href="#section-2" class="toc-link">2. Linear Scaling Rule</a>
+<a href="#section-3" class="toc-link">3. Depth vs Width</a>
+<a href="#section-4" class="toc-link">4. Dropout</a>
+<a href="#section-5" class="toc-link">5. Batch Normalization</a>
+<a href="#section-6" class="toc-link">6. Weight Initialization</a>
+<a href="#section-7" class="toc-link">7. Activation Functions</a>
+<a href="#section-8" class="toc-link">8. Weight Decay</a>
+<a href="#section-9" class="toc-link">9. Optuna + PyTorch</a>
+<a href="#resources" class="toc-link">Useful Resources</a>
+    </nav>
+  </aside>
+  <article class="article-body">
+    <div class="breadcrumb"><a href="../index.html">HyperTune</a> › <a href="intro.html">Module 05</a> › Architecture & Regularization</div>
+    <div class="article-header">
+      <div class="module-badge">Module 05 · Deep Learning</div>
+      <h1 class="article-title">Batch Size, Dropout, Width and Depth: Deep Learning Architecture Hyperparameters</h1>
+      <div class="article-meta">Part of the <strong>HyperTune</strong> open course · Estimated read time: 18 min · Python 3.10+ · PyTorch 2.0+</div>
+    </div>
+    <div class="outline-box">
+      <div class="outline-title">📋 Article Outline</div>
+      <ol class="outline-list">
+
+<li><a href="#section-1">1. Batch Size: The Implicit Regularizer</a></li>
+<li><a href="#section-2">2. The Linear Scaling Rule</a></li>
+<li><a href="#section-3">3. Network Depth vs Width</a></li>
+<li><a href="#section-4">4. Dropout: Forcing Redundant Representations</a></li>
+<li><a href="#section-5">5. Batch Normalization: Stabilizing Training</a></li>
+<li><a href="#section-6">6. Weight Initialization: He vs Glorot</a></li>
+<li><a href="#section-7">7. Activation Functions: ReLU and Friends</a></li>
+<li><a href="#section-8">8. Weight Decay (L2 Regularization)</a></li>
+<li><a href="#section-9">9. Putting It All Together: Optuna + PyTorch</a></li>
+<li><a href="#resources">Useful Resources</a></li>
+      </ol>
+    </div>
+
+<section id="section-1">
+  <h2>1. Batch Size: The Implicit Regularizer</h2>
+  <p>After the learning rate, batch size is the deep-learning hyperparameter with the most subtle and most misunderstood effects. Naively, batch size seems like a pure compute knob: bigger batches use more memory and train faster per epoch, smaller batches fit on smaller GPUs. That intuition is correct as far as it goes, but it misses the fact that <strong>batch size changes the gradient signal itself.</strong> The gradient you compute is an average over a mini-batch, and the variance of that average is inversely proportional to the batch size:</p>
+  <div class="math-block">$$ \text{{Var}}\left[ \frac{{1}}{{B}} \sum_{{i=1}}^{{B}} \nabla_\theta \ell(\theta; x_i, y_i) \right] = \frac{{1}}{{B}} \, \text{{Var}}\left[ \nabla_\theta \ell(\theta; x_i, y_i) \right] $$ <div class="math-label">Eq. 1 — Mini-batch gradient variance scales as 1/B.</div></div>
+  <p>This has three practical consequences. First, <strong>small batches act as an implicit regularizer.</strong> The noise in the gradient prevents the optimizer from settling into sharp minima (which generalize poorly) and instead biases it toward flat minima (which generalize well). This is the famous "generalization gap" — large-batch training reaches lower training loss but worse validation accuracy than small-batch training at the same LR. Keskar et al. (2017) showed this convincingly for image classification.</p>
+  <p>Second, <strong>large batches allow higher learning rates.</strong> Because the gradient is less noisy, you can take bigger steps without diverging. The linear scaling rule (section 2) quantifies this. Third, <strong>large batches train faster wall-clock but only up to a point.</strong> Doubling the batch size from 32 to 64 typically halves the number of steps per epoch and gives you a 2× speedup. Doubling from 4096 to 8192 gives you almost no speedup because you become bandwidth-limited and the per-step compute dominates.</p>
+  <p>The practical sweet spot for most vision tasks is 32–512. For NLP pretraining it is 256–4096 (with gradient accumulation to fake larger batches). For tabular MLPs, 32–256 is plenty.</p>
+  <div class="figure">
+<svg viewBox="0 0 700 360" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:700px;font-family:Inter,sans-serif">
+  <!-- Axes -->
+  <line x1="70" y1="300" x2="660" y2="300" stroke="#8899aa" stroke-width="1.5"/>
+  <line x1="70" y1="40" x2="70" y2="300" stroke="#8899aa" stroke-width="1.5"/>
+  <!-- Small batch: jagged descending curve (high noise) -->
+  <polyline points="70,260 90,210 110,240 130,180 150,220 170,160 190,200 210,140 230,180 250,120 270,160 290,100 310,140 330,90 350,120 370,75 390,110 410,65 430,95 450,55 470,80 490,45 510,70 530,40 550,60 570,35 590,50 610,30"
+            fill="none" stroke="#f472b6" stroke-width="2"/>
+  <!-- Large batch: smooth descending curve (low noise) -->
+  <polyline points="70,265 90,250 110,235 130,218 150,200 170,182 190,165 210,148 230,132 250,118 270,105 290,93 310,82 330,72 350,64 370,57 390,51 410,46 430,42 450,39 470,37 490,35 510,34 530,33 550,32 570,31 590,31 610,30"
+            fill="none" stroke="#38bdf8" stroke-width="2"/>
+  <!-- Legend -->
+  <rect x="430" y="50" width="220" height="62" fill="rgba(7,11,20,0.7)" stroke="rgba(99,179,237,0.2)" rx="8"/>
+  <line x1="445" y1="68" x2="475" y2="68" stroke="#f472b6" stroke-width="2"/>
+  <text x="485" y="72" fill="#f472b6" font-size="11" font-weight="600">batch=32 (noisy)</text>
+  <line x1="445" y1="92" x2="475" y2="92" stroke="#38bdf8" stroke-width="2"/>
+  <text x="485" y="96" fill="#38bdf8" font-size="11" font-weight="600">batch=512 (smooth)</text>
+  <!-- Annotations -->
+  <text x="280" y="200" fill="#f472b6" font-size="10" font-style="italic">high variance → regularizes</text>
+  <text x="290" y="160" fill="#38bdf8" font-size="10" font-style="italic">low variance → faster, sharper minima</text>
+  <!-- Axis labels -->
+  <text x="365" y="335" fill="#8899aa" font-size="11" text-anchor="middle">training step</text>
+  <text x="30" y="170" fill="#8899aa" font-size="11" text-anchor="middle" transform="rotate(-90 30 170)">training loss</text>
+  <text x="350" y="28" fill="#f0f6fc" font-size="14" text-anchor="middle" font-weight="700">Small vs Large Batch: Gradient Noise</text>
+</svg>
+<div class="figure-caption">Same model, same data, same LR. Small batches (pink) produce a noisy loss curve because each gradient is a noisy estimate. Large batches (blue) produce a smooth curve but may converge to a sharper, worse-generalizing minimum.</div></div>
+  <div class="callout note"><div class="callout-icon">📌</div><div class="callout-body"><div class="callout-title">The generalization gap is real but contested</div><p>Keskar et al. (2017) showed sharp minima generalize worse, and large batches find sharp minima. Later work (e.g., Hoffer et al. 2017, You et al. 2019) argues the gap can be closed with proper LR scaling, warmup, and optimizer choice. The honest summary: small-batch training is more forgiving and tends to generalize well out of the box; large-batch training is faster but requires more careful tuning of LR, warmup, and weight decay to match small-batch generalization.</p></div></div>
+</section>
+
+<section id="section-2">
+  <h2>2. The Linear Scaling Rule</h2>
+  <p>If you increase the batch size by a factor of $k$, you should usually increase the learning rate by a factor of $k$ as well. This is the <em>linear scaling rule</em> introduced by Goyal et al. (2017) for large-batch ImageNet training. The intuition: with $k$ times more samples per batch, the gradient is $k$ times less noisy, so you can take a step $k$ times larger in the same direction without diverging.</p>
+  <div class="math-block">$$ \eta_\text{{large}} = k \cdot \eta_\text{{small}}, \quad k = B_\text{{large}} / B_\text{{small}} $$ <div class="math-label">Eq. 2 — Linear scaling rule (Goyal et al. 2017).</div></div>
+  <p>In practice, the rule holds for $k$ up to about 8–16 on ImageNet. Beyond that, you need warmup and possibly sub-linear scaling (e.g., $\sqrt{k}$). The rule also breaks for very small initial LRs — there is a floor below which the model cannot make progress regardless of batch size. Use it as a starting point, not a law.</p>
+  <p>For Adam-family optimizers, the rule of thumb is more conservative: scale LR by $\sqrt{k}$ rather than $k$, because Adam normalizes the gradient by its second moment and is less sensitive to gradient magnitude.</p>
+</section>
+
+<section id="section-3">
+  <h2>3. Network Depth vs Width</h2>
+  <p>A neural network's architecture is parameterized by two main structural knobs: <strong>depth</strong> (the number of layers) and <strong>width</strong> (the number of units per layer). Both increase the model's representational capacity, but they do so in different ways.</p>
+  <p>Depth gives you <em>hierarchical features</em>. Each layer composes the previous layer's features, so a 10-layer network can represent functions that would require exponentially more units in a 1-layer network. This is the famous result from Telgarsky (2016): there exist functions that a $k$-layer network of polynomial width can represent, but that a $k-1$ layer network cannot represent without exponential width. For vision and sequence tasks, depth is the primary axis of capacity — ResNet-152 beats ResNet-18 not because it has more parameters per layer, but because it has more layers.</p>
+  <p>Width gives you <em>raw capacity per layer</em>. A wider layer can memorize more patterns and is less likely to be the bottleneck that prevents the rest of the network from learning. Width also affects optimization dynamics: wider networks have nicer loss landscapes (less ill-conditioned, fewer saddle points), which is why "widening" a ResNet (Wide-ResNet) often matches or beats "deepening" it for the same parameter budget.</p>
+  <p>For <strong>tabular MLPs</strong>, the practical default is 3–5 layers with 256–512 units each. Going deeper rarely helps for tabular data and often hurts because tabular features are already "flat" — there is no hierarchy to discover. Going wider helps up to about 1024 units, then plateaus. For <strong>vision CNNs</strong>, depth is king: 8 layers (VGG-style) is the floor, 50–200 layers (ResNet-style) is the modern default. For <strong>Transformers</strong>, both matter: BERT-base is 12 layers × 768 width, BERT-large is 24 × 1024.</p>
+</section>
+
+<section id="section-4">
+  <h2>4. Dropout: Forcing Redundant Representations</h2>
+  <p>Dropout (Srivastava et al., 2014) is a regularization technique that randomly zeros out a fraction $p$ of the activations in a layer during training. At inference time, no units are dropped (or equivalently, all units are scaled by $1-p$ to compensate). The idea is to prevent co-adaptation: if any single unit can be removed without breaking the model, the network is forced to learn redundant representations, which generalize better.</p>
+  <div class="math-block">$$ \tilde{{h}}_i = \frac{{m_i \cdot h_i}}{{1-p}}, \quad m_i \sim \text{{Bernoulli}}(1-p) $$ <div class="math-label">Eq. 3 — Inverted dropout (training time). At inference, m_i = 1 and no scaling is needed.</div></div>
+  <p>The dropout rate $p$ is a hyperparameter, and the right value depends on where in the network the dropout is applied. For <strong>early layers</strong> (close to the input), use $p = 0.1$ to $0.3$ — you want to preserve most of the input signal. For <strong>later layers</strong> (close to the output), use $p = 0.3$ to $0.5$ — the model has more redundancy here and can afford to lose more units. For <strong>embedding layers</strong> in NLP, $p = 0.1$ is typical. For <strong>attention weights</strong> in Transformers, $p = 0.1$ is the BERT default.</p>
+  <p>Do not use dropout immediately before or after BatchNorm. The interaction is poorly understood and empirically degrades training: dropout injects noise into the activations, which BatchNorm then "fixes" by re-normalizing, but the resulting statistics are biased at test time. The standard pattern is <code>Linear → ReLU → Dropout</code> (dropout after activation), with BatchNorm placed either before or after the activation but never adjacent to dropout.</p>
+  <div class="callout warning"><div class="callout-icon">⚠️</div><div class="callout-body"><div class="callout-title">Dropout is mostly a CNN/MLP technique</div><p>Modern Transformers use dropout sparingly — typically only on attention weights and the final pre-classifier layer. Modern CNNs (ResNet, EfficientNet) use it almost never, relying on BatchNorm, weight decay, and data augmentation for regularization instead. For tabular MLPs, dropout is still a workhorse and is often the most impactful regularizer.</p></div></div>
+</section>
+
+<section id="section-5">
+  <h2>5. Batch Normalization: Stabilizing Training</h2>
+  <p>Batch Normalization (Ioffe & Szegedy, 2015) normalizes the activations of each layer to have zero mean and unit variance, computed over the current mini-batch. The normalized activations are then scaled and shifted by learned parameters $\gamma$ and $\beta$. This is one of the most impactful architectural innovations in deep learning — it allows you to use higher learning rates, makes the network less sensitive to weight initialization, and acts as a mild regularizer.</p>
+  <div class="math-block">$$ \hat{{x}}_i = \frac{{x_i - \mu_\mathcal{{B}}}}{{\sqrt{{\sigma_\mathcal{{B}}^2 + \epsilon}}}}, \quad y_i = \gamma \hat{{x}}_i + \beta $$ <div class="math-label">Eq. 4 — BatchNorm. μ_B and σ_B² are per-batch statistics; γ and β are learned.</div></div>
+  <p>The two BatchNorm hyperparameters are <code>momentum</code> (default 0.1) and <code>eps</code> (default 1e-5). <code>momentum</code> controls how fast the running mean/variance estimates (used at inference) track the batch statistics — higher momentum means slower updates, which is more stable but lags behind distribution shifts. <code>eps</code> is the numerical-stability constant added inside the square root; you rarely need to change it, but for fp16 training it should be increased to 1e-3 or 1e-4 to avoid overflow.</p>
+  <p>BatchNorm has a subtle interaction with batch size: at very small batch sizes (≤ 8), the per-batch statistics are too noisy and BatchNorm can hurt training. For small-batch training, use <strong>GroupNorm</strong> (which normalizes over channel groups within a single sample) or <strong>LayerNorm</strong> (which normalizes over all channels within a sample) instead. These do not depend on batch statistics and behave identically at train and test time.</p>
+</section>
+
+<section id="section-6">
+  <h2>6. Weight Initialization: He vs Glorot</h2>
+  <p>Weight initialization sets the starting point of optimization. A bad initialization can cause gradients to vanish (too small) or explode (too large) in the first few steps, and the network may never recover. The two standard initialization schemes are:</p>
+  <ul>
+    <li><strong>Glorot/Xavier uniform</strong> (Glorot & Bengio, 2010): weights drawn from $\mathcal{U}\left[-\sqrt{6/(n_\text{in} + n_\text{out})}, \sqrt{6/(n_\text{in} + n_\text{out})}\right]$. Designed for tanh/sigmoid activations, which have gradients of order 1 near zero. Use this for <code>nn.Linear</code> layers with <code>tanh</code> or <code>sigmoid</code>.</li>
+    <li><strong>He uniform / He normal</strong> (He et al., 2015): weights drawn from $\mathcal{U}\left[-\sqrt{6/n_\text{in}}, \sqrt{6/n_\text{in}}\right]$ (or the normal equivalent $\mathcal{N}(0, 2/n_\text{in})$). Designed for ReLU and variants, which zero out half their inputs and so need twice the variance to maintain signal. Use this for <code>nn.Linear</code> or <code>nn.Conv2d</code> layers followed by <code>ReLU</code>.</li>
+  </ul>
+  <p>The wrong initialization is a silent killer. If you put Glorot init on a deep ReLU network, the gradients will quietly vanish, the loss will not decrease for the first 1000 steps, and you will assume the LR is wrong. Always match the init to the activation. In PyTorch, <code>nn.Linear</code> defaults to <code>kaiming_uniform_</code> (He) with a nonlinearity argument that defaults to <code>'leaky_relu'</code> — which is close enough to ReLU that most users never notice. But if you swap activations, check your inits.</p>
+</section>
+
+<section id="section-7">
+  <h2>7. Activation Functions: ReLU and Friends</h2>
+  <p>The activation function is a per-layer hyperparameter that controls the nonlinearity applied between linear layers. The default choice is <strong>ReLU</strong> ($f(x) = \max(0, x)$) — fast, simple, and almost always good enough. But ReLU has one known pathology: the "dying ReLU" problem, where a unit's weights drift such that the input is always negative, the output is always zero, and the gradient is always zero, so the unit never recovers. About 10–20% of ReLU units in a typical network are dead at the end of training.</p>
+  <p>The alternatives, in rough order of popularity:</p>
+  <ul>
+    <li><strong>LeakyReLU</strong> ($f(x) = \max(0.01x, x)$): fixes dying ReLU by giving a small gradient for negative inputs. The slope (0.01 by default) is a hyperparameter but rarely matters; 0.1 is sometimes better. Use this if you observe many dead ReLUs.</li>
+    <li><strong>GELU</strong> ($f(x) = x \cdot \Phi(x)$ where $\Phi$ is the standard normal CDF): smooth approximation of ReLU. Used in all modern Transformers (BERT, GPT, ViT). Slightly better than ReLU on NLP and vision-Transformer tasks; not meaningfully different on CNNs.</li>
+    <li><strong>SiLU/Swish</strong> ($f(x) = x \cdot \sigma(x)$ where $\sigma$ is the sigmoid): similar to GELU, used in EfficientNet and many modern CNNs. Often a small accuracy bump over ReLU.</li>
+    <li><strong>Mish</strong> ($f(x) = x \cdot \tanh(\text{softplus}(x))$): smoother than Swish, occasionally used in YOLO variants. Marginal improvements; not worth the compute cost in most cases.</li>
+  </ul>
+  <p>The practical recommendation: use <strong>ReLU</strong> for tabular MLPs and old-school CNNs (ResNet, VGG). Use <strong>GELU</strong> for Transformers. Use <strong>SiLU</strong> for EfficientNet-family models. Do not over-think it — the activation choice is rarely the difference between a working and a broken model.</p>
+  <div class="quiz-box">
+  <div class="quiz-label">🧠 Quick Check</div>
+  <p class="quiz-question">You observe that ~30% of ReLU units in your network have zero activation for every input in the training set. The loss is plateauing well above the expected value. What is the most likely fix?</p>
+  <details class="quiz-answer">
+    <summary>Show Answer</summary>
+    <p>Dying ReLUs. Switch to LeakyReLU (slope 0.01 or 0.1) or GELU, which both have non-zero gradients for negative inputs. Also check that your learning rate is not too high — large LRs can push ReLU weights into the dead zone irrecoverably. If the problem persists, lower the LR and re-initialize.</p>
+  </details>
+</div>
+</section>
+
+<section id="section-8">
+  <h2>8. Weight Decay (L2 Regularization)</h2>
+  <p>Weight decay penalizes large weights by adding an L2 term to the loss: $\mathcal{L}_\text{total} = \mathcal{L} + \lambda \|\theta\|_2^2$. The gradient of this term is $2\lambda\theta$, which is equivalent to multiplying the weights by $(1 - 2\eta\lambda)$ at each step — i.e., "decaying" them toward zero. The decay coefficient $\lambda$ is the hyperparameter.</p>
+  <p>In modern optimizers, weight decay is often <em>decoupled</em> from the gradient and applied directly to the weights (this is the difference between <code>Adam</code> and <code>AdamW</code>). Decoupled weight decay is theoretically cleaner and empirically better — it does not interact with the optimizer's moment estimates. Use <code>AdamW</code> rather than <code>Adam</code> + L2 whenever possible.</p>
+  <p>The right value of $\lambda$ depends on the dataset and model. Typical ranges:</p>
+  <ul>
+    <li><strong>Tabular MLPs:</strong> $\lambda = 10^{-5}$ to $10^{-2}$. Often the most impactful regularizer.</li>
+    <li><strong>CNNs on CIFAR/ImageNet:</strong> $\lambda = 10^{-4}$ to $10^{-3}$. Standard.</li>
+    <li><strong>Transformers (AdamW):</strong> $\lambda = 0.01$ to $0.1$. Note: AdamW uses a different convention where the weight decay coefficient is multiplied directly, not added to the loss. A value of 0.1 in AdamW is roughly equivalent to $\lambda = 10^{-3}$ in L2-Adam.</li>
+  </ul>
+  <p>Always apply weight decay to <strong>weights only</strong>, not biases or BatchNorm parameters. These have far fewer parameters and regularizing them usually hurts. In PyTorch, this means grouping parameters into decayed vs not-decayed lists when constructing the optimizer.</p>
+</section>
+
+<section id="section-9">
+  <h2>9. Putting It All Together: Optuna + PyTorch</h2>
+  <p>The whole point of this module is that batch size, dropout, width, depth, weight decay, optimizer choice, and learning rate are all coupled. Tuning them one at a time is slow and likely to leave you in a local optimum. The right approach is to tune them <em>simultaneously</em> with a Bayesian optimizer like Optuna, using the MedianPruner to kill bad trials early.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── optuna_pytorch_tabular.py ────────────────────────────────────────────────
+# Tune batch_size, dropout, width, depth, weight_decay, optimizer, and LR
+# simultaneously with Optuna on the MNIST dataset (flat MLP — fast to train).
+
+import optuna
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, random_split
+from torchvision import datasets, transforms
+
+device = &quot;cuda&quot; if torch.cuda.is_available() else &quot;cpu&quot;
+BATCH_TRIAL_EPOCHS = 3
+
+tfm = transforms.Compose([transforms.ToTensor(), transforms.Flatten()])
+full = datasets.MNIST(&quot;./data&quot;, train=True, download=True, transform=tfm)
+train_ds, val_ds = random_split(full, [55000, 5000],
+                                generator=torch.Generator().manual_seed(42))
+
+
+# ─── 1. Model factory: architecture depends on trial ─────────────────────────
+def build_model(width, depth, dropout, activation):
+    act = {&quot;relu&quot;: nn.ReLU, &quot;gelu&quot;: nn.GELU, &quot;silu&quot;: nn.SiLU}[activation]
+    layers = [nn.Linear(28 * 28, width), act()]
+    for _ in range(depth - 1):
+        layers += [nn.Linear(width, width), act()]
+        if dropout &gt; 0:
+            layers.append(nn.Dropout(dropout))
+    layers.append(nn.Linear(width, 10))
+    return nn.Sequential(*layers).to(device)
+
+
+# ─── 2. Optimizer factory: optimizer + LR + weight_decay depend on trial ─────
+def build_optimizer(model, name, lr, wd):
+    # NOTE: apply weight decay ONLY to weight matrices, not biases.
+    decay, no_decay = [], []
+    for m in model.modules():
+        if isinstance(m, nn.Linear):
+            decay.append(m.weight)
+            if m.bias is not None:
+                no_decay.append(m.bias)
+    params = [
+        {&quot;params&quot;: decay, &quot;weight_decay&quot;: wd},
+        {&quot;params&quot;: no_decay, &quot;weight_decay&quot;: 0.0},
+    ]
+    if name == &quot;adam&quot;:
+        return optim.Adam(params, lr=lr)
+    if name == &quot;adamw&quot;:
+        return optim.AdamW(params, lr=lr)
+    if name == &quot;sgd&quot;:
+        return optim.SGD(params, lr=lr, momentum=0.9)
+    raise ValueError(name)
+
+
+# ─── 3. Objective: Optuna calls this with a trial, returns val accuracy ───────
+def objective(trial):
+    # Suggest every hyperparameter in one shot.
+    lr          = trial.suggest_float(&quot;lr&quot;, 1e-5, 1e-1, log=True)
+    batch_size  = trial.suggest_categorical(&quot;batch_size&quot;, [64, 128, 256, 512])
+    dropout     = trial.suggest_float(&quot;dropout&quot;, 0.0, 0.5)
+    width       = trial.suggest_int(&quot;width&quot;, 64, 512, step=64)
+    depth       = trial.suggest_int(&quot;depth&quot;, 2, 5)
+    weight_decay = trial.suggest_float(&quot;weight_decay&quot;, 1e-6, 1e-2, log=True)
+    optimizer_name = trial.suggest_categorical(&quot;optimizer&quot;,
+                                                [&quot;adam&quot;, &quot;adamw&quot;, &quot;sgd&quot;])
+    activation  = trial.suggest_categorical(&quot;activation&quot;, [&quot;relu&quot;, &quot;gelu&quot;, &quot;silu&quot;])
+
+    # Build everything from the trial&#x27;s suggestions.
+    model = build_model(width, depth, dropout, activation)
+    optimizer = build_optimizer(model, optimizer_name, lr, weight_decay)
+    criterion = nn.CrossEntropyLoss()
+
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,
+                              num_workers=2)
+    val_loader = DataLoader(val_ds, batch_size=512, shuffle=False, num_workers=2)
+
+    for epoch in range(BATCH_TRIAL_EPOCHS):
+        model.train()
+        for x, y in train_loader:
+            x, y = x.to(device), y.to(device)
+            optimizer.zero_grad()
+            loss = criterion(model(x), y)
+            loss.backward()
+            optimizer.step()
+
+        # Validate and report to Optuna (for pruning).
+        model.eval()
+        correct, total = 0, 0
+        with torch.no_grad():
+            for x, y in val_loader:
+                x, y = x.to(device), y.to(device)
+                correct += (model(x).argmax(1) == y).sum().item()
+                total += y.size(0)
+        acc = correct / total
+        trial.report(acc, epoch)
+        if trial.should_prune():
+            raise optuna.TrialPruned()
+
+    return acc
+
+
+# ─── 4. Run the study with MedianPruner ──────────────────────────────────────
+study = optuna.create_study(direction=&quot;maximize&quot;,
+                            pruner=optuna.pruners.MedianPruner(
+                                n_startup_trials=5, n_warmup_steps=1))
+study.optimize(objective, n_trials=50, timeout=3600)
+
+print(f&quot;Best val acc: {study.best_value:.4f}&quot;)
+print(f&quot;Best params: {study.best_params}&quot;)
+</pre></div>
+  <p>This study runs 50 trials of 3 epochs each — about an hour on a single GPU. The MedianPruner kills the bottom 50% of trials after epoch 1, saving roughly half the compute. The resulting <code>study.best_params</code> dict gives you a coordinated set of hyperparameters that are jointly optimal, which is qualitatively better than what you would get by tuning each knob separately. The next step (covered in Module 09 — Optuna Deep Dive) is to plot param importances and see which knobs actually mattered — usually LR and weight_decay dominate, and dropout barely matters at all on tabular MNIST.</p>
+  <div class="callout tip"><div class="callout-icon">💡</div><div class="callout-body"><div class="callout-title">Why weight decay on biases is a bad idea</div><p>Biases have one parameter per output unit, vs. <code>n_in × n_out</code> weights per layer. Regularizing biases with the same coefficient as weights is over-regularizing a tiny number of parameters, and it usually biases the model's outputs toward zero in a way that hurts accuracy. Always split your parameter groups: weights get weight decay, biases and BatchNorm <code>.weight</code>/<code>.bias</code> do not.</p></div></div>
+</section>
+
+<div class="summary-box"><h3>🎯 Key Takeaways</h3><ul><li><strong>Batch size is an implicit regularizer</strong>: small batches inject gradient noise that biases the optimizer toward flat, generalizable minima. Practical range: 32–512 for vision, 256–4096 for NLP.</li><li><strong>Use the linear scaling rule</strong>: when you multiply batch size by k, multiply LR by k (SGD) or √k (Adam). Add warmup for large k.</li><li><strong>Depth gives hierarchical features</strong> (essential for vision/NLP); <strong>width gives raw capacity</strong> (helps tabular MLPs). Tabular sweet spot: 3–5 layers × 256–512 units.</li><li><strong>Dropout</strong> forces redundant representations. p=0.1–0.3 early layers, 0.3–0.5 later layers. Do NOT use next to BatchNorm.</li><li><strong>BatchNorm</strong> stabilizes training and allows higher LR. Hyperparams: <code>momentum=0.1</code>, <code>eps=1e-5</code>. Use GroupNorm/LayerNorm for batch_size ≤ 8.</li><li><strong>Match init to activation</strong>: <code>he_uniform</code> for ReLU, <code>glorot_uniform</code> for tanh/sigmoid. Wrong init = vanishing gradients.</li><li><strong>Activations</strong>: ReLU (default), GELU (Transformers), SiLU (EfficientNet), LeakyReLU (fixes dying ReLU).</li><li><strong>Weight decay</strong> on weights only — never biases or BatchNorm. Range: 1e-5 to 1e-2. Prefer <code>AdamW</code> over <code>Adam</code>+L2.</li><li><strong>Tune them all simultaneously</strong> with Optuna + MedianPruner. LR and weight_decay usually dominate; dropout barely matters on tabular.</li></ul></div>
+
+<section id="resources"><h2>Useful Resources</h2><ul class="resource-list"><li><a href="https://arxiv.org/abs/1609.04836">Keskar et al. (2017) — On Large-Batch Training for Deep Learning: Generalization Gap and Sharp Minima</a></li><li><a href="https://arxiv.org/abs/1706.02677">Goyal et al. (2017) — Accurate, Large Minibatch SGD: Training ImageNet in 1 Hour (linear scaling rule)</a></li><li><a href="https://jmlr.org/papers/v15/srivastava14a.html">Srivastava et al. (2014) — Dropout: A Simple Way to Prevent Neural Networks from Overfitting</a></li><li><a href="https://arxiv.org/abs/1502.03167">Ioffe &amp; Szegedy (2015) — Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift</a></li><li><a href="https://arxiv.org/abs/1502.01852">He et al. (2015) — Delving Deep into Rectifiers (He initialization)</a></li><li><a href="http://proceedings.mlr.press/v9/glorot10a.html">Glorot &amp; Bengio (2010) — Understanding the difficulty of training deep feedforward neural networks</a></li><li><a href="https://arxiv.org/abs/1711.05101">Loshchilov &amp; Hutter (2019) — Decoupled Weight Decay Regularization (AdamW)</a></li><li><a href="https://optuna.readthedocs.io/">Optuna documentation — A next-generation hyperparameter optimization framework</a></li></ul></section>
+
+  </article>
+</div>
+<div class="page-nav"><a href="part1_learning_rate.html" class="page-nav-btn prev"><span class="nav-dir">← Previous</span><span class="nav-title">The Learning Rate</span></a><a href="assignment_task.html" class="page-nav-btn next"><span class="nav-dir">Next →</span><span class="nav-title">Assignment 05</span></a></div>
+<footer>
+  <div class="container">
+    <div style="font-size:1.5rem;font-weight:800;font-family:var(--display);color:var(--accent);margin-bottom:0.5rem">HyperTune</div>
+    <p style="color:var(--muted2);font-size:0.85rem;max-width:500px;margin:0 auto">The complete hyperparameter tuning reference for ML &amp; DL engineers. Covers scikit-learn, XGBoost, LightGBM, PyTorch, Optuna, Ray Tune, and beyond — from first principles to production.</p>
+    <div style="margin-top:2rem;font-size:0.78rem;color:var(--muted2)">Built for learning · Python 3.10+ · scikit-learn 1.4+ · Optuna 3.0+</div>
+  </div>
+</footer>
+<script>
+(function() {
+  const links = Array.from(document.querySelectorAll('.toc-link'));
+  const sections = links
+    .map(l => document.querySelector(l.getAttribute('href')))
+    .filter(Boolean);
+  if (!('IntersectionObserver' in window) || sections.length === 0) return;
+  const setActive = id => {
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+  };
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  sections.forEach(s => observer.observe(s));
+})();
+</script>
+</body>
+</html>

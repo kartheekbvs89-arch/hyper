@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cross-Validation — HyperTune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<style>
+
+:root {
+  --bg: #070b14; --bg2: #0c1220; --bg3: #111827;
+  --card: #131d2e; --card2: #1a2640;
+  --border: rgba(99,179,237,0.12); --border2: rgba(99,179,237,0.22);
+  --accent: #38bdf8; --accent2: #818cf8; --accent3: #34d399;
+  --accent4: #f59e0b; --accent5: #f472b6;
+  --text: #f0f6fc; --muted: #8899aa; --muted2: #64748b;
+  --code-bg: #0d1117;
+  --ff: 'Inter', sans-serif; --mono: 'JetBrains Mono', monospace;
+  --display: 'Sora', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,11,20,0.85);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:var(--display);font-weight:800;font-size:1.25rem;color:var(--accent);letter-spacing:-0.03em;text-decoration:none}
+.logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#000;padding:7px 18px;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85}
+
+/* LAYOUT */
+.page-layout { display: grid; grid-template-columns: 280px 1fr; gap: 3rem; max-width: 1200px; margin: 0 auto; padding: 5rem 2rem 5rem; padding-top: 80px; }
+@media(max-width: 900px) { .page-layout { grid-template-columns: 1fr; } .toc-sidebar { display: none; } }
+
+/* TOC SIDEBAR */
+.toc-sidebar { position: sticky; top: 80px; height: fit-content; max-height: calc(100vh - 100px); overflow-y: auto; }
+.toc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.75rem; }
+.toc-nav { display: flex; flex-direction: column; gap: 2px; }
+.toc-link { color: var(--muted); font-size: 0.82rem; text-decoration: none; padding: 4px 10px; border-left: 2px solid transparent; transition: all 0.15s; border-radius: 0 4px 4px 0; }
+.toc-link:hover, .toc-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(56,189,248,0.05); }
+.toc-link.toc-sub { font-size: 0.78rem; padding-left: 22px; }
+
+/* ARTICLE BODY */
+.article-body { min-width: 0; }
+.breadcrumb { font-size: 0.78rem; color: var(--muted2); margin-bottom: 1.5rem; }
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--accent); }
+.module-badge { display: inline-block; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: var(--accent); padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 1rem; }
+.article-title { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
+.article-meta { font-size: 0.83rem; color: var(--muted); margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+
+/* OUTLINE BOX */
+.outline-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 3rem; }
+.outline-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.75rem; color: var(--text); }
+.outline-list { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.85rem; }
+.outline-list a { color: var(--accent); text-decoration: none; }
+.outline-list a:hover { text-decoration: underline; }
+.outline-list li { margin: 4px 0; }
+.outline-list ul { margin: 4px 0; padding-left: 1rem; }
+
+/* ARTICLE PROSE */
+.article-body h2 { font-family: var(--display); font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; margin: 3rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); scroll-margin-top: 80px; }
+.article-body h3 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 80px; }
+.article-body h4 { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.article-body p { margin-bottom: 1.25rem; color: var(--muted); font-size: 0.97rem; line-height: 1.85; }
+.article-body strong { color: var(--text); font-weight: 600; }
+.article-body em { color: var(--accent3); font-style: italic; }
+.article-body ul, .article-body ol { margin: 0 0 1.25rem 1.5rem; color: var(--muted); font-size: 0.95rem; }
+.article-body li { margin-bottom: 6px; line-height: 1.75; }
+.article-body code { font-family: var(--mono); font-size: 0.82em; background: rgba(56,189,248,0.08); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
+.article-body a { color: var(--accent2); text-decoration: none; }
+.article-body a:hover { text-decoration: underline; }
+
+/* CODE BLOCKS */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+.code-block-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot.r { background: #ff5f57; } .code-dot.y { background: #ffbd2e; } .code-dot.g { background: #28c840; }
+.code-filename { font-family: var(--mono); font-size: 0.73rem; color: var(--muted2); margin-left: 8px; }
+.code-block pre { padding: 1.5rem; overflow-x: auto; margin: 0; font-family: var(--mono); font-size: 0.82rem; line-height: 1.8; color: #e2e8f0; }
+/* Syntax colors */
+.kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; }
+.num { color: #f78c6c; } .cm { color: #546e7a; font-style: italic; }
+.cls { color: #ffcb6b; } .imp { color: #89ddff; } .op { color: #89ddff; }
+
+/* CALLOUT BOXES */
+.callout { display: flex; gap: 1rem; border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; border-width: 1px; border-style: solid; }
+.callout-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+.callout-body { font-size: 0.88rem; line-height: 1.75; }
+.callout-body strong { font-weight: 600; }
+.callout-title { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+.callout.note { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.22); color: var(--muted); }
+.callout.note .callout-title, .callout.note strong { color: var(--accent); }
+.callout.warning { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.22); color: var(--muted); }
+.callout.warning .callout-title, .callout.warning strong { color: var(--accent4); }
+.callout.tip { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); color: var(--muted); }
+.callout.tip .callout-title, .callout.tip strong { color: var(--accent3); }
+.callout.important { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.22); color: var(--muted); }
+.callout.important .callout-title, .callout.important strong { color: var(--accent5); }
+
+/* MATH DISPLAY */
+.math-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.75rem; margin: 1.25rem 0; overflow-x: auto; font-size: 1.05rem; text-align: center; }
+.math-label { font-size: 0.72rem; color: var(--muted2); font-family: var(--mono); margin-top: 0.5rem; text-align: right; }
+
+/* INLINE FIGURE / DIAGRAM */
+.figure { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; margin: 2rem 0; text-align: center; }
+.figure-caption { font-size: 0.8rem; color: var(--muted2); margin-top: 1rem; font-style: italic; }
+
+/* DATA TABLE */
+.data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.85rem; }
+.data-table th { padding: 10px 14px; background: var(--card2); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); text-align: left; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(99,179,237,0.03); }
+
+/* SUMMARY BOX */
+.summary-box { background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(129,140,248,0.07)); border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 1.75rem 2rem; margin: 3rem 0 2rem; }
+.summary-box h3 { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+.summary-box ul { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.88rem; }
+.summary-box li { margin-bottom: 6px; line-height: 1.7; }
+
+/* RESOURCE LIST */
+.resource-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.resource-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.resource-list li::before { content: '\2192'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.resource-list a { color: var(--accent2); }
+
+/* PREV/NEXT NAV */
+.page-nav { display: flex; justify-content: space-between; gap: 1rem; padding: 2rem; max-width: 1200px; margin: 0 auto; border-top: 1px solid var(--border); }
+.page-nav-btn { display: flex; flex-direction: column; gap: 4px; padding: 1rem 1.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; transition: all 0.2s; max-width: 45%; }
+.page-nav-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.page-nav-btn .nav-dir { font-size: 0.72rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; }
+.page-nav-btn .nav-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.page-nav-btn.next { text-align: right; margin-left: auto; }
+
+/* QUIZ/EXERCISE BOX */
+.exercise-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin: 2rem 0; }
+.exercise-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent4); margin-bottom: 0.5rem; }
+.exercise-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; }
+.exercise-body { font-size: 0.88rem; color: var(--muted); line-height: 1.75; }
+
+/* QUIZ BOX */
+.quiz-box { background: rgba(129,140,248,0.06); border: 1px solid rgba(129,140,248,0.22); border-radius: 14px; padding: 1.5rem; margin: 1.5rem 0; }
+.quiz-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.5rem; }
+.quiz-question { font-size: 0.93rem; color: var(--text); margin-bottom: 0.75rem; font-weight: 500; }
+.quiz-answer { margin-top: 0.5rem; }
+.quiz-answer summary { cursor: pointer; font-size: 0.82rem; color: var(--accent2); font-weight: 600; }
+.quiz-answer p { margin-top: 0.5rem; font-size: 0.86rem; color: var(--muted); }
+
+/* CELL (for assignment files - jupyter style) */
+.jupyter-cell { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin: 1.5rem 0; overflow: hidden; }
+.cell-header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted2); font-family: var(--mono); }
+.cell-input-label { color: var(--accent4); font-weight: 600; }
+.cell-body { padding: 1rem 1.25rem; }
+.jupyter-cell pre { padding: 1rem 1.25rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; background: var(--code-bg); margin: 0; }
+.cell-prompt { color: var(--accent3); font-weight: 700; }
+
+/* GRADING RUBRIC */
+.rubric-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+.rubric-table th { background: var(--card2); padding: 10px 14px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); }
+.rubric-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+
+/* DETAILS (collapsible hints) */
+details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; }
+details summary { cursor: pointer; font-size: 0.85rem; color: var(--accent2); font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
+
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">Hyper<span>Tune</span></a>
+    <ul class="nav-links">
+
+    </ul>
+    <a href="../index.html#curriculum" class="nav-cta">Start Learning</a>
+  </div>
+</nav>
+<div class="page-layout">
+  <aside class="toc-sidebar">
+    <div class="toc-label">On this page</div>
+    <nav class="toc-nav">
+<a href="#section-1" class="toc-link">1. Why a Single Split Is Not Enough</a>
+<a href="#section-2" class="toc-link">2. k-Fold Cross-Validation</a>
+<a href="#section-3" class="toc-link">3. Stratified k-Fold</a>
+<a href="#section-4" class="toc-link">4. Leave-One-Out CV</a>
+<a href="#section-5" class="toc-link">5. Time-Series CV</a>
+<a href="#section-6" class="toc-link">6. Group k-Fold</a>
+<a href="#section-7" class="toc-link">7. CV as the Oracle</a>
+<a href="#section-8" class="toc-link">8. All Five Strategies, Compared</a>
+<a href="#resources" class="toc-link">Useful Resources</a>
+    </nav>
+  </aside>
+  <article class="article-body">
+    <div class="breadcrumb"><a href="../index.html">HyperTune</a> › <a href="intro.html">Module 01</a> › Cross-Validation</div>
+    <div class="article-header">
+      <div class="module-badge">Module 01 · Foundations</div>
+      <h1 class="article-title">Cross-Validation: The Foundation of Reliable Hyperparameter Evaluation</h1>
+      <div class="article-meta">Part of the <strong>HyperTune</strong> open course · Estimated read time: 18 min · Python 3.10+ · scikit-learn 1.4+</div>
+    </div>
+    <div class="outline-box">
+      <div class="outline-title">📋 Article Outline</div>
+      <ol class="outline-list">
+
+<li><a href="#section-1">1. Why a Single Train/Test Split Is Not Enough</a></li>
+<li><a href="#section-2">2. k-Fold Cross-Validation: The Workhorse</a></li>
+<li><a href="#section-3">3. Stratified k-Fold: Essential for Classification</a></li>
+<li><a href="#section-4">4. Leave-One-Out CV: When You Have Very Little Data</a></li>
+<li><a href="#section-5">5. Time-Series Cross-Validation</a></li>
+<li><a href="#section-6">6. Group k-Fold: Avoiding Leakage</a></li>
+<li><a href="#section-7">7. CV as the Oracle</a></li>
+<li><a href="#section-8">8. All Five Strategies, Compared</a></li>
+<li><a href="#resources">Useful Resources</a></li>
+      </ol>
+    </div>
+
+<section id="section-1">
+  <h2>1. Why a Single Train/Test Split Is Not Enough</h2>
+  <p>If you split your data once into 80% train and 20% test, the test score you get is a single sample from a distribution — the distribution of "scores you would have gotten if you had drawn a different 20% as the test set." On small or imbalanced datasets, that distribution can be surprisingly wide. I have seen cases where re-running the same model with a different <code>random_state</code> on the split moved the test accuracy by 4 percentage points, which is more than the entire improvement you might hope to gain from tuning.</p>
+  <p>This is a problem for hyperparameter tuning because the search loop calls the evaluation function hundreds or thousands of times. If each evaluation has ±2% noise, you will pick "the best" hyperparameters essentially by accident — the configuration that happened to land in a favorable test split. The fix is to evaluate each configuration on multiple splits and average, which is exactly what cross-validation does. The averaged estimate is more stable, and the standard deviation across folds gives you a free measure of how confident you should be in the result.</p>
+  <p>The deeper reason CV matters is that it approximates the expected generalization error that we wrote as $\mathbb{E}_{(X,y)\sim\mathcal{D}}[L(f(X), y)]$ in the bias-variance decomposition. A single train/test split gives one sample from that expectation; k-fold gives k samples, which you can average to get a much better estimator of the true expectation. The cost is k times more computation, but the variance reduction is usually worth it.</p>
+</section>
+
+<section id="section-2">
+  <h2>2. k-Fold Cross-Validation: The Workhorse</h2>
+  <p>k-fold CV splits the dataset into k equal-sized, non-overlapping folds. For each of k iterations, one fold is held out as validation and the remaining k−1 folds are combined into the training set. The model is trained and scored k times, and the k validation scores are averaged to produce a single estimate. The standard choice is k=5 or k=10, which empirical studies have shown to be a good bias-variance trade-off for the CV estimate itself.</p>
+  <div class="figure">
+<svg viewBox="0 0 560 200" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:Inter;">
+  <text x="280" y="22" text-anchor="middle" fill="#8899aa" font-size="13">5-fold Cross-Validation</text>
+  <g transform="translate(20, 50)">
+    <!-- For each fold: 5 cells; the validation cell is highlighted -->
+    <!-- Fold 1: val = cell 1 -->
+    <rect x="0" y="0" width="100" height="22" fill="#f472b6" opacity="0.6"/>
+    <rect x="100" y="0" width="100" height="22" fill="#34d399" opacity="0.25"/>
+    <rect x="200" y="0" width="100" height="22" fill="#34d399" opacity="0.25"/>
+    <rect x="300" y="0" width="100" height="22" fill="#34d399" opacity="0.25"/>
+    <rect x="400" y="0" width="100" height="22" fill="#34d399" opacity="0.25"/>
+    <text x="-6" y="14" text-anchor="end" fill="#8899aa" font-size="11">Fold 1</text>
+    <!-- Fold 2: val = cell 2 -->
+    <rect x="0" y="30" width="100" height="22" fill="#34d399" opacity="0.25"/>
+    <rect x="100" y="30" width="100" height="22" fill="#f472b6" opacity="0.6"/>
+    <rect x="200" y="30" width="100" height="22" fill="#34d399" opacity="0.25"/>
+    <rect x="300" y="30" width="100" height="22" fill="#34d399" opacity="0.25"/>
+    <rect x="400" y="30" width="100" height="22" fill="#34d399" opacity="0.25"/>
+    <text x="-6" y="44" text-anchor="end" fill="#8899aa" font-size="11">Fold 2</text>
+    <!-- Fold 3 -->
+    <rect x="0" y="60" width="100" height="22" fill="#34d399" opacity="0.25"/>
+    <rect x="100" y="60" width="100" height="22" fill="#34d399" opacity="0.25"/>
+    <rect x="200" y="60" width="100" height="22" fill="#f472b6" opacity="0.6"/>
+    <rect x="300" y="60" width="100" height="22" fill="#34d399" opacity="0.25"/>
+    <rect x="400" y="60" width="100" height="22" fill="#34d399" opacity="0.25"/>
+    <text x="-6" y="74" text-anchor="end" fill="#8899aa" font-size="11">Fold 3</text>
+    <!-- Fold 4 -->
+    <rect x="0" y="90" width="100" height="22" fill="#34d399" opacity="0.25"/>
+    <rect x="100" y="90" width="100" height="22" fill="#34d399" opacity="0.25"/>
+    <rect x="200" y="90" width="100" height="22" fill="#34d399" opacity="0.25"/>
+    <rect x="300" y="90" width="100" height="22" fill="#f472b6" opacity="0.6"/>
+    <rect x="400" y="90" width="100" height="22" fill="#34d399" opacity="0.25"/>
+    <text x="-6" y="104" text-anchor="end" fill="#8899aa" font-size="11">Fold 4</text>
+    <!-- Fold 5 -->
+    <rect x="0" y="120" width="100" height="22" fill="#34d399" opacity="0.25"/>
+    <rect x="100" y="120" width="100" height="22" fill="#34d399" opacity="0.25"/>
+    <rect x="200" y="120" width="100" height="22" fill="#34d399" opacity="0.25"/>
+    <rect x="300" y="120" width="100" height="22" fill="#34d399" opacity="0.25"/>
+    <rect x="400" y="120" width="100" height="22" fill="#f472b6" opacity="0.6"/>
+    <text x="-6" y="134" text-anchor="end" fill="#8899aa" font-size="11">Fold 5</text>
+  </g>
+  <g transform="translate(20, 175)">
+    <rect x="0" y="0" width="14" height="14" fill="#34d399" opacity="0.25"/>
+    <text x="22" y="11" fill="#8899aa" font-size="11">train</text>
+    <rect x="100" y="0" width="14" height="14" fill="#f472b6" opacity="0.6"/>
+    <text x="122" y="11" fill="#8899aa" font-size="11">validation</text>
+  </g>
+</svg>
+<div class="figure-caption">Figure 1 — 5-fold cross-validation. Each row is one training run; pink cells are held out as validation, green cells are training. Every sample is used as validation exactly once and as training k−1 times.</div></div>
+  <p>The choice of k is itself a bias-variance trade-off for the CV estimate. Small k (like 2 or 3) means each training set is small (k−1)/k of the data, so the model trained in each fold is systematically worse than the final model trained on all data — that is a bias in the estimate. Large k (like LOOCV with k=n) means each training set is almost the full data, so the bias is small, but the k training sets overlap heavily and their predictions are highly correlated — that is variance in the estimate. The compromise at k=5 or k=10 has been validated empirically across many datasets.</p>
+  <div class="callout tip"><div class="callout-icon">💡</div><div class="callout-body"><div class="callout-title">Use sklearn.model_selection.cross_val_score</div><p>For most use cases you do not need to write the fold loop yourself. <code>cross_val_score(model, X, y, cv=5)</code> returns an array of k scores; <code>cross_validate</code> returns a dict with fit/score times and supports multiple metrics. For full control (custom splits, returning estimators), use <code>cross_val_predict</code> or write the loop with <code>KFold(n_splits=5).split(X)</code>.</p></div></div>
+</section>
+
+<section id="section-3">
+  <h2>3. Stratified k-Fold: Essential for Classification</h2>
+  <p>Plain <code>KFold</code> shuffles and splits without looking at the labels. For imbalanced classification this is dangerous: by chance, one fold might end up with very few minority-class samples, and the model trained on the other folds has never seen enough of the minority class to predict it well. The validation score on that fold will be terrible, and the variance of your CV estimate will be artificially high.</p>
+  <p>Stratified k-fold fixes this by enforcing that each fold has the same class distribution as the full dataset. If 10% of your samples are positive, every fold will be 10% positive. This typically reduces the variance of the CV estimate for imbalanced problems by a factor of 2–3x compared to plain KFold. <strong>For classification, stratified is the default and you should never use plain KFold unless you have a specific reason.</strong></p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── stratified_vs_plain.py ────────────────────────────────────────────────────
+# Compare the variance of CV estimates from plain KFold vs StratifiedKFold
+# on an imbalanced subset of breast_cancer.
+
+import numpy as np
+from sklearn.datasets import load_breast_cancer
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import KFold, StratifiedKFold, cross_val_score
+
+X, y = load_breast_cancer(return_X_y=True)
+# Subsample to make it imbalanced: keep all 212 malignant, only 100 benign
+idx_mal = np.where(y == 0)[0]
+idx_ben = np.where(y == 1)[0][:100]
+idx = np.concatenate([idx_mal, idx_ben])
+X_imb, y_imb = X[idx], y[idx]
+print(f&quot;Imbalanced subset: {len(idx)} samples, {(y_imb==0).sum()} malignant &quot;
+      f&quot;({(y_imb==0).mean():.2%})&quot;)
+
+clf = RandomForestClassifier(n_estimators=100, random_state=42)
+
+# Plain KFold: no stratification — folds may have very different class ratios
+plain = KFold(n_splits=5, shuffle=True, random_state=42)
+strat = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+plain_scores = cross_val_score(clf, X_imb, y_imb, cv=plain, scoring=&quot;accuracy&quot;)
+strat_scores = cross_val_score(clf, X_imb, y_imb, cv=strat, scoring=&quot;accuracy&quot;)
+
+print(f&quot;Plain KFold:     {plain_scores.mean():.4f} ± {plain_scores.std():.4f}  &quot;
+      f&quot;(per-fold: {plain_scores.round(3)})&quot;)
+print(f&quot;Stratified KFold: {strat_scores.mean():.4f} ± {strat_scores.std():.4f}  &quot;
+      f&quot;(per-fold: {strat_scores.round(3)})&quot;)
+</pre></div>
+  <p>When you run this, the standard deviation of the plain KFold estimate will typically be 2–3x larger than the stratified estimate. For hyperparameter tuning this matters enormously: search algorithms compare configurations by their mean CV score, and high-variance estimates produce noisy comparisons that lead to wrong selections.</p>
+</section>
+
+<section id="section-4">
+  <h2>4. Leave-One-Out CV: When You Have Very Little Data</h2>
+  <p>Leave-One-Out Cross-Validation (LOOCV) is k-fold with k=n — every fold holds out exactly one sample. The advantage is that the training set in each fold is the largest possible (n−1 samples), so the bias of the CV estimate is essentially zero. The disadvantage is that you have to fit the model n times, which is impractical for any non-tiny dataset.</p>
+  <p>LOOCV is most useful when n is small (say, less than 100) and the model is cheap to fit. For linear models there is a beautiful closed-form expression — the <em>leave-one-out residual</em> — that lets you compute LOOCV in $O(n^3)$ once instead of $n$ separate fits, but this only works for linear regression with squared loss. For everything else, LOOCV means n full training runs, and you should think carefully before paying that cost.</p>
+  <p>The other subtlety with LOOCV is variance. Because the n training sets overlap so heavily (they share n−2 of their n−1 samples), the predictions on the n held-out points are highly correlated. The average of correlated predictions has higher variance than the average of independent ones, so LOOCV can actually have <em>higher</em> variance than 5-fold or 10-fold for the CV estimate itself. This is the second reason 5 or 10 is the standard choice — it strikes the right balance.</p>
+</section>
+
+<section id="section-5">
+  <h2>5. Time-Series Cross-Validation: Why Shuffling Is Wrong for Temporal Data</h2>
+  <p>If your data has a temporal structure — stock prices, server logs, sensor readings, anything ordered by time — then plain k-fold shuffling is a methodological disaster. The problem is information leakage: in production, you predict the future from the past, never the other way around. But if you shuffle a time series and then split into folds, you will routinely train on data from 2024 to predict data from 2022, which is a fundamentally different (and easier) problem than what your model will face in deployment.</p>
+  <p>The fix is <code>TimeSeriesSplit</code>, which enforces the temporal constraint: each fold's training data comes strictly before the validation data. The first fold trains on the first chunk, validates on the next; the second fold trains on the first two chunks, validates on the third; and so on. This gives you k validation scores, each measuring "how well does the model predict the next time period given what it has seen so far" — which is exactly the question your production evaluation will answer.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── time_series_cv.py ──────────────────────────────────────────────────────────
+# Demonstrate TimeSeriesSplit on a synthetic temporal dataset, and contrast
+# it with plain KFold to show why shuffling is wrong for time series.
+
+import numpy as np
+from sklearn.model_selection import TimeSeriesSplit, KFold
+
+# 5 years of monthly observations
+n = 60
+t = np.arange(n)
+y = 0.5 * t + 10 + np.sin(2 * np.pi * t / 12) * 3 + np.random.default_rng(0).normal(0, 1, n)
+
+print(&quot;TimeSeriesSplit (chronological):&quot;)
+tss = TimeSeriesSplit(n_splits=5)
+for i, (tr, te) in enumerate(tss.split(t), 1):
+    print(f&quot;  Fold {i}: train t∈[{t[tr.min()]}, {t[tr.max()]}]  &quot;
+          f&quot;val t∈[{t[te.min()]}, {t[te.max]}]&quot;)
+
+print(&quot;\nKFold shuffled (LEAKS INFORMATION):&quot;)
+kf = KFold(n_splits=5, shuffle=True, random_state=42)
+for i, (tr, te) in enumerate(kf.split(t), 1):
+    print(f&quot;  Fold {i}: train t∈[{t[tr.min()]}–{t[tr.max()]}]  &quot;
+          f&quot;val t∈[{t[te.min()]}–{t[te.max()]}]  ← val contains past data!&quot;)
+</pre></div>
+  <p>Notice how the shuffled KFold folds have validation indices interleaved with training indices — the model is being asked to predict data points that came before some of its training data. That is information you will not have at deployment time, so the validation score is optimistic. For time-series work, always use <code>TimeSeriesSplit</code> (or <code>TimeSeriesSplit</code> with a gap parameter if you want to enforce a minimum temporal distance between train and validation, which is common in finance).</p>
+</section>
+
+<section id="section-6">
+  <h2>6. Group k-Fold: Avoiding Leakage When Samples Are Clustered</h2>
+  <p>The third leakage trap is <em>grouped data</em>: multiple samples from the same patient, the same user, the same geographic location, the same experimental batch. If you split these into different folds with plain k-fold, the model will see one sample from patient A in training and be evaluated on another sample from patient A — which is much easier than the deployment task of predicting for a brand-new patient.</p>
+  <p><code>GroupKFold</code> solves this by ensuring that all samples from the same group go into the same fold. The validation set in each fold contains groups that the model has never seen at all, which is the right measure of generalization to "new groups." This is the right CV strategy for: medical imaging (group = patient ID), recommender systems (group = user ID), manufacturing quality control (group = batch ID), and any other setting where the deployment scenario involves new groups rather than new samples from existing groups.</p>
+  <div class="callout warning"><div class="callout-icon">⚠️</div><div class="callout-body"><div class="callout-title">Patient leakage is invisible from the metric</div><p>If you accidentally leak patient IDs across folds, your CV accuracy may be 95% while your true out-of-patient accuracy is 70%. The 25-point gap is real money in a medical setting — patients get misdiagnosed because the model was vetted on a corrupted estimate. Always check whether your dataset has grouping structure before reaching for plain KFold.</p></div></div>
+</section>
+
+<section id="section-7">
+  <h2>7. CV as the Oracle: Why Search Methods Are Slow</h2>
+  <p>Here is the connection that ties this whole module to the rest of the course: <strong>cross-validation is the evaluation oracle that every search method calls.</strong> A search method like GridSearchCV proposes a configuration; the oracle evaluates it by running k-fold CV; the search method looks at the score and proposes the next configuration. The total compute is roughly (number of configurations proposed) × k model fits, and this multiplicative cost is what makes hyperparameter search expensive.</p>
+  <p>Concretely, a grid search over 4 × 5 × 3 = 60 configurations with 5-fold CV runs 300 model fits. If each fit takes 5 seconds, the total search takes 25 minutes — manageable. If each fit takes 5 minutes (a gradient boosting model on a moderately-sized dataset), the same search takes 25 hours — painful. This is why later modules spend so much effort on smarter search strategies: random search, Bayesian optimization, Hyperband. They all reduce the number of configurations you need to evaluate, which directly reduces total wall-clock time.</p>
+  <div class="quiz-box">
+  <div class="quiz-label">🧠 Quick Check</div>
+  <p class="quiz-question">You have 1,000 samples from 50 patients (20 samples per patient). You want to tune a classifier and estimate how well it will generalize to NEW patients. Which CV strategy should you use, and why would standard k-fold give overly optimistic results?</p>
+  <details class="quiz-answer">
+    <summary>Show Answer</summary>
+    <p>Use GroupKFold with groups=patient_id and n_splits=5. Standard k-fold would mix samples from the same patient across train and validation folds — the model would memorize patient-specific effects during training and reuse them at validation time, which inflates the CV score. GroupKFold keeps each patient entirely in one fold, so the validation fold contains only patients the model has never seen, which is the right question if you are deploying on new patients.</p>
+  </details>
+</div>
+</section>
+
+<section id="section-8">
+  <h2>8. All Five Strategies, Compared on Real Data</h2>
+  <p>Let's close with a code block that runs every CV strategy we discussed on the same model and dataset, so you can see how the choice of strategy affects both the mean and the variance of the estimate. We use the breast cancer dataset (with a synthetic patient ID column to demonstrate GroupKFold) and a RandomForestClassifier with sensible defaults.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── cv_strategy_comparison.py ─────────────────────────────────────────────────
+# Compare 5 CV strategies on the same model+dataset. The breast_cancer data
+# is treated as if it were 569 patients (one sample per patient) for the
+# GroupKFold demo, with a synthetic patient_id so you can see the pattern.
+
+import numpy as np
+from sklearn.datasets import load_breast_cancer
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import (KFold, StratifiedKFold, LeaveOneOut,
+                                      TimeSeriesSplit, GroupKFold,
+                                      cross_val_score)
+
+X, y = load_breast_cancer(return_X_y=True)
+# Synthetic patient IDs: pretend every 5 consecutive rows are from one patient
+groups = np.repeat(np.arange(len(y) // 5), 5)[:len(y)]
+
+clf = RandomForestClassifier(n_estimators=100, max_depth=8, n_jobs=-1,
+                              random_state=42)
+
+strategies = {
+    &quot;KFold(5, shuffle)&quot;:         KFold(5, shuffle=True, random_state=42),
+    &quot;StratifiedKFold(5)&quot;:        StratifiedKFold(5, shuffle=True, random_state=42),
+    &quot;LeaveOneOut&quot;:               LeaveOneOut(),
+    &quot;TimeSeriesSplit(5)&quot;:        TimeSeriesSplit(n_splits=5),
+    &quot;GroupKFold(5)&quot;:             GroupKFold(n_splits=5),
+}
+
+print(f&quot;{&#x27;Strategy&#x27;:25s}  {&#x27;mean&#x27;:&gt;7s}  {&#x27;std&#x27;:&gt;7s}  {&#x27;n_fits&#x27;:&gt;7s}&quot;)
+print(&quot;-&quot; * 55)
+for name, cv in strategies.items():
+    kwargs = {&quot;groups&quot;: groups} if name.startswith(&quot;GroupKFold&quot;) else {}
+    # LOOCV is slow; cap to keep this demo runnable.
+    if name == &quot;LeaveOneOut&quot;:
+        scores = cross_val_score(clf, X[:200], y[:200], cv=cv, scoring=&quot;accuracy&quot;)
+    else:
+        scores = cross_val_score(clf, X, y, cv=cv, scoring=&quot;accuracy&quot;, **kwargs)
+    print(f&quot;{name:25s}  {scores.mean():&gt;7.4f}  {scores.std():&gt;7.4f}  &quot;
+          f&quot;{len(scores):&gt;7d}&quot;)
+</pre></div>
+  <p>What you should see: StratifiedKFold has lower variance than plain KFold (the standard deviation across folds is smaller), LOOCV has higher variance than 5-fold (the n highly-overlapping training sets produce correlated predictions), TimeSeriesSplit produces a sequence of scores that typically decreases over the folds (later folds predict further into the future, where the underlying distribution may have drifted), and GroupKFold usually produces a slightly lower mean score than plain KFold because it asks a harder question.</p>
+</section>
+
+<div class="summary-box"><h3>🎯 Key Takeaways</h3><ul><li><strong>A single train/test split has high variance</strong> — CV averages over k splits to produce a more stable estimate of generalization error.</li><li><strong>Use StratifiedKFold for classification</strong> — it preserves class balance in every fold and reduces variance for imbalanced problems.</li><li><strong>Use TimeSeriesSplit for temporal data</strong> — shuffling causes information leakage that inflates scores by 5–15%.</li><li><strong>Use GroupKFold when samples are clustered</strong> — patient/user/batch leakage can produce estimates that are 20+ points optimistic.</li><li><strong>CV is the oracle</strong> that every search method calls; total search cost = (num configs) × k fits, which is why smarter search strategies matter.</li></ul></div>
+
+<section id="resources"><h2>Useful Resources</h2><ul class="resource-list"><li><a href="https://ai.stanford.edu/~ronnyk/accEst.pdf">Kohavi (1995) — A Study of Cross-Validation and Bootstrap for Accuracy Estimation and Model Selection</a></li><li><a href="https://scikit-learn.org/stable/modules/cross_validation.html">scikit-learn User Guide — Cross-Validation</a></li><li><a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1397873/">Varma &amp; Simon (2006) — Bias in Error Estimation When Using Cross-Validation for Model Selection</a></li><li><a href="https://www.jmlr.org/papers/volume11/cawley10a/cawley10a.pdf">Cawley &amp; Talbot (2010) — On Over-fitting in Model Selection and Subsequent Selection Bias in Performance Evaluation</a></li><li><a href="https://www.sciencedirect.com/science/article/pii/S0020025512005061">Bergmeir &amp; Benítez (2012) — On the use of cross-validation for time series predictor evaluation</a></li><li><a href="https://hastie.su.domains/ElemStatLearn/">Elements of Statistical Learning — chapter 7.10 (Cross-Validation)</a></li></ul></section>
+
+  </article>
+</div>
+<div class="page-nav"><a href="part2_bias_variance.html" class="page-nav-btn prev"><span class="nav-dir">← Previous</span><span class="nav-title">The Bias-Variance Tradeoff</span></a><a href="assignment_task.html" class="page-nav-btn next"><span class="nav-dir">Next →</span><span class="nav-title">Assignment 01</span></a></div>
+<footer>
+  <div class="container">
+    <div style="font-size:1.5rem;font-weight:800;font-family:var(--display);color:var(--accent);margin-bottom:0.5rem">HyperTune</div>
+    <p style="color:var(--muted2);font-size:0.85rem;max-width:500px;margin:0 auto">The complete hyperparameter tuning reference for ML &amp; DL engineers. Covers scikit-learn, XGBoost, LightGBM, PyTorch, Optuna, Ray Tune, and beyond — from first principles to production.</p>
+    <div style="margin-top:2rem;font-size:0.78rem;color:var(--muted2)">Built for learning · Python 3.10+ · scikit-learn 1.4+ · Optuna 3.0+</div>
+  </div>
+</footer>
+<script>
+(function() {
+  const links = Array.from(document.querySelectorAll('.toc-link'));
+  const sections = links
+    .map(l => document.querySelector(l.getAttribute('href')))
+    .filter(Boolean);
+  if (!('IntersectionObserver' in window) || sections.length === 0) return;
+  const setActive = id => {
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+  };
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  sections.forEach(s => observer.observe(s));
+})();
+</script>
+</body>
+</html>

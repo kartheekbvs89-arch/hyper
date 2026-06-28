@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AutoML: Automated Algorithm Selection and HPO — HyperTune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<style>
+
+:root {
+  --bg: #070b14; --bg2: #0c1220; --bg3: #111827;
+  --card: #131d2e; --card2: #1a2640;
+  --border: rgba(99,179,237,0.12); --border2: rgba(99,179,237,0.22);
+  --accent: #38bdf8; --accent2: #818cf8; --accent3: #34d399;
+  --accent4: #f59e0b; --accent5: #f472b6;
+  --text: #f0f6fc; --muted: #8899aa; --muted2: #64748b;
+  --code-bg: #0d1117;
+  --ff: 'Inter', sans-serif; --mono: 'JetBrains Mono', monospace;
+  --display: 'Sora', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,11,20,0.85);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:var(--display);font-weight:800;font-size:1.25rem;color:var(--accent);letter-spacing:-0.03em;text-decoration:none}
+.logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#000;padding:7px 18px;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85}
+
+/* LAYOUT */
+.page-layout { display: grid; grid-template-columns: 280px 1fr; gap: 3rem; max-width: 1200px; margin: 0 auto; padding: 5rem 2rem 5rem; padding-top: 80px; }
+@media(max-width: 900px) { .page-layout { grid-template-columns: 1fr; } .toc-sidebar { display: none; } }
+
+/* TOC SIDEBAR */
+.toc-sidebar { position: sticky; top: 80px; height: fit-content; max-height: calc(100vh - 100px); overflow-y: auto; }
+.toc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.75rem; }
+.toc-nav { display: flex; flex-direction: column; gap: 2px; }
+.toc-link { color: var(--muted); font-size: 0.82rem; text-decoration: none; padding: 4px 10px; border-left: 2px solid transparent; transition: all 0.15s; border-radius: 0 4px 4px 0; }
+.toc-link:hover, .toc-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(56,189,248,0.05); }
+.toc-link.toc-sub { font-size: 0.78rem; padding-left: 22px; }
+
+/* ARTICLE BODY */
+.article-body { min-width: 0; }
+.breadcrumb { font-size: 0.78rem; color: var(--muted2); margin-bottom: 1.5rem; }
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--accent); }
+.module-badge { display: inline-block; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: var(--accent); padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 1rem; }
+.article-title { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
+.article-meta { font-size: 0.83rem; color: var(--muted); margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+
+/* OUTLINE BOX */
+.outline-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 3rem; }
+.outline-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.75rem; color: var(--text); }
+.outline-list { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.85rem; }
+.outline-list a { color: var(--accent); text-decoration: none; }
+.outline-list a:hover { text-decoration: underline; }
+.outline-list li { margin: 4px 0; }
+.outline-list ul { margin: 4px 0; padding-left: 1rem; }
+
+/* ARTICLE PROSE */
+.article-body h2 { font-family: var(--display); font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; margin: 3rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); scroll-margin-top: 80px; }
+.article-body h3 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 80px; }
+.article-body h4 { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.article-body p { margin-bottom: 1.25rem; color: var(--muted); font-size: 0.97rem; line-height: 1.85; }
+.article-body strong { color: var(--text); font-weight: 600; }
+.article-body em { color: var(--accent3); font-style: italic; }
+.article-body ul, .article-body ol { margin: 0 0 1.25rem 1.5rem; color: var(--muted); font-size: 0.95rem; }
+.article-body li { margin-bottom: 6px; line-height: 1.75; }
+.article-body code { font-family: var(--mono); font-size: 0.82em; background: rgba(56,189,248,0.08); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
+.article-body a { color: var(--accent2); text-decoration: none; }
+.article-body a:hover { text-decoration: underline; }
+
+/* CODE BLOCKS */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+.code-block-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot.r { background: #ff5f57; } .code-dot.y { background: #ffbd2e; } .code-dot.g { background: #28c840; }
+.code-filename { font-family: var(--mono); font-size: 0.73rem; color: var(--muted2); margin-left: 8px; }
+.code-block pre { padding: 1.5rem; overflow-x: auto; margin: 0; font-family: var(--mono); font-size: 0.82rem; line-height: 1.8; color: #e2e8f0; }
+/* Syntax colors */
+.kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; }
+.num { color: #f78c6c; } .cm { color: #546e7a; font-style: italic; }
+.cls { color: #ffcb6b; } .imp { color: #89ddff; } .op { color: #89ddff; }
+
+/* CALLOUT BOXES */
+.callout { display: flex; gap: 1rem; border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; border-width: 1px; border-style: solid; }
+.callout-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+.callout-body { font-size: 0.88rem; line-height: 1.75; }
+.callout-body strong { font-weight: 600; }
+.callout-title { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+.callout.note { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.22); color: var(--muted); }
+.callout.note .callout-title, .callout.note strong { color: var(--accent); }
+.callout.warning { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.22); color: var(--muted); }
+.callout.warning .callout-title, .callout.warning strong { color: var(--accent4); }
+.callout.tip { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); color: var(--muted); }
+.callout.tip .callout-title, .callout.tip strong { color: var(--accent3); }
+.callout.important { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.22); color: var(--muted); }
+.callout.important .callout-title, .callout.important strong { color: var(--accent5); }
+
+/* MATH DISPLAY */
+.math-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.75rem; margin: 1.25rem 0; overflow-x: auto; font-size: 1.05rem; text-align: center; }
+.math-label { font-size: 0.72rem; color: var(--muted2); font-family: var(--mono); margin-top: 0.5rem; text-align: right; }
+
+/* INLINE FIGURE / DIAGRAM */
+.figure { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; margin: 2rem 0; text-align: center; }
+.figure-caption { font-size: 0.8rem; color: var(--muted2); margin-top: 1rem; font-style: italic; }
+
+/* DATA TABLE */
+.data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.85rem; }
+.data-table th { padding: 10px 14px; background: var(--card2); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); text-align: left; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(99,179,237,0.03); }
+
+/* SUMMARY BOX */
+.summary-box { background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(129,140,248,0.07)); border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 1.75rem 2rem; margin: 3rem 0 2rem; }
+.summary-box h3 { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+.summary-box ul { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.88rem; }
+.summary-box li { margin-bottom: 6px; line-height: 1.7; }
+
+/* RESOURCE LIST */
+.resource-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.resource-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.resource-list li::before { content: '\2192'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.resource-list a { color: var(--accent2); }
+
+/* PREV/NEXT NAV */
+.page-nav { display: flex; justify-content: space-between; gap: 1rem; padding: 2rem; max-width: 1200px; margin: 0 auto; border-top: 1px solid var(--border); }
+.page-nav-btn { display: flex; flex-direction: column; gap: 4px; padding: 1rem 1.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; transition: all 0.2s; max-width: 45%; }
+.page-nav-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.page-nav-btn .nav-dir { font-size: 0.72rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; }
+.page-nav-btn .nav-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.page-nav-btn.next { text-align: right; margin-left: auto; }
+
+/* QUIZ/EXERCISE BOX */
+.exercise-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin: 2rem 0; }
+.exercise-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent4); margin-bottom: 0.5rem; }
+.exercise-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; }
+.exercise-body { font-size: 0.88rem; color: var(--muted); line-height: 1.75; }
+
+/* QUIZ BOX */
+.quiz-box { background: rgba(129,140,248,0.06); border: 1px solid rgba(129,140,248,0.22); border-radius: 14px; padding: 1.5rem; margin: 1.5rem 0; }
+.quiz-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.5rem; }
+.quiz-question { font-size: 0.93rem; color: var(--text); margin-bottom: 0.75rem; font-weight: 500; }
+.quiz-answer { margin-top: 0.5rem; }
+.quiz-answer summary { cursor: pointer; font-size: 0.82rem; color: var(--accent2); font-weight: 600; }
+.quiz-answer p { margin-top: 0.5rem; font-size: 0.86rem; color: var(--muted); }
+
+/* CELL (for assignment files - jupyter style) */
+.jupyter-cell { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin: 1.5rem 0; overflow: hidden; }
+.cell-header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted2); font-family: var(--mono); }
+.cell-input-label { color: var(--accent4); font-weight: 600; }
+.cell-body { padding: 1rem 1.25rem; }
+.jupyter-cell pre { padding: 1rem 1.25rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; background: var(--code-bg); margin: 0; }
+.cell-prompt { color: var(--accent3); font-weight: 700; }
+
+/* GRADING RUBRIC */
+.rubric-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+.rubric-table th { background: var(--card2); padding: 10px 14px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); }
+.rubric-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+
+/* DETAILS (collapsible hints) */
+details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; }
+details summary { cursor: pointer; font-size: 0.85rem; color: var(--accent2); font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
+
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">Hyper<span>Tune</span></a>
+    <ul class="nav-links">
+
+    </ul>
+    <a href="../index.html#curriculum" class="nav-cta">Start Learning</a>
+  </div>
+</nav>
+<div class="page-layout">
+  <aside class="toc-sidebar">
+    <div class="toc-label">On this page</div>
+    <nav class="toc-nav">
+<a href="#section-1" class="toc-link">1. The CASH Problem</a>
+<a href="#section-2" class="toc-link">2. Auto-sklearn</a>
+<a href="#section-3" class="toc-link">3. FLAML</a>
+<a href="#section-4" class="toc-link">4. KerasTuner</a>
+<a href="#section-5" class="toc-link">5. Optuna + PyTorch</a>
+<a href="#section-6" class="toc-link">6. NAS Concepts</a>
+<a href="#section-7" class="toc-link">7. DARTS</a>
+<a href="#section-8" class="toc-link">8. One-Shot Models</a>
+<a href="#section-9" class="toc-link">9. When to Use AutoML</a>
+<a href="#resources" class="toc-link">Useful Resources</a>
+    </nav>
+  </aside>
+  <article class="article-body">
+    <div class="breadcrumb"><a href="../index.html">HyperTune</a> › <a href="intro.html">Module 09</a> › AutoML & NAS</div>
+    <div class="article-header">
+      <div class="module-badge">Module 09 · Advanced</div>
+      <h1 class="article-title">AutoML: Automated Algorithm Selection and Hyperparameter Optimization</h1>
+      <div class="article-meta">Part of the <strong>HyperTune</strong> open course · Estimated read time: 18 min · Python 3.10+ · auto-sklearn 0.14+ / FLAML 2.0+</div>
+    </div>
+    <div class="outline-box">
+      <div class="outline-title">📋 Article Outline</div>
+      <ol class="outline-list">
+
+<li><a href="#section-1">1. The CASH Problem: Algorithm + Hyperparameters Together</a></li>
+<li><a href="#section-2">2. Auto-sklearn: SMAC + Ensemble of Best Configs</a></li>
+<li><a href="#section-3">3. FLAML: Cost-aware Search That Tries Cheap Models First</a></li>
+<li><a href="#section-4">4. KerasTuner: Bayesian / Hyperband / Random for Keras</a></li>
+<li><a href="#section-5">5. Optuna + PyTorch: The Most Flexible AutoML Pipeline</a></li>
+<li><a href="#section-6">6. NAS: Searching the Architecture Itself</a></li>
+<li><a href="#section-7">7. DARTS: Differentiable Architecture Search</a></li>
+<li><a href="#section-8">8. One-Shot Models: Train the Super-Net Once</a></li>
+<li><a href="#section-9">9. When to Use AutoML (and When Not To)</a></li>
+<li><a href="#resources">Useful Resources</a></li>
+      </ol>
+    </div>
+
+<section id="section-1">
+  <h2>1. The CASH Problem: Algorithm + Hyperparameters Together</h2>
+  <p>For the first eight modules of this course, we tacitly assumed that you, the engineer, had already picked a model family — a random forest, an XGBoost, a small CNN — and your job was to tune its hyperparameters. That decomposition is convenient for teaching, but in practice it leaves a huge amount of performance on the table: <em>which algorithm you pick in the first place</em> is itself a hyperparameter, and often the single most important one. A well-tuned LightGBM routinely beats a poorly-tuned XGBoost by 3–5 accuracy points on tabular benchmarks; a correctly-tuned simple logistic regression can beat a misconfigured ResNet on small-image tasks.</p>
+  <p>AutoML, in its strongest form, treats both choices simultaneously. The problem has a name — <strong>Combined Algorithm Selection and Hyperparameter Optimization</strong>, or <strong>CASH</strong> — and it is formally a single joint optimization over a structured search space. Let $\mathcal{A} = \{a_1, a_2, \ldots, a_K\}$ be the set of candidate algorithms (random forest, SVM, gradient boosting, k-NN, …), and let $\Lambda(a)$ denote the hyperparameter space of algorithm $a$. The CASH problem is to find the (algorithm, hyperparameter) pair that minimizes expected validation loss:</p>
+  <div class="math-block">$$ (a^*, \lambda^*) = \arg\min_{{a \in \mathcal{{A}},\; \lambda \in \Lambda(a)}} \; \frac{{1}}{{K}} \sum_{{k=1}}^{{K}} L\left(f_{{\theta^*_{k}(a, \lambda)}}(X_{{\text{{val}},k}}), y_{{\text{{val}},k}}\right) $$ <div class="math-label">Eq. 1 — The CASH objective. The argmin is over a mixed discrete-continuous space: discrete algorithm choice, plus per-algorithm continuous / categorical / conditional hyperparameters.</div></div>
+  <p>The space $\Lambda(a)$ is <em>conditional</em>: if you pick algorithm $a =$ RandomForest, then <code>n_estimators</code>, <code>max_depth</code>, and <code>max_features</code> are active but <code>C</code> and <code>gamma</code> are not. If you pick $a =$ SVC, the opposite is true. This conditional structure is what makes CASH hard: a plain Bayesian optimizer on a flat search space wastes evaluations on inactive hyperparameters, which is why specialized AutoML systems build the conditional structure into the surrogate model itself.</p>
+  <div class="callout note"><div class="callout-icon">📌</div><div class="callout-body"><div class="callout-title">CASH is not the same as model selection after tuning</div><p>A naive alternative to CASH is to tune each algorithm separately, then pick the best-tuned one. This is correct but expensive — you spend equal effort on algorithms that turn out to be losers. Real CASH solvers like auto-sklearn, TPOT, and FLAML share information across algorithms: a configuration of LightGBM that beats a configuration of RandomForest tells the surrogate something about the geometry of the joint space, which speeds up subsequent trials on either algorithm.</p></div></div>
+</section>
+
+<section id="section-2">
+  <h2>2. Auto-sklearn: SMAC + Ensemble of Best Configs</h2>
+  <p><strong>auto-sklearn</strong> (Feurer et al., 2015) is the canonical reference AutoML system for tabular data. It wraps scikit-learn estimators and uses <strong>SMAC</strong> (Sequential Model-based Algorithm Configuration) as its optimizer. SMAC is Bayesian optimization where the surrogate is a <em>random forest</em> rather than a Gaussian process — this matters because the CASH space is mixed (continuous, integer, categorical) and conditional, and random forests handle that natively whereas vanilla GPs do not.</p>
+  <p>Beyond the optimizer, auto-sklearn adds two innovations that distinguish it from a naive "BO over sklearn" script. First, <strong>meta-learning</strong>: it warm-starts the search from configurations that worked well on similar datasets in the past, using a meta-feature vector (number of samples, number of classes, skewness, kurtosis, entropy of labels, …) to find the nearest neighbors in a database of previously-tuned tasks. Second, <strong>automated ensembling</strong>: instead of returning the single best configuration, it builds a weighted ensemble of the top-$k$ configurations found during the search, with weights chosen by greedy forward selection on validation loss. Ensembling turns out to recover 1–3 accuracy points almost for free, because the configurations BO explores are diverse enough to be complementary.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── autosklearn_quickstart.py ─────────────────────────────────────────────────
+# Requires: pip install auto-sklearn==0.14.7
+# Note: auto-sklearn has heavy Linux-only dependencies (pyrfr, ConfigSpace).
+# Run inside a clean conda env if installation fails on your machine.
+
+from sklearn.datasets import fetch_openml
+from sklearn.model_selection import train_test_split
+import autosklearn.classification as asc
+
+# Load a tabular benchmark (German credit, 1000 rows, 20 features, 2 classes)
+X, y = fetch_openml(name=&quot;credit-g&quot;, version=1, as_frame=True, return_X_y=True)
+X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# ─── Run AutoML for 5 minutes total (60s per run, 4h wall-clock cap) ─────────
+automl = asc.AutoSklearnClassifier(
+    time_left_for_this_task=300,   # total seconds for the whole search
+    per_run_time_limit=30,         # max seconds per single model fit
+    ensemble_size=10,              # keep top 10 models for the ensemble
+    ensemble_nbest=50,             # consider top 50 for ensemble selection
+    metric=&quot;accuracy&quot;,
+    memory_limit=4096,             # MB; helps avoid OOM on small machines
+    n_jobs=-1,
+    seed=42,
+)
+automl.fit(X_tr, y_tr)
+
+print(f&quot;Held-out accuracy: {automl.score(X_te, y_te):.4f}&quot;)
+print(f&quot;Ensemble size: {len(automl.get_models_with_weights())}&quot;)
+
+# Inspect the chosen pipeline — which models did it actually pick?
+for weight, model in automl.get_models_with_weights():
+    print(f&quot;  weight={weight:.3f}  model={type(model).__name__}&quot;)
+</pre></div>
+  <p>When you run this on <code>credit-g</code>, you will typically see the ensemble dominated by 2–3 gradient boosting or random forest configurations with weights in the 0.3–0.6 range, plus a couple of lower-weighted learners that contribute on the margin. The search itself will have evaluated 50–150 candidate configurations in the 5-minute budget, with most of the early trials pulled from meta-learning warm-starts.</p>
+  <div class="callout warning"><div class="callout-icon">⚠️</div><div class="callout-body"><div class="callout-title">auto-sklearn is heavy</div><p>auto-sklearn pulls in <code>ConfigSpace</code>, <code>pyrfr</code>, <code>SMAC3</code>, and <code>pynisher</code>, all of which are Linux-friendly but painful on macOS or Windows. If you are on a non-Linux dev machine, run it inside Docker or a Linux VM. For a lighter alternative on tabular data, use FLAML (next section); for a Linux-only serious run, auto-sklearn is still the most thorough open-source AutoML system.</p></div></div>
+</section>
+
+<section id="section-3">
+  <h2>3. FLAML: Cost-aware Search That Tries Cheap Models First</h2>
+  <p><strong>FLAML</strong> (Fast and Lightweight AutoML, Wang et al., 2021) takes a different design philosophy. Where auto-sklearn spends roughly equal time on each algorithm, FLAML is explicitly <strong>cost-aware</strong>: it starts with the cheapest models (linear, logistic regression), moves to mid-cost models (random forests, ExtraTrees) only if the cheap ones underperform, and reserves the most expensive models (XGBoost, LightGBM, full-strength gradient boosting) for last. The result is that FLAML typically reaches 80% of its final accuracy in the first 10–20 seconds, where auto-sklearn takes 2–3 minutes to get there.</p>
+  <p>Under the hood, FLAML uses a variant of Bayesian optimization called <strong>CFO</strong> (Cost-Frugal Optimization) that augments the standard expected-improvement acquisition with a cost penalty. Concretely, instead of maximizing EI($x$), it maximizes EI($x$) / $c(x)$, where $c(x)$ is the predicted cost of evaluating configuration $x$. The cost predictor is itself learned online from observed evaluation times, so the system gets better at avoiding expensive duds the longer it runs.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── flaml_quickstart.py ──────────────────────────────────────────────────────
+# pip install flaml[automl]==2.1.2
+
+from flaml import AutoML
+from sklearn.datasets import fetch_openml
+from sklearn.model_selection import train_test_split
+
+X, y = fetch_openml(name=&quot;credit-g&quot;, version=1, as_frame=True, return_X_y=True)
+X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2, random_state=42)
+
+automl = AutoML()
+automl.fit(
+    X_train=X_tr, y_train=y_tr,
+    task=&quot;classification&quot;,
+    metric=&quot;accuracy&quot;,
+    time_budget=60,            # 60 seconds — FLAML will be ~done by then
+    estimator_list=[&quot;lrl1&quot;, &quot;lrl2&quot;, &quot;rf&quot;, &quot;xgboost&quot;, &quot;extra_tree&quot;, &quot;knn&quot;],
+    # Note the ordering: linear first (lrl1, lrl2), then trees, then boosting.
+    log_file_path=&quot;flaml.log&quot;,
+    verbose=0,
+)
+
+print(f&quot;Best model: {automl.best_estimator}&quot;)
+print(f&quot;Best loss: {automl.best_loss:.4f}  (i.e. acc = {1 - automl.best_loss:.4f})&quot;)
+print(f&quot;Best config: {automl.best_config}&quot;)
+print(f&quot;Held-out accuracy: {automl.score(X_te, y_te):.4f}&quot;)
+</pre></div>
+  <p>Run this and you will see FLAML pick its way through the estimator list in cost order. For most tabular benchmarks, it ends up at XGBoost or LightGBM with a tight learning-rate/n-estimators/max-depth combination, but it gets there by first ruling out the cheap linear baselines — and on small or low-signal datasets, the cheap baseline often wins, in which case you save the cost of ever training a booster.</p>
+  <div class="callout tip"><div class="callout-icon">💡</div><div class="callout-body"><div class="callout-title">FLAML is the right default for &quot;I just need a model now&quot;</div><p>If a colleague asks "what is the fastest way to get a good model on this tabular dataset?", the answer is almost always FLAML with <code>time_budget=120</code>. It will try the cheap options first, find a sensible preprocessor automatically, and return a model that is usually within 1–2 accuracy points of what you would get from a careful manual XGBoost tuning session. Use auto-sklearn when you want the most thorough search and have time to spare; use FLAML when you want results in the next 2 minutes.</p></div></div>
+</section>
+
+<section id="section-4">
+  <h2>4. KerasTuner: Bayesian / Hyperband / Random for Keras Models</h2>
+  <p>For deep learning, the dominant AutoML tool is <strong>KerasTuner</strong> (O'Malley et al., 2019). It provides three search strategies — random search, Bayesian optimization, and Hyperband — and a clean API for defining the search space via a <code>build_model(hp)</code> function that uses the <code>hp</code> object to sample hyperparameters inline. The pattern is different from sklearn's grid-of-dicts: you write a function that <em>constructs</em> the model, and the search strategy calls it with different <code>hp</code> samples.</p>
+  <p>The three primitives — <code>hp.Int</code>, <code>hp.Float</code>, <code>hp.Choice</code> — cover most of what you need. <code>hp.Int("units", min_value=32, max_value=512, step=32)</code> samples an integer uniformly. <code>hp.Float("lr", min_value=1e-5, max_value=1e-2, sampling="log")</code> samples a continuous value on a log scale — essential for learning rates, which span orders of magnitude. <code>hp.Choice("activation", values=["relu", "gelu", "swish"])</code> samples from a categorical list. You can also use <code>hp.Boolean</code> for on/off switches and <code>hp.Fixed</code> for constants you want logged but not searched.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── kerastuner_example.py ───────────────────────────────────────────────────
+# pip install keras-tuner tensorflow
+
+import keras_tuner as kt
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
+
+def build_model(hp):
+    &quot;&quot;&quot;Search a small CNN&#x27;s architecture + optimizer settings.&quot;&quot;&quot;
+    model = keras.Sequential()
+    model.add(keras.Input(shape=(28, 28, 1)))
+
+    # ─── Searchable conv stack: 1-3 blocks, each with searchable filters ──────
+    for i in range(hp.Int(&quot;n_conv_blocks&quot;, 1, 3)):
+        model.add(layers.Conv2D(
+            filters=hp.Int(f&quot;filters_{i}&quot;, min_value=16, max_value=128, step=16),
+            kernel_size=hp.Choice(f&quot;kernel_{i}&quot;, values=[3, 5]),
+            padding=&quot;same&quot;, activation=&quot;relu&quot;,
+        ))
+        model.add(layers.MaxPooling2D(pool_size=2))
+
+    model.add(layers.Flatten())
+    model.add(layers.Dense(
+        units=hp.Int(&quot;dense_units&quot;, min_value=32, max_value=256, step=32),
+        activation=&quot;relu&quot;,
+    ))
+    model.add(layers.Dropout(hp.Float(&quot;dropout&quot;, 0.0, 0.5, step=0.1)))
+    model.add(layers.Dense(10, activation=&quot;softmax&quot;))
+
+    lr = hp.Float(&quot;learning_rate&quot;, 1e-5, 1e-2, sampling=&quot;log&quot;)
+    model.compile(
+        optimizer=keras.optimizers.Adam(learning_rate=lr),
+        loss=&quot;sparse_categorical_crossentropy&quot;,
+        metrics=[&quot;accuracy&quot;],
+    )
+    return model
+
+# ─── Load MNIST ───────────────────────────────────────────────────────────────
+(x_tr, y_tr), (x_te, y_te) = keras.datasets.mnist.load_data()
+x_tr = x_tr.reshape(-1, 28, 28, 1).astype(&quot;float32&quot;) / 255.0
+x_te = x_te.reshape(-1, 28, 28, 1).astype(&quot;float32&quot;) / 255.0
+
+# ─── Bayesian search with Hyperband-style early stopping ─────────────────────
+tuner = kt.Hyperband(
+    build_model,
+    objective=&quot;val_accuracy&quot;,
+    max_epochs=15,
+    factor=3,                    # Hyperband&#x27;s succession-reduction ratio
+    directory=&quot;kt_runs&quot;,
+    project_name=&quot;mnist_cnn&quot;,
+)
+
+tuner.search(x_tr, y_tr, validation_split=0.1, callbacks=[
+    keras.callbacks.EarlyStopping(patience=2, restore_best_weights=True),
+])
+
+best_hp = tuner.get_best_hyperparameters(1)[0]
+print(f&quot;Best val_accuracy: {tuner.oracle.get_best_trials(1)[0].score:.4f}&quot;)
+print(f&quot;Best config: {best_hp.values}&quot;)
+</pre></div>
+  <p>The <code>Hyperband</code> strategy here is worth understanding. Plain random search wastes time on bad configurations; Hyperband allocates small budgets to many configs first, then progressively gives more resources only to the promising ones. The <code>factor=3</code> parameter controls the aggressiveness of the pruning: at each round, the bottom $1 - 1/\text{factor}$ of configs is dropped. For deep learning, where a single full training run can take hours, Hyperband is often the difference between "I can afford to search" and "I will just hand-pick hyperparameters and hope."</p>
+</section>
+
+<section id="section-5">
+  <h2>5. Optuna + PyTorch: The Most Flexible AutoML Pipeline</h2>
+  <p>For research code and production ML where you need full control over the training loop, the dominant pattern is Optuna wrapped around a PyTorch training function. Optuna gives you the same search strategies as KerasTuner (TPE, CMA-ES, grid, random) but is framework-agnostic, and its killer feature is <strong>MedianPruner</strong> — it tracks the validation loss of trials at each step and stops any trial whose intermediate value is worse than the median of completed trials at the same step. Combined with Optuna's <code>report</code>/<code>should_prune</code> API, this gives you Hyperband-style early stopping for free, on any training loop you can write.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── optuna_pytorch_pipeline.py ──────────────────────────────────────────────
+# pip install optuna torch torchvision
+
+import optuna
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader, random_split
+from torchvision import datasets, transforms
+
+device = &quot;cuda&quot; if torch.cuda.is_available() else &quot;cpu&quot;
+
+# ─── Data: FashionMNIST, split train/val ─────────────────────────────────────
+tfm = transforms.Compose([transforms.ToTensor()])
+full = datasets.FashionMNIST(root=&quot;.&quot;, train=True, download=True, transform=tfm)
+train_ds, val_ds = random_split(full, [55000, 5000])
+train_dl = DataLoader(train_ds, batch_size=256, shuffle=True, num_workers=2)
+val_dl   = DataLoader(val_ds,   batch_size=512, shuffle=False, num_workers=2)
+
+def build_model(trial):
+    &quot;&quot;&quot;Sample architecture + return a fresh nn.Module.&quot;&quot;&quot;
+    n_layers = trial.suggest_int(&quot;n_layers&quot;, 1, 3)
+    layers = [nn.Flatten()]
+    in_dim = 28 * 28
+    for i in range(n_layers):
+        out_dim = trial.suggest_int(f&quot;units_{i}&quot;, 64, 512, step=64)
+        layers.append(nn.Linear(in_dim, out_dim))
+        layers.append(nn.ReLU())
+        layers.append(nn.Dropout(trial.suggest_float(f&quot;dropout_{i}&quot;, 0.0, 0.5)))
+        in_dim = out_dim
+    layers.append(nn.Linear(in_dim, 10))
+    return nn.Sequential(*layers).to(device)
+
+def objective(trial):
+    model = build_model(trial)
+    optim = torch.optim.AdamW(
+        model.parameters(),
+        lr=trial.suggest_float(&quot;lr&quot;, 1e-5, 1e-2, log=True),
+        weight_decay=trial.suggest_float(&quot;wd&quot;, 1e-6, 1e-2, log=True),
+    )
+    loss_fn = nn.CrossEntropyLoss()
+
+    n_epochs = 10
+    for epoch in range(n_epochs):
+        # ─── Train one epoch ──────────────────────────────────────────────────
+        model.train()
+        for x, y in train_dl:
+            x, y = x.to(device), y.to(device)
+            optim.zero_grad()
+            loss_fn(model(x), y).backward()
+            optim.step()
+
+        # ─── Validate ─────────────────────────────────────────────────────────
+        model.eval()
+        correct = total = 0
+        with torch.no_grad():
+            for x, y in val_dl:
+                x, y = x.to(device), y.to(device)
+                correct += (model(x).argmax(1) == y).sum().item()
+                total += y.numel()
+        val_acc = correct / total
+
+        # ─── Report intermediate value for pruning ────────────────────────────
+        trial.report(val_acc, epoch)
+        if trial.should_prune():
+            raise optuna.TrialPruned()
+
+    return val_acc   # maximize
+
+# ─── Run the study ────────────────────────────────────────────────────────────
+study = optuna.create_study(
+    direction=&quot;maximize&quot;,
+    pruner=optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=2),
+    sampler=optuna.samplers.TPESampler(seed=42),
+)
+study.optimize(objective, n_trials=30, timeout=600)
+
+print(f&quot;Best val acc: {study.best_value:.4f}&quot;)
+print(f&quot;Best params: {study.best_params}&quot;)
+
+# ─── Visualize ────────────────────────────────────────────────────────────────
+fig = optuna.visualization.plot_optimization_history(study)
+fig.write_html(&quot;optuna_history.html&quot;)
+fig2 = optuna.visualization.plot_param_importances(study)
+fig2.write_html(&quot;optuna_importances.html&quot;)
+</pre></div>
+  <p>This pattern is the most flexible AutoML setup you can write. It works with any model architecture, any loss function, any data pipeline, and any custom training-step logic (mixed precision, gradient accumulation, custom LR schedules). The price is that you have to write the training loop yourself — but if you are doing anything more unusual than supervised classification on a standard dataset, that is what you would be doing anyway.</p>
+  <div class="callout tip"><div class="callout-icon">💡</div><div class="callout-body"><div class="callout-title">Always check the parameter importances plot</div><p>After an Optuna study finishes, call <code>optuna.visualization.plot_param_importances(study)</code>. It runs a fANOVA on the trial history and tells you which hyperparameters actually mattered. The result is often surprising — on most deep learning tasks, learning rate dominates everything else by a factor of 3–10, and tuning dropout or layer count is almost a waste of trials. Knowing which 2–3 hyperparameters matter most lets you focus your next, larger study.</p></div></div>
+</section>
+
+<section id="section-6">
+  <h2>6. NAS: Searching the Architecture Itself</h2>
+  <p>So far we have been searching <em>within</em> a fixed architecture family — convolutional blocks of variable count, linear layers of variable width. <strong>Neural Architecture Search</strong> (NAS) goes one step further: it searches the architecture itself, including which operations appear, how they connect, and where skip connections go. The output of NAS is not just a set of weights but a <em>model definition</em> — Python code you can re-train and deploy.</p>
+  <p>Historically, NAS was dominated by <strong>reinforcement learning</strong> approaches (Zoph &amp; Le, 2016). A controller RNN samples an architecture (as a sequence of tokens describing layers and connections), trains it for a few epochs, and uses the validation accuracy as the reward signal to update the controller via policy gradients. This works but is staggeringly expensive — the original NASNet paper used 500 GPUs for 4 days to find one image-classification architecture. Modern NAS methods focus on bringing that cost down by orders of magnitude.</p>
+  <p>The two key ideas that made NAS practical are <strong>parameter sharing</strong> and <strong>differentiable relaxation</strong>. <strong>ENAS</strong> (Efficient NAS, Pham et al., 2018) shares weights across all sampled architectures: instead of training each candidate from scratch, it trains one large "super-network" and inherits its weights for each sampled sub-architecture. This brought NAS down from 500 GPU-days to a single GPU-day. <strong>DARTS</strong> (Differentiable Architecture Search, Liu et al., 2018) goes further by making the architecture choice itself differentiable, which we cover next.</p>
+</section>
+
+<section id="section-7">
+  <h2>7. DARTS: Differentiable Architecture Search</h2>
+  <p>DARTS takes the discrete choice over candidate operations and replaces it with a <strong>continuous softmax mixing</strong>. At every edge in the network, instead of picking "this edge is a 3x3 conv", DARTS writes:</p>
+  <div class="math-block">$$ \bar{{o}}(x) = \sum_{{o \in \mathcal{{O}}}} \frac{{\exp(\alpha_o)}}{{\sum_{{o' \in \mathcal{{O}}}} \exp(\alpha_{{o'}})}} \cdot o(x) $$ <div class="math-label">Eq. 2 — DARTS mixing. Each edge outputs a weighted combination of all candidate operations; the weights are softmax-normalized architecture parameters.</div></div>
+  <p>Here $\mathcal{O}$ is the set of candidate operations (3x3 conv, 5x5 conv, 3x3 max-pool, average-pool, identity, zero) and $\alpha_o$ is a learnable scalar per operation per edge. The model now has <em>two</em> sets of parameters: the standard weights $w$ (convolution filters, batch-norm parameters) and the architecture parameters $\alpha$. DARTS trains both simultaneously via gradient descent — bi-level optimization, but made continuous by the softmax trick.</p>
+  <div class="figure">
+<svg viewBox="0 0 700 420" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:Inter;">
+  <defs>
+    <linearGradient id="mixGrad" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#818cf8" stop-opacity="0.35"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="#8899aa"/>
+    </marker>
+  </defs>
+
+  <text x="350" y="24" text-anchor="middle" fill="#f0f6fc" font-size="15" font-weight="700">
+    DARTS: Differentiable Architecture Search
+  </text>
+
+  <!-- Input node -->
+  <circle cx="80" cy="210" r="26" fill="#1a2640" stroke="#38bdf8" stroke-width="2"/>
+  <text x="80" y="215" text-anchor="middle" fill="#38bdf8" font-size="13" font-weight="600">x</text>
+  <text x="80" y="255" text-anchor="middle" fill="#64748b" font-size="10">input</text>
+
+  <!-- Candidate operation blocks -->
+  <g font-size="11" font-weight="600">
+    <rect x="240" y="60"  width="130" height="34" rx="6" fill="#0d1117" stroke="#34d399" stroke-width="1.5"/>
+    <text x="305" y="82"  text-anchor="middle" fill="#34d399">3x3 conv</text>
+
+    <rect x="240" y="110" width="130" height="34" rx="6" fill="#0d1117" stroke="#38bdf8" stroke-width="1.5"/>
+    <text x="305" y="132" text-anchor="middle" fill="#38bdf8">5x5 conv</text>
+
+    <rect x="240" y="160" width="130" height="34" rx="6" fill="#0d1117" stroke="#f59e0b" stroke-width="1.5"/>
+    <text x="305" y="182" text-anchor="middle" fill="#f59e0b">3x3 pool</text>
+
+    <rect x="240" y="210" width="130" height="34" rx="6" fill="#0d1117" stroke="#f472b6" stroke-width="1.5"/>
+    <text x="305" y="232" text-anchor="middle" fill="#f472b6">max pool</text>
+
+    <rect x="240" y="260" width="130" height="34" rx="6" fill="#0d1117" stroke="#818cf8" stroke-width="1.5"/>
+    <text x="305" y="282" text-anchor="middle" fill="#818cf8">skip</text>
+
+    <rect x="240" y="310" width="130" height="34" rx="6" fill="#0d1117" stroke="#64748b" stroke-width="1.5"/>
+    <text x="305" y="332" text-anchor="middle" fill="#8899aa">zero</text>
+  </g>
+
+  <!-- Arrows input -> candidates -->
+  <g stroke="#64748b" stroke-width="1" fill="none" marker-end="url(#arrow)">
+    <line x1="106" y1="210" x2="234" y2="77"/>
+    <line x1="106" y1="210" x2="234" y2="127"/>
+    <line x1="106" y1="210" x2="234" y2="177"/>
+    <line x1="106" y1="210" x2="234" y2="227"/>
+    <line x1="106" y1="210" x2="234" y2="277"/>
+    <line x1="106" y1="210" x2="234" y2="327"/>
+  </g>
+
+  <!-- Mixing weights: softmax(alpha) -->
+  <rect x="430" y="100" width="120" height="220" rx="8" fill="url(#mixGrad)" stroke="#818cf8" stroke-width="1.5"/>
+  <text x="490" y="85" text-anchor="middle" fill="#818cf8" font-size="12" font-weight="700">softmax(&#945;)</text>
+  <text x="490" y="195" text-anchor="middle" fill="#f0f6fc" font-size="13" font-weight="600">mixing</text>
+  <text x="490" y="215" text-anchor="middle" fill="#f0f6fc" font-size="13" font-weight="600">weights</text>
+  <text x="490" y="345" text-anchor="middle" fill="#64748b" font-size="10">differentiable</text>
+
+  <!-- Arrows candidates -> softmax -->
+  <g stroke="#818cf8" stroke-width="1" fill="none" marker-end="url(#arrow)" opacity="0.7">
+    <line x1="370" y1="77"  x2="426" y2="120"/>
+    <line x1="370" y1="127" x2="426" y2="150"/>
+    <line x1="370" y1="177" x2="426" y2="180"/>
+    <line x1="370" y1="227" x2="426" y2="220"/>
+    <line x1="370" y1="277" x2="426" y2="250"/>
+    <line x1="370" y1="327" x2="426" y2="300"/>
+  </g>
+
+  <!-- Output node -->
+  <circle cx="620" cy="210" r="26" fill="#1a2640" stroke="#f472b6" stroke-width="2"/>
+  <text x="620" y="215" text-anchor="middle" fill="#f472b6" font-size="13" font-weight="600">v</text>
+  <text x="620" y="255" text-anchor="middle" fill="#64748b" font-size="10">mixed output</text>
+
+  <line x1="550" y1="210" x2="594" y2="210" stroke="#818cf8" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Equation hint -->
+  <text x="350" y="395" text-anchor="middle" fill="#8899aa" font-size="11" font-style="italic">
+    v = &#931; softmax(&#945;)_i &#183; op_i(x)   — gradient flows through both &#945; (architecture) and op weights
+  </text>
+</svg>
+<div class="figure-caption">Figure 1 — DARTS differentiable architecture search. Each edge in the cell outputs a softmax-weighted combination of candidate operations. Gradient descent updates both the operation weights and the architecture parameters &amp;#945; simultaneously. After training, the discrete architecture is extracted by keeping the argmax operation per edge.</div></div>
+  <p>The bi-level objective DARTS optimizes is:</p>
+  <div class="math-block">$$ \min_{{\alpha}} \; \mathcal{{L}}_{{\text{{val}}}}(w^*(\alpha), \alpha) \quad \text{{s.t.}} \quad w^*(\alpha) = \arg\min_w \; \mathcal{{L}}_{{\text{{train}}}}(w, \alpha) $$ <div class="math-label">Eq. 3 — DARTS bi-level objective. Architecture parameters &amp;#945; are optimized on validation loss; operation weights w are optimized on training loss.</div></div>
+  <p>In practice, DARTS approximates the inner optimum with a single-step finite-difference estimate (similar to MAML) so it does not have to fully solve the inner problem before each $\alpha$ update. After training, the continuous architecture is <strong>discretized</strong>: for each edge, keep the operation with the largest $\alpha$ weight, throw the rest away, and retrain the resulting discrete model from scratch. The whole pipeline — search plus retraining — fits on a single GPU in under a day.</p>
+  <div class="callout warning"><div class="callout-icon">⚠️</div><div class="callout-body"><div class="callout-title">DARTS is famously unstable</div><p>The original DARTS paper had a reputation for being hard to reproduce — the architecture parameters can collapse (one operation dominates early and the search never recovers), or the discretization step can dramatically change performance. The "DARTS-" variants (P-DARTS, PC-DARTS, SDARTS, R-DARTS) each patch a specific failure mode. If you are starting a NAS project today, begin with <strong>PC-DARTS</strong> (partial-channel DARTS), which is the most stable of the family and has the best out-of-the-box reproducibility.</p></div></div>
+</section>
+
+<section id="section-8">
+  <h2>8. One-Shot Models: Train the Super-Net Once, Extract Many</h2>
+  <p>A cousin of DARTS is the broader family of <strong>one-shot NAS</strong> methods, of which <strong>Once-for-All</strong> (Cai et al., 2020) is the most cited example. The idea: train one large "super-network" that contains many sub-networks as special cases, then extract sub-networks of different sizes / latencies / accuracies without re-training. The super-network is trained with a sandwich rule: at each step, sample the largest, smallest, and a few in-between sub-networks, and update all of them with a shared loss. After training, you can extract a model with a target latency by simply zeroing out the corresponding channels and skipping the corresponding blocks.</p>
+  <p>One-shot NAS is what makes modern "efficient model families" possible. MobileNetV3, EfficientNet, and most production edge-ML models were found by searching within a one-shot super-network and then extracting a Pareto-optimal sub-network for each target device. The same trained super-net yields a 5M-parameter model for high-end phones, a 2M-parameter model for low-end phones, and a 500K-parameter model for microcontrollers — without retraining any of them.</p>
+</section>
+
+<section id="section-9">
+  <h2>9. When to Use AutoML (and When Not To)</h2>
+  <p>AutoML is a tool, not a religion. There are situations where it is exactly the right answer and situations where it is a costly distraction. The honest decision rule is something like this.</p>
+  <ul>
+    <li><strong>Use FLAML</strong> when you have a tabular dataset, need a baseline model in the next 5 minutes, and do not yet know whether the problem is easy or hard. FLAML will give you a sensible answer faster than you can write a manual sklearn pipeline.</li>
+    <li><strong>Use auto-sklearn</strong> when you have a tabular benchmark, a few hours of compute to spare, and want the most thorough open-source search available. Auto-sklearn is what you reach for when "good enough" is not good enough and you want to know what the ceiling is.</li>
+    <li><strong>Use KerasTuner (or Optuna)</strong> when you are training a deep model and need to search architecture + optimizer settings. KerasTuner is the lower-friction option; Optuna is the more flexible one.</li>
+    <li><strong>Use Optuna directly</strong> when your training loop is custom (PyTorch, JAX, custom TF), when you need pruning or distributed search, or when you want fine-grained control over the search space.</li>
+    <li><strong>Use NAS</strong> only when architecture is the bottleneck — i.e., when you have squeezed all the easy gains from optimizer hyperparameters and need to find a better model family for your compute budget. NAS is research-grade machinery; for 95% of applied ML work, the architecture search you need is "ResNet-50 vs EfficientNet-B0 vs ViT-S", and a 3-trial Optuna study answers that question faster than a DARTS run.</li>
+  </ul>
+  <p>The most common mistake is to reach for AutoML as a substitute for understanding the problem. AutoML will faithfully search whatever space you give it; if you give it a bad space (no boosting models, no sensible feature engineering, wrong loss function), it will return the best model in that bad space, which is still bad. Spend the first hour of any ML project understanding the data; then, if you still want a quick baseline, let FLAML find one for you.</p>
+  <div class="quiz-box">
+  <div class="quiz-label">🧠 Quick Check</div>
+  <p class="quiz-question">Your team has 2 hours to deliver a baseline accuracy on a 50,000-row tabular dataset with mixed numeric and categorical features. Which AutoML tool is the right default?</p>
+  <details class="quiz-answer">
+    <summary>Show Answer</summary>
+    <p>FLAML. It is the fastest to install (pip install flaml), the fastest to first result (often under 30 seconds), and handles mixed-type features automatically via its built-in preprocessing. auto-sklearn would also work but is Linux-only and slower to first result; KerasTuner is wrong because the data is tabular, not image/text; Optuna would require you to write the training loop and preprocessing yourself, defeating the point of AutoML.</p>
+  </details>
+</div>
+</section>
+
+<div class="summary-box"><h3>Key Takeaways</h3><ul><li><strong>CASH</strong> (Combined Algorithm Selection and Hyperparameter Optimization) treats algorithm choice and hyperparameter choice as a single joint problem. The search space is conditional — different algorithms activate different hyperparameters.</li><li><strong>auto-sklearn</strong> uses SMAC (random-forest Bayesian optimization) with meta-learning warm-starts and an automated ensemble of best-found configs. Thorough but heavy; Linux-only in practice.</li><li><strong>FLAML</strong> is cost-aware: tries cheap models (linear) first, escalates to expensive ones (XGBoost, LightGBM) only if needed. Best default for "I need a model now".</li><li><strong>KerasTuner</strong> exposes <code>hp.Int / hp.Float / hp.Choice</code> inside a <code>build_model(hp)</code> function. Hyperband variant gives BOHB-style early stopping for free.</li><li><strong>Optuna + PyTorch</strong> is the most flexible pattern: any training loop, any search space, MedianPruner for early stopping, rich visualization suite.</li><li><strong>NAS</strong> searches the architecture itself. <strong>DARTS</strong> makes architecture differentiable via softmax mixing over candidate operations; one-shot models (Once-for-All) train a super-net and extract sub-nets without re-training.</li><li><strong>Decision rule:</strong> FLAML for fast tabular baselines, auto-sklearn for thorough tabular search, KerasTuner for Keras models, Optuna for custom training loops, NAS only when architecture is the bottleneck.</li></ul></div>
+
+<section id="resources"><h2>Useful Resources</h2><ul class="resource-list"><li><a href="https://proceedings.neurips.cc/paper/2015/hash/11d0e6287202fced83f79975ec59a3a6-Abstract.html">Feurer et al. (2015) — Efficient and Robust Automated Machine Learning (auto-sklearn)</a></li><li><a href="https://www.microsoft.com/en-us/research/publication/flaml-a-fast-and-lightweight-automl-library/">Wang et al. (2021) — FLAML: A Fast and Lightweight AutoML Library</a></li><li><a href="https://keras.io/keras_tuner/">O&#x27;Malley et al. (2019) — KerasTuner: Easy Hyperparameter Tuning for Humans</a></li><li><a href="https://arxiv.org/abs/1806.09055">Liu, Simonyan, Yang (2018) — DARTS: Differentiable Architecture Search</a></li><li><a href="https://arxiv.org/abs/1802.03268">Pham, Guan, Zoph, Le (2018) — ENAS: Efficient Neural Architecture Search via Parameter Sharing</a></li><li><a href="https://arxiv.org/abs/1908.09791">Cai, Li, Zhu, Han, et al. (2020) — Once-for-All: Train One Network and Specialize it for Efficient Deployment</a></li><li><a href="https://automl.org/book/">Hutter, Kotthoff, Vanschoren (eds.) — Automated Machine Learning: Methods, Systems, Challenges (book, open access)</a></li></ul></section>
+
+  </article>
+</div>
+<div class="page-nav"><a href="intro.html" class="page-nav-btn prev"><span class="nav-dir">← Previous</span><span class="nav-title">Module 09</span></a><a href="assignment_task.html" class="page-nav-btn next"><span class="nav-dir">Next →</span><span class="nav-title">Assignment 09</span></a></div>
+<footer>
+  <div class="container">
+    <div style="font-size:1.5rem;font-weight:800;font-family:var(--display);color:var(--accent);margin-bottom:0.5rem">HyperTune</div>
+    <p style="color:var(--muted2);font-size:0.85rem;max-width:500px;margin:0 auto">The complete hyperparameter tuning reference for ML &amp; DL engineers. Covers scikit-learn, XGBoost, LightGBM, PyTorch, Optuna, Ray Tune, and beyond — from first principles to production.</p>
+    <div style="margin-top:2rem;font-size:0.78rem;color:var(--muted2)">Built for learning · Python 3.10+ · scikit-learn 1.4+ · Optuna 3.0+</div>
+  </div>
+</footer>
+<script>
+(function() {
+  const links = Array.from(document.querySelectorAll('.toc-link'));
+  const sections = links
+    .map(l => document.querySelector(l.getAttribute('href')))
+    .filter(Boolean);
+  if (!('IntersectionObserver' in window) || sections.length === 0) return;
+  const setActive = id => {
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+  };
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  sections.forEach(s => observer.observe(s));
+})();
+</script>
+</body>
+</html>

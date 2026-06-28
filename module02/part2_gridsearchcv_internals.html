@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inside GridSearchCV — HyperTune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<style>
+
+:root {
+  --bg: #070b14; --bg2: #0c1220; --bg3: #111827;
+  --card: #131d2e; --card2: #1a2640;
+  --border: rgba(99,179,237,0.12); --border2: rgba(99,179,237,0.22);
+  --accent: #38bdf8; --accent2: #818cf8; --accent3: #34d399;
+  --accent4: #f59e0b; --accent5: #f472b6;
+  --text: #f0f6fc; --muted: #8899aa; --muted2: #64748b;
+  --code-bg: #0d1117;
+  --ff: 'Inter', sans-serif; --mono: 'JetBrains Mono', monospace;
+  --display: 'Sora', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,11,20,0.85);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:var(--display);font-weight:800;font-size:1.25rem;color:var(--accent);letter-spacing:-0.03em;text-decoration:none}
+.logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#000;padding:7px 18px;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85}
+
+/* LAYOUT */
+.page-layout { display: grid; grid-template-columns: 280px 1fr; gap: 3rem; max-width: 1200px; margin: 0 auto; padding: 5rem 2rem 5rem; padding-top: 80px; }
+@media(max-width: 900px) { .page-layout { grid-template-columns: 1fr; } .toc-sidebar { display: none; } }
+
+/* TOC SIDEBAR */
+.toc-sidebar { position: sticky; top: 80px; height: fit-content; max-height: calc(100vh - 100px); overflow-y: auto; }
+.toc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.75rem; }
+.toc-nav { display: flex; flex-direction: column; gap: 2px; }
+.toc-link { color: var(--muted); font-size: 0.82rem; text-decoration: none; padding: 4px 10px; border-left: 2px solid transparent; transition: all 0.15s; border-radius: 0 4px 4px 0; }
+.toc-link:hover, .toc-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(56,189,248,0.05); }
+.toc-link.toc-sub { font-size: 0.78rem; padding-left: 22px; }
+
+/* ARTICLE BODY */
+.article-body { min-width: 0; }
+.breadcrumb { font-size: 0.78rem; color: var(--muted2); margin-bottom: 1.5rem; }
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--accent); }
+.module-badge { display: inline-block; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: var(--accent); padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 1rem; }
+.article-title { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
+.article-meta { font-size: 0.83rem; color: var(--muted); margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+
+/* OUTLINE BOX */
+.outline-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 3rem; }
+.outline-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.75rem; color: var(--text); }
+.outline-list { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.85rem; }
+.outline-list a { color: var(--accent); text-decoration: none; }
+.outline-list a:hover { text-decoration: underline; }
+.outline-list li { margin: 4px 0; }
+.outline-list ul { margin: 4px 0; padding-left: 1rem; }
+
+/* ARTICLE PROSE */
+.article-body h2 { font-family: var(--display); font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; margin: 3rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); scroll-margin-top: 80px; }
+.article-body h3 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 80px; }
+.article-body h4 { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.article-body p { margin-bottom: 1.25rem; color: var(--muted); font-size: 0.97rem; line-height: 1.85; }
+.article-body strong { color: var(--text); font-weight: 600; }
+.article-body em { color: var(--accent3); font-style: italic; }
+.article-body ul, .article-body ol { margin: 0 0 1.25rem 1.5rem; color: var(--muted); font-size: 0.95rem; }
+.article-body li { margin-bottom: 6px; line-height: 1.75; }
+.article-body code { font-family: var(--mono); font-size: 0.82em; background: rgba(56,189,248,0.08); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
+.article-body a { color: var(--accent2); text-decoration: none; }
+.article-body a:hover { text-decoration: underline; }
+
+/* CODE BLOCKS */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+.code-block-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot.r { background: #ff5f57; } .code-dot.y { background: #ffbd2e; } .code-dot.g { background: #28c840; }
+.code-filename { font-family: var(--mono); font-size: 0.73rem; color: var(--muted2); margin-left: 8px; }
+.code-block pre { padding: 1.5rem; overflow-x: auto; margin: 0; font-family: var(--mono); font-size: 0.82rem; line-height: 1.8; color: #e2e8f0; }
+/* Syntax colors */
+.kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; }
+.num { color: #f78c6c; } .cm { color: #546e7a; font-style: italic; }
+.cls { color: #ffcb6b; } .imp { color: #89ddff; } .op { color: #89ddff; }
+
+/* CALLOUT BOXES */
+.callout { display: flex; gap: 1rem; border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; border-width: 1px; border-style: solid; }
+.callout-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+.callout-body { font-size: 0.88rem; line-height: 1.75; }
+.callout-body strong { font-weight: 600; }
+.callout-title { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+.callout.note { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.22); color: var(--muted); }
+.callout.note .callout-title, .callout.note strong { color: var(--accent); }
+.callout.warning { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.22); color: var(--muted); }
+.callout.warning .callout-title, .callout.warning strong { color: var(--accent4); }
+.callout.tip { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); color: var(--muted); }
+.callout.tip .callout-title, .callout.tip strong { color: var(--accent3); }
+.callout.important { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.22); color: var(--muted); }
+.callout.important .callout-title, .callout.important strong { color: var(--accent5); }
+
+/* MATH DISPLAY */
+.math-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.75rem; margin: 1.25rem 0; overflow-x: auto; font-size: 1.05rem; text-align: center; }
+.math-label { font-size: 0.72rem; color: var(--muted2); font-family: var(--mono); margin-top: 0.5rem; text-align: right; }
+
+/* INLINE FIGURE / DIAGRAM */
+.figure { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; margin: 2rem 0; text-align: center; }
+.figure-caption { font-size: 0.8rem; color: var(--muted2); margin-top: 1rem; font-style: italic; }
+
+/* DATA TABLE */
+.data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.85rem; }
+.data-table th { padding: 10px 14px; background: var(--card2); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); text-align: left; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(99,179,237,0.03); }
+
+/* SUMMARY BOX */
+.summary-box { background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(129,140,248,0.07)); border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 1.75rem 2rem; margin: 3rem 0 2rem; }
+.summary-box h3 { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+.summary-box ul { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.88rem; }
+.summary-box li { margin-bottom: 6px; line-height: 1.7; }
+
+/* RESOURCE LIST */
+.resource-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.resource-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.resource-list li::before { content: '\2192'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.resource-list a { color: var(--accent2); }
+
+/* PREV/NEXT NAV */
+.page-nav { display: flex; justify-content: space-between; gap: 1rem; padding: 2rem; max-width: 1200px; margin: 0 auto; border-top: 1px solid var(--border); }
+.page-nav-btn { display: flex; flex-direction: column; gap: 4px; padding: 1rem 1.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; transition: all 0.2s; max-width: 45%; }
+.page-nav-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.page-nav-btn .nav-dir { font-size: 0.72rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; }
+.page-nav-btn .nav-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.page-nav-btn.next { text-align: right; margin-left: auto; }
+
+/* QUIZ/EXERCISE BOX */
+.exercise-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin: 2rem 0; }
+.exercise-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent4); margin-bottom: 0.5rem; }
+.exercise-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; }
+.exercise-body { font-size: 0.88rem; color: var(--muted); line-height: 1.75; }
+
+/* QUIZ BOX */
+.quiz-box { background: rgba(129,140,248,0.06); border: 1px solid rgba(129,140,248,0.22); border-radius: 14px; padding: 1.5rem; margin: 1.5rem 0; }
+.quiz-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.5rem; }
+.quiz-question { font-size: 0.93rem; color: var(--text); margin-bottom: 0.75rem; font-weight: 500; }
+.quiz-answer { margin-top: 0.5rem; }
+.quiz-answer summary { cursor: pointer; font-size: 0.82rem; color: var(--accent2); font-weight: 600; }
+.quiz-answer p { margin-top: 0.5rem; font-size: 0.86rem; color: var(--muted); }
+
+/* CELL (for assignment files - jupyter style) */
+.jupyter-cell { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin: 1.5rem 0; overflow: hidden; }
+.cell-header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted2); font-family: var(--mono); }
+.cell-input-label { color: var(--accent4); font-weight: 600; }
+.cell-body { padding: 1rem 1.25rem; }
+.jupyter-cell pre { padding: 1rem 1.25rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; background: var(--code-bg); margin: 0; }
+.cell-prompt { color: var(--accent3); font-weight: 700; }
+
+/* GRADING RUBRIC */
+.rubric-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+.rubric-table th { background: var(--card2); padding: 10px 14px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); }
+.rubric-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+
+/* DETAILS (collapsible hints) */
+details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; }
+details summary { cursor: pointer; font-size: 0.85rem; color: var(--accent2); font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
+
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">Hyper<span>Tune</span></a>
+    <ul class="nav-links">
+
+    </ul>
+    <a href="../index.html#curriculum" class="nav-cta">Start Learning</a>
+  </div>
+</nav>
+<div class="page-layout">
+  <aside class="toc-sidebar">
+    <div class="toc-label">On this page</div>
+    <nav class="toc-nav">
+<a href="#section-1" class="toc-link">1. The Double Loop</a>
+<a href="#section-2" class="toc-link">2. cv_results_ Dictionary</a>
+<a href="#section-3" class="toc-link">3. Ranking by Stability</a>
+<a href="#section-4" class="toc-link">4. Custom refit Strategies</a>
+<a href="#section-5" class="toc-link">5. Memory and Caching</a>
+<a href="#section-6" class="toc-link">6. Custom Scoring Functions</a>
+<a href="#section-7" class="toc-link">7. Warm-Start Limitation</a>
+<a href="#section-8" class="toc-link">8. Production-Quality Search</a>
+<a href="#resources" class="toc-link">Useful Resources</a>
+    </nav>
+  </aside>
+  <article class="article-body">
+    <div class="breadcrumb"><a href="../index.html">HyperTune</a> › <a href="intro.html">Module 02</a> › Inside GridSearchCV</div>
+    <div class="article-header">
+      <div class="module-badge">Module 02 · Grid Search</div>
+      <h1 class="article-title">Inside GridSearchCV: What Happens Under the Hood</h1>
+      <div class="article-meta">Part of the <strong>HyperTune</strong> open course · Estimated read time: 14 min · Python 3.10+ · scikit-learn 1.4+</div>
+    </div>
+    <div class="outline-box">
+      <div class="outline-title">📋 Article Outline</div>
+      <ol class="outline-list">
+
+<li><a href="#section-1">1. The Double Loop, Step by Step</a></li>
+<li><a href="#section-2">2. The cv_results_ Dictionary</a></li>
+<li><a href="#section-3">3. Ranking by Mean and Consistency</a></li>
+<li><a href="#section-4">4. Custom refit Strategies</a></li>
+<li><a href="#section-5">5. Memory and Caching: joblib.Memory</a></li>
+<li><a href="#section-6">6. Custom Scoring Functions</a></li>
+<li><a href="#section-7">7. The Warm-Start Limitation</a></li>
+<li><a href="#section-8">8. Putting It All Together</a></li>
+<li><a href="#resources">Useful Resources</a></li>
+      </ol>
+    </div>
+
+<section id="section-1">
+  <h2>1. The Double Loop, Step by Step</h2>
+  <p>When you call <code>grid.fit(X, y)</code>, scikit-learn does roughly the following. First, it clones the estimator (a fresh copy with the same hyperparameters but no learned state). Then it enumerates every parameter combination in <code>param_grid</code> — for each combination, it sets the cloned estimator's hyperparameters via <code>set_params</code>. For each (combination, fold) pair, it fits the estimator on the training portion of the fold and scores it on the validation portion. The result is a 2D array of scores: rows are combinations, columns are folds.</p>
+  <p>The double loop is the source of both the cost (k_cv times more fits than the number of combinations) and the parallelism (every (combination, fold) pair is independent). With <code>n_jobs=-1</code>, joblib dispatches these pairs to worker processes, collects the results, and assembles them into the <code>cv_results_</code> dictionary.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── gridsearchcv_internals.py ─────────────────────────────────────────────────
+# Hand-rolled equivalent of what GridSearchCV does internally, so you can see
+# exactly what data structure is being assembled.
+
+import numpy as np
+import pandas as pd
+from sklearn.base import clone
+from sklearn.datasets import load_breast_cancer
+from sklearn.svm import SVC
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
+from sklearn.model_selection import StratifiedKFold
+from sklearn.metrics import accuracy_score
+from itertools import product
+
+X, y = load_breast_cancer(return_X_y=True)
+
+param_grid = {
+    &quot;svc__C&quot;:     [0.1, 1, 10, 100],
+    &quot;svc__gamma&quot;: [0.001, 0.01, 0.1, 1],
+}
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+# ─── Build the list of param dicts (the cartesian product) ───────────────────
+keys = list(param_grid.keys())
+combos = [dict(zip(keys, vals)) for vals in product(*param_grid.values())]
+print(f&quot;{len(combos)} combinations × {cv.get_n_splits()} folds &quot;
+      f&quot;= {len(combos) * cv.get_n_splits()} fits&quot;)
+
+# ─── The double loop ─────────────────────────────────────────────────────────
+scores = np.zeros((len(combos), cv.get_n_splits()))
+for ci, params in enumerate(combos):
+    for fi, (tr, va) in enumerate(cv.split(X, y)):
+        estimator = make_pipeline(StandardScaler(), SVC(kernel=&quot;rbf&quot;, random_state=42))
+        estimator.set_params(**params)
+        estimator.fit(X[tr], y[tr])
+        scores[ci, fi] = accuracy_score(y[va], estimator.predict(X[va]))
+
+# ─── Assemble a cv_results_-like DataFrame ───────────────────────────────────
+results = pd.DataFrame({
+    &quot;params&quot;: combos,
+    &quot;mean_test_score&quot;: scores.mean(axis=1),
+    &quot;std_test_score&quot;: scores.std(axis=1),
+    **{f&quot;split{i}_test_score&quot;: scores[:, i] for i in range(cv.get_n_splits())},
+})
+results[&quot;rank_test_score&quot;] = results[&quot;mean_test_score&quot;].rank(ascending=False).astype(int)
+results = results.sort_values(&quot;rank_test_score&quot;)
+print(results[[&quot;params&quot;, &quot;mean_test_score&quot;, &quot;std_test_score&quot;, &quot;rank_test_score&quot;]].head())
+</pre></div>
+  <p>This is essentially what scikit-learn does internally, modulo parallelism, refit, and some bookkeeping. The point of writing it out by hand is to demystify the <code>cv_results_</code> dictionary — once you have built one yourself, you will never be confused by its structure again.</p>
+</section>
+
+<section id="section-2">
+  <h2>2. The <code>cv_results_</code> Dictionary: Every Key Explained</h2>
+  <p>After <code>fit</code>, <code>grid.cv_results_</code> is a dict where each value is a list of length n_combinations. The keys fall into a few groups:</p>
+  <table class="data-table">
+    <thead><tr><th>Key</th><th>Type</th><th>What it contains</th></tr></thead>
+    <tbody>
+      <tr><td><code>params</code></td><td>list of dicts</td><td>The actual hyperparameter combination for each row.</td></tr>
+      <tr><td><code>mean_test_score</code></td><td>array</td><td>CV mean of the validation score — what you usually care about.</td></tr>
+      <tr><td><code>std_test_score</code></td><td>array</td><td>Standard deviation across folds — your variance gauge.</td></tr>
+      <tr><td><code>rank_test_score</code></td><td>array of int</td><td>1 = best mean_test_score; useful for filtering.</td></tr>
+      <tr><td><code>split0_test_score</code> … <code>splitK_test_score</code></td><td>arrays</td><td>Per-fold validation scores — for box plots and stability analysis.</td></tr>
+      <tr><td><code>mean_train_score</code>, <code>std_train_score</code>, <code>splitK_train_score</code></td><td>arrays</td><td>Same for the training fold score (only if <code>return_train_score=True</code>).</td></tr>
+      <tr><td><code>mean_fit_time</code>, <code>std_fit_time</code></td><td>arrays</td><td>Wall-clock time to fit, averaged across folds.</td></tr>
+      <tr><td><code>mean_score_time</code>, <code>std_score_time</code></td><td>arrays</td><td>Wall-clock time to score (predict + metric).</td></tr>
+      <tr><td><code>param_&lt;name&gt;</code></td><td>arrays</td><td>The value of hyperparameter <code>&lt;name&gt;</code> for each row — one column per hyperparameter. Used for pivot tables.</td></tr>
+      <tr><td><code>param_&lt;name&gt;_fold</code> (some versions)</td><td>arrays</td><td>Internal fold indices — usually ignorable.</td></tr>
+    </tbody>
+  </table>
+  <p>The most useful keys for analysis are <code>params</code>, <code>mean_test_score</code>, <code>std_test_score</code>, and the per-fold <code>splitK_test_score</code> arrays. With those four, you can rank configurations, compute stability scores, and produce box plots.</p>
+</section>
+
+<section id="section-3">
+  <h2>3. Ranking by Mean <em>and</em> Consistency</h2>
+  <p>The default <code>rank_test_score</code> ranks by <code>mean_test_score</code> alone. But mean alone is misleading: a configuration with mean 0.92 ± 0.04 is riskier than one with mean 0.91 ± 0.005, because the former might score anywhere from 0.88 to 0.96 on a new sample of the data, while the latter is almost certain to be in [0.905, 0.915]. For deployment you usually want the stable one.</p>
+  <p>A common alternative ranking is <strong>mean − std</strong> — the lower end of the 1-sigma confidence band. This penalizes high-variance configurations and rewards consistency. You can compute it from <code>cv_results_</code> directly.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── rank_by_stability.py ────────────────────────────────────────────────────
+# Rank configurations by (mean - std) instead of mean alone.
+
+import pandas as pd
+from sklearn.model_selection import GridSearchCV
+from sklearn.svm import SVC
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import StratifiedKFold
+
+X, y = load_breast_cancer(return_X_y=True)
+grid = GridSearchCV(
+    make_pipeline(StandardScaler(), SVC(kernel=&quot;rbf&quot;)),
+    param_grid={&quot;svc__C&quot;: [0.1, 1, 10, 100], &quot;svc__gamma&quot;: [0.001, 0.01, 0.1, 1]},
+    cv=StratifiedKFold(n_splits=5, shuffle=True, random_state=42),
+    scoring=&quot;accuracy&quot;, n_jobs=-1, return_train_score=True,
+)
+grid.fit(X, y)
+
+df = pd.DataFrame(grid.cv_results_)
+df[&quot;mean_minus_std&quot;] = df[&quot;mean_test_score&quot;] - df[&quot;std_test_score&quot;]
+df = df[[&quot;params&quot;, &quot;mean_test_score&quot;, &quot;std_test_score&quot;,
+         &quot;mean_minus_std&quot;, &quot;rank_test_score&quot;]].copy()
+df[&quot;rank_by_stability&quot;] = df[&quot;mean_minus_std&quot;].rank(ascending=False).astype(int)
+df = df.sort_values(&quot;rank_by_stability&quot;)
+print(df.head(8).to_string(index=False))
+</pre></div>
+  <p>The top configuration by stability is often different from the top by mean — and it is usually the better deployment choice. If you want to use stability ranking for the actual <code>refit</code> step, pass a custom callable to <code>refit</code> as shown in the next section.</p>
+</section>
+
+<section id="section-4">
+  <h2>4. Custom <code>refit</code> Strategies</h2>
+  <p>The <code>refit</code> parameter accepts either a string (the metric name to refit on, for multi-metric) or a callable. The callable receives the <code>cv_results_</code> dict and returns the index of the configuration to refit. This lets you implement custom selection logic without forking GridSearchCV.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── custom_refit.py ──────────────────────────────────────────────────────────
+# Use a custom refit strategy that picks the configuration with the highest
+# (mean - std) — i.e. the most pessimistic lower bound on accuracy.
+
+from sklearn.model_selection import GridSearchCV
+from sklearn.svm import SVC
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import StratifiedKFold
+import numpy as np
+
+def refit_lower_bound(cv_results):
+    &quot;&quot;&quot;Pick the index of the configuration with the highest (mean - std).&quot;&quot;&quot;
+    lower = cv_results[&quot;mean_test_score&quot;] - cv_results[&quot;std_test_score&quot;]
+    return int(np.argmax(lower))
+
+X, y = load_breast_cancer(return_X_y=True)
+grid = GridSearchCV(
+    make_pipeline(StandardScaler(), SVC(kernel=&quot;rbf&quot;)),
+    param_grid={&quot;svc__C&quot;: [0.1, 1, 10, 100], &quot;svc__gamma&quot;: [0.001, 0.01, 0.1, 1]},
+    cv=StratifiedKFold(n_splits=5, shuffle=True, random_state=42),
+    scoring=&quot;accuracy&quot;, n_jobs=-1, return_train_score=True,
+    refit=refit_lower_bound,
+)
+grid.fit(X, y)
+print(f&quot;Refit on config with highest (mean - std): {grid.best_params_}&quot;)
+print(f&quot;  mean_test_score = {grid.best_score_:.4f}&quot;)
+</pre></div>
+  <p>Other useful refit strategies: pick the configuration with the lowest fit time among those whose mean_test_score is within 1 std of the best; pick the simplest model (smallest n_estimators, shallowest max_depth) within the top-5 by mean; pick the configuration that maximizes recall subject to precision ≥ 0.9.</p>
+</section>
+
+<section id="section-5">
+  <h2>5. Memory and Caching: <code>joblib.Memory</code></h2>
+  <p>If your pipeline contains expensive transformers (PCA on large data, TF-IDF vectorization on text, custom feature engineering), GridSearchCV will refit them on every (combination, fold) pair — even when the transformer's hyperparameters haven't changed. With 16 combinations × 5 folds, that is 80 refits of the transformer, of which perhaps 5 are unique (one per fold). The other 75 are wasted compute.</p>
+  <p>The fix is <code>joblib.Memory</code>: a disk-based cache that memoizes transformer fits by hashing their inputs and hyperparameters. When the search encounters the same transformer with the same inputs again, it loads the cached result instead of recomputing. The speedup can be 10× or more for text pipelines.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── caching_with_memory.py ──────────────────────────────────────────────────
+# Wrap expensive transformers with joblib.Memory so GridSearchCV doesn&#x27;t
+# recompute them on every (combination, fold) pair.
+
+import tempfile
+from pathlib import Path
+from joblib import Memory
+from sklearn.pipeline import Pipeline
+from sklearn.decomposition import PCA
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import GridSearchCV
+from sklearn.datasets import load_breast_cancer
+
+cache_dir = Path(tempfile.gettempdir()) / &quot;hypertune_cache&quot;
+cache_dir.mkdir(exist_ok=True)
+memory = Memory(location=str(cache_dir), verbose=0)
+
+X, y = load_breast_cancer(return_X_y=True)
+
+# ─── Attach the memory to the pipeline — every transformer step is cached ───
+pipe = Pipeline([
+    (&quot;pca&quot;, PCA(n_components=10)),
+    (&quot;rf&quot;, RandomForestClassifier(n_estimators=100, random_state=42)),
+], memory=memory)
+
+grid = GridSearchCV(
+    pipe,
+    # Only RF hyperparameters vary — PCA is recomputed only once per fold
+    param_grid={&quot;rf__max_depth&quot;: [4, 8, 12, 16]},
+    cv=5, n_jobs=-1, scoring=&quot;accuracy&quot;,
+)
+grid.fit(X, y)
+print(f&quot;Best: {grid.best_params_}, CV acc = {grid.best_score_:.4f}&quot;)
+</pre></div>
+  <p>Note that caching only helps if the transformer's inputs and hyperparameters are constant across the configurations you are searching over. If you are also tuning <code>pca__n_components</code>, the cache will have one entry per (n_components, fold) pair, which is still useful but less dramatic.</p>
+</section>
+
+<section id="section-6">
+  <h2>6. Custom Scoring Functions</h2>
+  <p>The <code>scoring</code> parameter accepts strings ('accuracy', 'roc_auc', 'f1', …), but for real problems you often need a business metric. Maybe false positives cost $10 each and false negatives cost $100, and you want to optimize profit-weighted accuracy directly. <code>sklearn.metrics.make_scorer</code> lets you wrap any callable into a scorer that GridSearchCV can use.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── custom_scorer.py ────────────────────────────────────────────────────────
+# Define a profit-weighted scorer: false negatives cost 10x false positives.
+
+import numpy as np
+from sklearn.metrics import make_scorer, confusion_matrix
+from sklearn.model_selection import GridSearchCV
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import StratifiedKFold
+
+def profit_score(y_true, y_pred):
+    &quot;&quot;&quot;Return a per-sample profit: +1 for correct, -10 for FN, -1 for FP.&quot;&quot;&quot;
+    tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel()
+    return (tp + tn - 10 * fn - fp) / len(y_true)
+
+profit_scorer = make_scorer(profit_score, greater_is_better=True)
+
+X, y = load_breast_cancer(return_X_y=True)
+grid = GridSearchCV(
+    RandomForestClassifier(n_estimators=200, random_state=42, n_jobs=1),
+    param_grid={&quot;max_depth&quot;: [4, 8, 12, 16], &quot;class_weight&quot;: [None, &quot;balanced&quot;]},
+    cv=StratifiedKFold(5, shuffle=True, random_state=42),
+    scoring=profit_scorer, n_jobs=-1, refit=True,
+)
+grid.fit(X, y)
+print(f&quot;Best by profit: {grid.best_params_}  profit = {grid.best_score_:.4f}&quot;)
+</pre></div>
+  <p>Notice that <code>class_weight='balanced'</code> will typically win under this scorer even though it might lose under plain accuracy — the asymmetric cost changes which configuration is best. This is exactly why business-aligned scorers matter: they change the answer.</p>
+</section>
+
+<section id="section-7">
+  <h2>7. The Warm-Start Limitation</h2>
+  <p>Some estimators support <code>warm_start=True</code>, which lets you continue training from where a previous <code>fit</code> left off. This is invaluable for, say, growing a random forest by adding 50 more trees at a time. Unfortunately, <code>GridSearchCV</code> does not use warm start across its own iterations — each (combination, fold) fit is independent, and there is no way to tell the search "remember what you learned from <code>n_estimators=100</code> when fitting <code>n_estimators=200</code>."</p>
+  <p>This is a real limitation that more sophisticated tools (Optuna, Hyperopt) handle better. With Optuna you can use a <code>TrailPruner</code> and warm-started estimators to skip redundant compute. The takeaway is: if your search involves incrementally varying a hyperparameter like <code>n_estimators</code>, and warm-starting is supported, consider Optuna instead of GridSearchCV.</p>
+  <div class="callout note"><div class="callout-icon">📌</div><div class="callout-body"><div class="callout-title">Why sklearn doesn&#x27;t warm-start GridSearchCV</div><p>Two reasons. (1) <code>GridSearchCV</code> clones the estimator before each fit, so it cannot inherit learned state across configurations. (2) Warm-starting changes the optimization trajectory — a warm-started fit on n_estimators=200 is not the same model as a fresh fit on n_estimators=200, because the additional 100 trees were trained against residuals computed with the first 100 trees. This breaks the statistical cleanliness of the CV estimate.</p></div></div>
+</section>
+
+<section id="section-8">
+  <h2>8. Putting It All Together: A Production-Quality Search</h2>
+  <p>Let's combine everything from this article into a single production-quality search: caching, custom scorer, stability-based refit, and a thorough <code>cv_results_</code> analysis. This is the kind of code you should be writing for real tuning jobs, not toy demos.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── production_grid_search.py ─────────────────────────────────────────────────
+# Production-quality GridSearchCV: caching, custom scorer, stability refit,
+# thorough cv_results_ analysis with stability ranking and box plots.
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import tempfile
+from joblib import Memory
+from pathlib import Path
+from sklearn.datasets import load_breast_cancer
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.pipeline import Pipeline
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
+from sklearn.metrics import make_scorer, confusion_matrix
+
+# ─── Setup ────────────────────────────────────────────────────────────────────
+X, y = load_breast_cancer(return_X_y=True)
+cache_dir = Path(tempfile.gettempdir()) / &quot;hypertune_prod_cache&quot;
+cache_dir.mkdir(exist_ok=True)
+memory = Memory(location=str(cache_dir), verbose=0)
+
+# ─── Custom scorer: profit-weighted ──────────────────────────────────────────
+def profit_score(y_true, y_pred):
+    tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel()
+    return (tp + tn - 10 * fn - fp) / len(y_true)
+profit_scorer = make_scorer(profit_score, greater_is_better=True)
+
+# ─── Custom refit: highest (mean - std) ──────────────────────────────────────
+def refit_stability(cv_results):
+    lower = cv_results[&quot;mean_test_score&quot;] - cv_results[&quot;std_test_score&quot;]
+    return int(np.argmax(lower))
+
+# ─── Pipeline + grid ─────────────────────────────────────────────────────────
+pipe = Pipeline([
+    (&quot;rf&quot;, RandomForestClassifier(n_estimators=300, n_jobs=1, random_state=42)),
+], memory=memory)
+
+param_grid = {
+    &quot;rf__max_depth&quot;:        [4, 6, 8, 10, 12, 16],
+    &quot;rf__min_samples_leaf&quot;: [1, 2, 4, 8],
+    &quot;rf__max_features&quot;:     [&quot;sqrt&quot;, &quot;log2&quot;, 0.5],
+}
+
+grid = GridSearchCV(
+    pipe, param_grid=param_grid,
+    cv=StratifiedKFold(n_splits=5, shuffle=True, random_state=42),
+    scoring={&quot;profit&quot;: profit_scorer, &quot;accuracy&quot;: &quot;accuracy&quot;},
+    refit=refit_stability,  # refit by stability on the FIRST metric (profit)
+    n_jobs=-1, return_train_score=True,
+)
+grid.fit(X, y)
+print(f&quot;Best params: {grid.best_params_}&quot;)
+print(f&quot;Best profit (mean - std): {grid.best_score_:.4f}&quot;)
+
+# ─── Results analysis ────────────────────────────────────────────────────────
+df = pd.DataFrame(grid.cv_results_)
+df[&quot;profit_lower&quot;] = df[&quot;mean_test_profit&quot;] - df[&quot;std_test_profit&quot;]
+top10 = df.nlargest(10, &quot;profit_lower&quot;)[
+    [&quot;params&quot;, &quot;mean_test_profit&quot;, &quot;std_test_profit&quot;,
+     &quot;mean_test_accuracy&quot;, &quot;mean_fit_time&quot;]
+]
+print(&quot;\nTop 10 by profit lower bound:&quot;)
+print(top10.to_string(index=False))
+
+# ─── Box plot of per-fold profit for top 8 configs ──────────────────────────
+top8 = df.nlargest(8, &quot;profit_lower&quot;)
+split_cols = [c for c in df.columns if c.startswith(&quot;split&quot;) and c.endswith(&quot;test_profit&quot;)]
+fig, ax = plt.subplots(figsize=(10, 5), constrained_layout=True)
+ax.boxplot([top8[c].values for c in split_cols], labels=[f&quot;#{i+1}&quot; for i in range(len(top8))])
+ax.set_ylabel(&quot;Per-fold profit score&quot;)
+ax.set_xlabel(&quot;Top 8 configurations (by mean - std)&quot;)
+ax.set_title(&quot;Stability of top configurations across CV folds&quot;)
+ax.axhline(grid.best_score_, color=&quot;#34d399&quot;, linestyle=&quot;--&quot;, alpha=0.7,
+           label=f&quot;Best (mean - std) = {grid.best_score_:.4f}&quot;)
+ax.legend()
+plt.savefig(&quot;grid_search_stability.png&quot;, dpi=120)
+plt.show()
+</pre></div>
+  <p>The box plot is the key output. If the top configurations all have tight boxes (small variance across folds), you can be confident in your selection. If the boxes are tall and overlapping, you should run more CV folds, gather more data, or accept that the problem doesn't distinguish strongly between top configs.</p>
+  <div class="quiz-box">
+  <div class="quiz-label">🧠 Quick Check</div>
+  <p class="quiz-question">A grid search reports best_score_=0.95 with std=0.012. A colleague reruns the same search with a different random_state on the CV split and gets best_score_=0.91. What is happening, and what should you do?</p>
+  <details class="quiz-answer">
+    <summary>Show Answer</summary>
+    <p>The two searches picked DIFFERENT best configurations — the second run&#x27;s &#x27;best&#x27; config happened to score 0.91 on the first run&#x27;s CV splits. This means the configurations are statistically indistinguishable and the &#x27;best&#x27; is largely noise. Fix: (1) increase cv to 10 to reduce variance, (2) use refit by (mean - std) to pick a stable config, (3) report the distribution of top-K configs rather than a single best.</p>
+  </details>
+</div>
+</section>
+
+<div class="summary-box"><h3>🎯 Key Takeaways</h3><ul><li><strong>GridSearchCV runs a double loop</strong>: configurations × folds, all independent, parallelizable.</li><li><strong>cv_results_</strong> contains everything: per-fold scores, timing, params, ranks. Convert to pandas for analysis.</li><li><strong>Rank by (mean - std)</strong> for deployment — consistency matters as much as peak performance.</li><li><strong>Use joblib.Memory</strong> to cache expensive transformers — 10× speedup is routine for text/PCA pipelines.</li><li><strong>Use make_scorer</strong> for business metrics — asymmetric costs change which configuration is best.</li><li><strong>GridSearchCV cannot warm-start across configurations</strong> — use Optuna if you need incremental training.</li></ul></div>
+
+<section id="resources"><h2>Useful Resources</h2><ul class="resource-list"><li><a href="https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html#sklearn.model_selection.GridSearchCV.cv_results_">scikit-learn cv_results_ documentation</a></li><li><a href="https://scikit-learn.org/stable/modules/generated/sklearn.metrics.make_scorer.html">scikit-learn make_scorer documentation</a></li><li><a href="https://joblib.readthedocs.io/en/latest/memory.html">joblib Memory documentation</a></li><li><a href="https://scikit-learn.org/stable/tutorial/statistical_inference/model_selection.html">Tsuji et al. — scikit-learn model_selection tutorial</a></li><li><a href="https://arxiv.org/abs/1209.3021">Lacoste et al. (2012) — Sequential Model-Based Optimization (SMBO) overview</a></li><li><a href="https://papers.nips.cc/paper/2011/hash/86e8f7ab32cfd12577bc16384c29a8ea-Abstract.html">Bergstra et al. (2011) — Algorithms for Hyper-Parameter Optimization</a></li></ul></section>
+
+  </article>
+</div>
+<div class="page-nav"><a href="part1_grid_search_deep_dive.html" class="page-nav-btn prev"><span class="nav-dir">← Previous</span><span class="nav-title">Grid Search Deep Dive</span></a><a href="assignment_task.html" class="page-nav-btn next"><span class="nav-dir">Next →</span><span class="nav-title">Assignment 02</span></a></div>
+<footer>
+  <div class="container">
+    <div style="font-size:1.5rem;font-weight:800;font-family:var(--display);color:var(--accent);margin-bottom:0.5rem">HyperTune</div>
+    <p style="color:var(--muted2);font-size:0.85rem;max-width:500px;margin:0 auto">The complete hyperparameter tuning reference for ML &amp; DL engineers. Covers scikit-learn, XGBoost, LightGBM, PyTorch, Optuna, Ray Tune, and beyond — from first principles to production.</p>
+    <div style="margin-top:2rem;font-size:0.78rem;color:var(--muted2)">Built for learning · Python 3.10+ · scikit-learn 1.4+ · Optuna 3.0+</div>
+  </div>
+</footer>
+<script>
+(function() {
+  const links = Array.from(document.querySelectorAll('.toc-link'));
+  const sections = links
+    .map(l => document.querySelector(l.getAttribute('href')))
+    .filter(Boolean);
+  if (!('IntersectionObserver' in window) || sections.length === 0) return;
+  const setActive = id => {
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+  };
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  sections.forEach(s => observer.observe(s));
+})();
+</script>
+</body>
+</html>

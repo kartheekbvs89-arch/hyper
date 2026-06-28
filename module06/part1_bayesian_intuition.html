@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bayesian Optimization: Smarter Hyperparameter Search Using Probabilistic Models — HyperTune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<style>
+
+:root {
+  --bg: #070b14; --bg2: #0c1220; --bg3: #111827;
+  --card: #131d2e; --card2: #1a2640;
+  --border: rgba(99,179,237,0.12); --border2: rgba(99,179,237,0.22);
+  --accent: #38bdf8; --accent2: #818cf8; --accent3: #34d399;
+  --accent4: #f59e0b; --accent5: #f472b6;
+  --text: #f0f6fc; --muted: #8899aa; --muted2: #64748b;
+  --code-bg: #0d1117;
+  --ff: 'Inter', sans-serif; --mono: 'JetBrains Mono', monospace;
+  --display: 'Sora', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,11,20,0.85);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:var(--display);font-weight:800;font-size:1.25rem;color:var(--accent);letter-spacing:-0.03em;text-decoration:none}
+.logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#000;padding:7px 18px;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85}
+
+/* LAYOUT */
+.page-layout { display: grid; grid-template-columns: 280px 1fr; gap: 3rem; max-width: 1200px; margin: 0 auto; padding: 5rem 2rem 5rem; padding-top: 80px; }
+@media(max-width: 900px) { .page-layout { grid-template-columns: 1fr; } .toc-sidebar { display: none; } }
+
+/* TOC SIDEBAR */
+.toc-sidebar { position: sticky; top: 80px; height: fit-content; max-height: calc(100vh - 100px); overflow-y: auto; }
+.toc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.75rem; }
+.toc-nav { display: flex; flex-direction: column; gap: 2px; }
+.toc-link { color: var(--muted); font-size: 0.82rem; text-decoration: none; padding: 4px 10px; border-left: 2px solid transparent; transition: all 0.15s; border-radius: 0 4px 4px 0; }
+.toc-link:hover, .toc-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(56,189,248,0.05); }
+.toc-link.toc-sub { font-size: 0.78rem; padding-left: 22px; }
+
+/* ARTICLE BODY */
+.article-body { min-width: 0; }
+.breadcrumb { font-size: 0.78rem; color: var(--muted2); margin-bottom: 1.5rem; }
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--accent); }
+.module-badge { display: inline-block; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: var(--accent); padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 1rem; }
+.article-title { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
+.article-meta { font-size: 0.83rem; color: var(--muted); margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+
+/* OUTLINE BOX */
+.outline-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 3rem; }
+.outline-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.75rem; color: var(--text); }
+.outline-list { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.85rem; }
+.outline-list a { color: var(--accent); text-decoration: none; }
+.outline-list a:hover { text-decoration: underline; }
+.outline-list li { margin: 4px 0; }
+.outline-list ul { margin: 4px 0; padding-left: 1rem; }
+
+/* ARTICLE PROSE */
+.article-body h2 { font-family: var(--display); font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; margin: 3rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); scroll-margin-top: 80px; }
+.article-body h3 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 80px; }
+.article-body h4 { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.article-body p { margin-bottom: 1.25rem; color: var(--muted); font-size: 0.97rem; line-height: 1.85; }
+.article-body strong { color: var(--text); font-weight: 600; }
+.article-body em { color: var(--accent3); font-style: italic; }
+.article-body ul, .article-body ol { margin: 0 0 1.25rem 1.5rem; color: var(--muted); font-size: 0.95rem; }
+.article-body li { margin-bottom: 6px; line-height: 1.75; }
+.article-body code { font-family: var(--mono); font-size: 0.82em; background: rgba(56,189,248,0.08); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
+.article-body a { color: var(--accent2); text-decoration: none; }
+.article-body a:hover { text-decoration: underline; }
+
+/* CODE BLOCKS */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+.code-block-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot.r { background: #ff5f57; } .code-dot.y { background: #ffbd2e; } .code-dot.g { background: #28c840; }
+.code-filename { font-family: var(--mono); font-size: 0.73rem; color: var(--muted2); margin-left: 8px; }
+.code-block pre { padding: 1.5rem; overflow-x: auto; margin: 0; font-family: var(--mono); font-size: 0.82rem; line-height: 1.8; color: #e2e8f0; }
+/* Syntax colors */
+.kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; }
+.num { color: #f78c6c; } .cm { color: #546e7a; font-style: italic; }
+.cls { color: #ffcb6b; } .imp { color: #89ddff; } .op { color: #89ddff; }
+
+/* CALLOUT BOXES */
+.callout { display: flex; gap: 1rem; border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; border-width: 1px; border-style: solid; }
+.callout-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+.callout-body { font-size: 0.88rem; line-height: 1.75; }
+.callout-body strong { font-weight: 600; }
+.callout-title { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+.callout.note { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.22); color: var(--muted); }
+.callout.note .callout-title, .callout.note strong { color: var(--accent); }
+.callout.warning { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.22); color: var(--muted); }
+.callout.warning .callout-title, .callout.warning strong { color: var(--accent4); }
+.callout.tip { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); color: var(--muted); }
+.callout.tip .callout-title, .callout.tip strong { color: var(--accent3); }
+.callout.important { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.22); color: var(--muted); }
+.callout.important .callout-title, .callout.important strong { color: var(--accent5); }
+
+/* MATH DISPLAY */
+.math-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.75rem; margin: 1.25rem 0; overflow-x: auto; font-size: 1.05rem; text-align: center; }
+.math-label { font-size: 0.72rem; color: var(--muted2); font-family: var(--mono); margin-top: 0.5rem; text-align: right; }
+
+/* INLINE FIGURE / DIAGRAM */
+.figure { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; margin: 2rem 0; text-align: center; }
+.figure-caption { font-size: 0.8rem; color: var(--muted2); margin-top: 1rem; font-style: italic; }
+
+/* DATA TABLE */
+.data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.85rem; }
+.data-table th { padding: 10px 14px; background: var(--card2); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); text-align: left; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(99,179,237,0.03); }
+
+/* SUMMARY BOX */
+.summary-box { background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(129,140,248,0.07)); border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 1.75rem 2rem; margin: 3rem 0 2rem; }
+.summary-box h3 { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+.summary-box ul { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.88rem; }
+.summary-box li { margin-bottom: 6px; line-height: 1.7; }
+
+/* RESOURCE LIST */
+.resource-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.resource-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.resource-list li::before { content: '\2192'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.resource-list a { color: var(--accent2); }
+
+/* PREV/NEXT NAV */
+.page-nav { display: flex; justify-content: space-between; gap: 1rem; padding: 2rem; max-width: 1200px; margin: 0 auto; border-top: 1px solid var(--border); }
+.page-nav-btn { display: flex; flex-direction: column; gap: 4px; padding: 1rem 1.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; transition: all 0.2s; max-width: 45%; }
+.page-nav-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.page-nav-btn .nav-dir { font-size: 0.72rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; }
+.page-nav-btn .nav-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.page-nav-btn.next { text-align: right; margin-left: auto; }
+
+/* QUIZ/EXERCISE BOX */
+.exercise-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin: 2rem 0; }
+.exercise-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent4); margin-bottom: 0.5rem; }
+.exercise-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; }
+.exercise-body { font-size: 0.88rem; color: var(--muted); line-height: 1.75; }
+
+/* QUIZ BOX */
+.quiz-box { background: rgba(129,140,248,0.06); border: 1px solid rgba(129,140,248,0.22); border-radius: 14px; padding: 1.5rem; margin: 1.5rem 0; }
+.quiz-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.5rem; }
+.quiz-question { font-size: 0.93rem; color: var(--text); margin-bottom: 0.75rem; font-weight: 500; }
+.quiz-answer { margin-top: 0.5rem; }
+.quiz-answer summary { cursor: pointer; font-size: 0.82rem; color: var(--accent2); font-weight: 600; }
+.quiz-answer p { margin-top: 0.5rem; font-size: 0.86rem; color: var(--muted); }
+
+/* CELL (for assignment files - jupyter style) */
+.jupyter-cell { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin: 1.5rem 0; overflow: hidden; }
+.cell-header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted2); font-family: var(--mono); }
+.cell-input-label { color: var(--accent4); font-weight: 600; }
+.cell-body { padding: 1rem 1.25rem; }
+.jupyter-cell pre { padding: 1rem 1.25rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; background: var(--code-bg); margin: 0; }
+.cell-prompt { color: var(--accent3); font-weight: 700; }
+
+/* GRADING RUBRIC */
+.rubric-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+.rubric-table th { background: var(--card2); padding: 10px 14px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); }
+.rubric-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+
+/* DETAILS (collapsible hints) */
+details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; }
+details summary { cursor: pointer; font-size: 0.85rem; color: var(--accent2); font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
+
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">Hyper<span>Tune</span></a>
+    <ul class="nav-links">
+
+    </ul>
+    <a href="../index.html#curriculum" class="nav-cta">Start Learning</a>
+  </div>
+</nav>
+<div class="page-layout">
+  <aside class="toc-sidebar">
+    <div class="toc-label">On this page</div>
+    <nav class="toc-nav">
+<a href="#section-1" class="toc-link">1. The Expensive Black-Box Problem</a>
+<a href="#section-2" class="toc-link">2. The Bayesian Optimization Idea</a>
+<a href="#section-3" class="toc-link">3. Gaussian Processes as Surrogates</a>
+<a href="#section-4" class="toc-link">4. The GP Posterior: Mean &amp; Variance</a>
+<a href="#section-5" class="toc-link">5. Acquisition Functions</a>
+<a href="#ei" class="toc-link toc-sub">5.1 Expected Improvement (EI)</a>
+<a href="#ucb" class="toc-link toc-sub">5.2 Upper Confidence Bound (UCB)</a>
+<a href="#pi" class="toc-link toc-sub">5.3 Probability of Improvement (PI)</a>
+<a href="#section-6" class="toc-link">6. The Sequential BO Loop</a>
+<a href="#section-7" class="toc-link">7. Limitations of GP-based BO</a>
+<a href="#section-8" class="toc-link">8. Visual Intuition: GP Evolution</a>
+<a href="#section-9" class="toc-link">9. Hands-On: BayesSearchCV on XGBoost</a>
+<a href="#resources" class="toc-link">Useful Resources</a>
+    </nav>
+  </aside>
+  <article class="article-body">
+    <div class="breadcrumb"><a href="../index.html">HyperTune</a> › <a href="intro.html">Module 06</a> › Bayesian Optimization Intuition</div>
+    <div class="article-header">
+      <div class="module-badge">Module 06 · Bayesian Optimization</div>
+      <h1 class="article-title">Bayesian Optimization: Smarter Hyperparameter Search Using Probabilistic Models</h1>
+      <div class="article-meta">Part of the <strong>HyperTune</strong> open course · Estimated read time: 22 min · Python 3.10+ · scikit-optimize 0.10+</div>
+    </div>
+    <div class="outline-box">
+      <div class="outline-title">📋 Article Outline</div>
+      <ol class="outline-list">
+
+<li><a href="#section-1">1. The Expensive Black-Box Problem</a></li>
+<li><a href="#section-2">2. The Bayesian Optimization Idea</a></li>
+<li><a href="#section-3">3. Gaussian Processes as Surrogates</a></li>
+<li><a href="#section-4">4. The GP Posterior: Closed-Form Mean and Variance</a></li>
+<li><a href="#section-5">5. Acquisition Functions</a>
+  <ul>
+    <li><a href="#ei">5.1 Expected Improvement (EI)</a></li>
+    <li><a href="#ucb">5.2 Upper Confidence Bound (UCB)</a></li>
+    <li><a href="#pi">5.3 Probability of Improvement (PI)</a></li>
+  </ul>
+</li>
+<li><a href="#section-6">6. The Sequential Bayesian Optimization Loop</a></li>
+<li><a href="#section-7">7. Limitations of GP-based Bayesian Optimization</a></li>
+<li><a href="#section-8">8. Visual Intuition: How the GP Evolves</a></li>
+<li><a href="#section-9">9. Hands-On: BayesSearchCV on XGBoost</a></li>
+<li><a href="#resources">Useful Resources</a></li>
+      </ol>
+    </div>
+
+<section id="section-1">
+  <h2>1. The Expensive Black-Box Problem</h2>
+  <p>When you tune hyperparameters, you are solving an optimization problem. You have a vector of hyperparameters $\mathbf{x} \in \mathcal{X}$ (the search space — say <code>learning_rate</code>, <code>max_depth</code>, <code>subsample</code>, and so on), and an objective function $f(\mathbf{x})$ that returns the validation loss when you train a model with those hyperparameters. Your goal is to find $\mathbf{x}^* = \arg\min_{\mathbf{x}} f(\mathbf{x})$. So far, so familiar — this is exactly the setup of every optimization problem in machine learning.</p>
+  <p>What makes hyperparameter optimization different from training a neural network is the nature of $f$. Four properties combine to make the problem genuinely hard, and understanding them is the entire reason Bayesian optimization exists.</p>
+  <ol>
+    <li><strong>$f$ is expensive.</strong> Each evaluation requires training a full model and running it through cross-validation. For a modest XGBoost model on a moderate dataset, one evaluation might take 30 seconds to 5 minutes. For a large deep learning model, it can be hours or days. You cannot afford millions of evaluations — you can afford dozens, maybe a few hundred.</li>
+    <li><strong>$f$ is a black box.</strong> You don't have an analytic expression for $f$. You can't compute its gradient with respect to $\mathbf{x}$. You can't inspect its internal structure. All you can do is query it: pick $\mathbf{x}$, get back $f(\mathbf{x})$. There is no automatic differentiation through the validation pipeline.</li>
+    <li><strong>$f$ is noisy.</strong> Cross-validation produces a mean score, but that mean has variance across folds. The same $\mathbf{x}$ evaluated twice with different random seeds gives slightly different $f(\mathbf{x})$. The noise is usually small for k-fold CV on a stable model, but it is real and it can mislead a naive optimizer.</li>
+    <li><strong>$f$ has no exploitable global structure.</strong> There is no convexity guarantee, no Lipschitz constant you can trust, no smoothness theorem. The only thing you can reasonably assume is that <em>nearby</em> $\mathbf{x}$ values tend to give similar $f(\mathbf{x})$ — and even that is a heuristic, not a theorem. Changing <code>max_depth</code> from 5 to 6 might be smooth, but changing <code>kernel='linear'</code> to <code>kernel='rbf'</code> is not.</li>
+  </ol>
+  <p>Given these four properties, you face a budget constraint: $N$ evaluations of $f$, where $N$ is small (typically 25–200). Grid search and random search — covered in Module 02 — spend those $N$ evaluations without learning anything from the first $N-1$ results except the best score so far. They are <em>memoryless</em>. Bayesian optimization is the family of methods that <strong>learn a model of $f$ from every evaluation and use that model to decide where to evaluate next.</strong> That single idea — building a cheap surrogate of the expensive objective — is why Bayesian optimization routinely finds better hyperparameters than random search in the same budget.</p>
+  <div class="callout note"><div class="callout-icon">📌</div><div class="callout-body"><div class="callout-title">The budget framing</div><p>Throughout this module we will talk about "the budget" $N$. This is the number of full model trainings you can afford — including cross-validation overhead. If one CV evaluation of your model takes 2 minutes and you have 8 hours overnight, your budget is $N = 240$. Every method we discuss in this module (GP-based BO, TPE, CMA-ES) is designed to extract maximum information from each of those 240 evaluations. Random search, by contrast, treats them as 240 independent dice rolls.</p></div></div>
+</section>
+
+<section id="section-2">
+  <h2>2. The Bayesian Optimization Idea</h2>
+  <p>The Bayesian optimization recipe is a two-model loop. You maintain two things between iterations: a <strong>surrogate model</strong> $\mathcal{M}$ that approximates $f$ cheaply, and an <strong>acquisition function</strong> $\alpha(\mathbf{x}; \mathcal{M})$ that uses $\mathcal{M}$ to score every candidate $\mathbf{x}$ by how useful it would be to evaluate there. Each iteration of the loop is:</p>
+  <ol>
+    <li>Fit (or update) the surrogate $\mathcal{M}$ on all observations $\{ (\mathbf{x}_i, f(\mathbf{x}_i)) \}_{i=1}^{n}$ collected so far.</li>
+    <li>Find $\mathbf{x}_{n+1} = \arg\max_{\mathbf{x}} \alpha(\mathbf{x}; \mathcal{M})$ — this is itself an optimization problem, but a <em>cheap</em> one because $\alpha$ is fast to evaluate.</li>
+    <li>Evaluate $f(\mathbf{x}_{n+1})$ — the only expensive step.</li>
+    <li>Add $(\mathbf{x}_{n+1}, f(\mathbf{x}_{n+1}))$ to the dataset, increment $n$, repeat.</li>
+  </ol>
+  <p>The surrogate does not need to be a perfect predictor of $f$ — it needs to be a good enough <em>uncertainty-aware</em> approximation that the acquisition function can use it to trade off <em>exploitation</em> (evaluate near the current best) against <em>exploration</em> (evaluate where the surrogate is most uncertain). That trade-off is the heart of every acquisition function we will see.</p>
+  <p>Two families of surrogates dominate practice: <strong>Gaussian Processes</strong> (used by Spearmint, scikit-optimize, GPyOpt) and <strong>Tree-structured Parzen Estimators</strong> (used by Hyperopt and Optuna). GPs are the classical, mathematically clean choice; TPE scales better to high-dimensional mixed search spaces. This article focuses on GPs; Part 2 of this module covers TPE in depth.</p>
+  <p>The name "Bayesian" comes from the fact that the surrogate is updated using Bayes' rule: each new observation revises the posterior distribution over functions, and the acquisition function reads from that posterior. Concretely, before seeing any data we place a <strong>prior</strong> over functions (the GP), and after each observation we condition on it to get a <strong>posterior</strong>. The posterior is what tells us both what $f$ probably looks like (the mean) and how confident we are (the variance) at every point in the search space.</p>
+</section>
+
+<section id="section-3">
+  <h2>3. Gaussian Processes as Surrogates</h2>
+  <p>A Gaussian Process is, formally, a collection of random variables, any finite subset of which has a joint Gaussian distribution. Less formally: a GP is a <strong>distribution over functions</strong>. Just as a univariate Gaussian $\mathcal{N}(\mu, \sigma^2)$ is a distribution over scalars, a GP $\mathcal{GP}(m, k)$ is a distribution over functions $f: \mathcal{X} \to \mathbb{R}$. Sampling from a univariate Gaussian gives you a number; sampling from a GP gives you an entire function curve.</p>
+  <p>A GP is specified by two things:</p>
+  <ul>
+    <li>A <strong>mean function</strong> $m(\mathbf{x}) = \mathbb{E}[f(\mathbf{x})]$, almost always set to a constant (often 0) for Bayesian optimization. The data does the work, not the prior mean.</li>
+    <li>A <strong>covariance function</strong> (or <em>kernel</em>) $k(\mathbf{x}, \mathbf{x}')$, which encodes how similar $f(\mathbf{x})$ and $f(\mathbf{x}')$ are expected to be. The kernel is the entire inductive bias of the surrogate — it is where you express "nearby inputs give similar outputs."</li>
+  </ul>
+  <p>The kernel choice matters enormously. The <strong>Matérn 5/2 kernel</strong> has become the de-facto default for Bayesian optimization, replacing the once-ubiquitous squared-exponential (RBF) kernel. Matérn 5/2 produces functions that are twice differentiable but not infinitely smooth — closer to the roughness of real validation loss surfaces, which have kinks and flats. The RBF kernel is "too smooth" and tends to over-confidently interpolate between observations. The Matérn 5/2 covariance is:</p>
+  <div class="math-block">$$ k_{5/2}(\mathbf{x}, \mathbf{x}') = \sigma_f^2 \left( 1 + \sqrt{5}\,r + \frac{5}{3}\,r^2 \right) \exp\left(-\sqrt{5}\,r\right), \quad r = \frac{\|\mathbf{x} - \mathbf{x}'\|}{\ell} $$ <div class="math-label">Eq. 1 — Matérn 5/2 kernel. σ_f is the signal variance, ℓ is the length scale.</div></div>
+  <p>Two hyperparameters of the kernel itself (not of the model being tuned) govern the GP: <strong>$\sigma_f$</strong> controls the vertical scale of the function (how much $f$ varies overall), and <strong>$\ell$</strong> is the <em>length scale</em> — how far you have to move in $\mathbf{x}$-space before $f$ can change substantially. A long $\ell$ gives smooth functions; a short $\ell$ gives wiggly ones. These are typically fit by maximizing the marginal likelihood of the observed data at every BO iteration — a small internal optimization that scikit-optimize handles automatically.</p>
+  <p>The payoff of using a GP as the surrogate is that the posterior gives you <em>both</em> a prediction $\mu(\mathbf{x})$ (the mean) and an uncertainty $\sigma(\mathbf{x})$ (the standard deviation) at <em>every</em> point $\mathbf{x}$ in the search space, including points you have not evaluated. That uncertainty is calibrated: it shrinks to near zero at observed points and grows between them, exactly the behaviour you can see in Figure 1. Acquisition functions are then free to use $\sigma(\mathbf{x})$ to decide where exploration is most informative.</p>
+  <div class="callout tip"><div class="callout-icon">💡</div><div class="callout-body"><div class="callout-title">Why not just use a neural network as the surrogate?</div><p>You can — and some recent libraries (notably BOTORCH) do exactly that. But GPs have two enormous advantages in the small-data regime that Bayesian optimization lives in. First, a GP posterior is <em>analytically tractable</em>: the mean and variance have closed-form expressions (Equations 2 and 3 below), so updating the surrogate after each observation is just linear algebra. Second, GPs give well-calibrated uncertainty for free — a neural network needs dropout, ensembling, or a Bayesian last layer to produce uncertainty, and those uncertainties are typically much less calibrated than a GP's. For $n &lt; 1000$ observations, a GP is hard to beat.</p></div></div>
+</section>
+
+<section id="section-4">
+  <h2>4. The GP Posterior: Closed-Form Mean and Variance</h2>
+  <p>Here is the key mathematical fact that makes GPs practical for Bayesian optimization: <em>given the observations, the posterior mean and variance at any test point have closed-form expressions.</em> No sampling, no variational inference, no gradient steps — just matrix arithmetic.</p>
+  <p>Suppose we have observed $\mathbf{y} = (y_1, \ldots, y_n)^\top$ at inputs $\mathbf{X} = (\mathbf{x}_1, \ldots, \mathbf{x}_n)^\top$, where $y_i = f(\mathbf{x}_i)$. Assume the observations are noisy with Gaussian noise of variance $\sigma_n^2$ (this is the noise floor from k-fold CV). Then the posterior distribution of $f$ at a new point $\mathbf{x}$ is Gaussian with mean and variance:</p>
+  <div class="math-block">$$ \mu_{n+1}(\mathbf{x}) = k(\mathbf{x}, \mathbf{X})\,[K(\mathbf{X},\mathbf{X}) + \sigma_n^2 I]^{-1}\,\mathbf{y} $$ <div class="math-label">Eq. 2 — GP posterior mean. k(x,X) is the vector of covariances between x and every observed point; K(X,X) is the n×n covariance matrix of the observations; σ_n² is the observation noise variance.</div></div><div class="math-block">$$ \sigma_{n+1}^2(\mathbf{x}) = k(\mathbf{x},\mathbf{x}) - k(\mathbf{x},\mathbf{X})\,[K(\mathbf{X},\mathbf{X}) + \sigma_n^2 I]^{-1}\,k(\mathbf{X},\mathbf{x}) $$ <div class="math-label">Eq. 3 — GP posterior variance. The first term k(x,x) is the prior variance; the second term is the reduction in uncertainty from the observations.</div></div>
+  <p>Let's translate each symbol into a concrete object.</p>
+  <ul>
+    <li><strong>$\mathbf{x}$</strong> is the candidate point at which we want to predict $f$ — a vector of hyperparameters like <code>(0.05, 300, 8, 0.8, 0.7, 1.5)</code>.</li>
+    <li><strong>$\mathbf{X}$</strong> is the $n \times d$ matrix of all previously evaluated hyperparameter vectors (one row per observation).</li>
+    <li><strong>$\mathbf{y}$</strong> is the length-$n$ vector of observed validation losses at those points.</li>
+    <li><strong>$k(\mathbf{x}, \mathbf{X})$</strong> is the length-$n$ vector whose $i$-th entry is $k(\mathbf{x}, \mathbf{x}_i)$ — the kernel similarity between the candidate and each observed point.</li>
+    <li><strong>$K(\mathbf{X}, \mathbf{X})$</strong> is the $n \times n$ kernel matrix with entries $K_{ij} = k(\mathbf{x}_i, \mathbf{x}_j)$. It encodes all pairwise similarities between observed points.</li>
+    <li><strong>$\sigma_n^2$</strong> is the variance of the observation noise — the irreducible variability of your CV score when you retrain the same hyperparameters with a different seed. Setting it correctly matters: too small and the GP over-confidently interpolates; too large and the GP ignores data.</li>
+    <li><strong>$I$</strong> is the $n \times n$ identity matrix. The term $\sigma_n^2 I$ <em>regularizes</em> the kernel matrix inversion.</li>
+    <li><strong>$k(\mathbf{x}, \mathbf{x})$</strong> is the prior variance at $\mathbf{x}$, typically just $\sigma_f^2$ (a constant) for stationary kernels like Matérn.</li>
+  </ul>
+  <p>Two practical observations follow from these equations. First, the posterior mean $\mu_{n+1}(\mathbf{x})$ is a <em>linear combination of the observed $y_i$ values</em>, with weights that depend on how similar $\mathbf{x}$ is to each $\mathbf{x}_i$ — this is why a GP "interpolates" between observations smoothly. Second, the posterior variance $\sigma_{n+1}^2(\mathbf{x})$ is <em>independent of $\mathbf{y}$</em>: it depends only on where the observations are, not what they observed. This is the formal statement of "uncertainty shrinks near data, grows between data" that you can see in Figure 1.</p>
+  <p>The expensive part of the whole procedure is the matrix inversion $[K + \sigma_n^2 I]^{-1}$. For $n$ observations, this is $O(n^3)$ in the naive case (or $O(n^2)$ per update if you use the Cholesky factorization incrementally). That cost is the Achilles heel of GP-based BO — we will return to it in section 7.</p>
+</section>
+
+<section id="section-5">
+  <h2>5. Acquisition Functions</h2>
+  <p>The acquisition function $\alpha(\mathbf{x})$ turns the GP posterior — a full distribution at every point — into a single score per candidate, so that "where do we sample next" becomes a standard optimization problem. A good acquisition function balances <em>exploitation</em> (sampling where $\mu(\mathbf{x})$ is low, i.e. where the surrogate thinks $f$ is small) against <em>exploration</em> (sampling where $\sigma(\mathbf{x})$ is high, i.e. where the surrogate is most uncertain). Get this balance wrong and you either re-evaluate the same neighborhood forever (pure exploitation, no learning) or jump around at random (pure exploration, no convergence).</p>
+
+  <h3 id="ei">5.1 Expected Improvement (EI)</h3>
+  <p>Expected Improvement is the workhorse acquisition function and the default in most BO libraries. Let $f^* = \min_i y_i$ be the best observation so far. Define the <em>improvement</em> at $\mathbf{x}$ as $I(\mathbf{x}) = \max(0, f^* - f(\mathbf{x}))$ — the amount by which evaluating at $\mathbf{x}$ would beat the current best. Since $f(\mathbf{x})$ is unknown, we treat it as the GP posterior random variable $f(\mathbf{x}) \sim \mathcal{N}(\mu, \sigma^2)$ and take the expectation of $I$:</p>
+  <div class="math-block">$$ EI(\mathbf{x}) = (f^* - \mu(\mathbf{x}) - \xi)\,\Phi(Z) + \sigma(\mathbf{x})\,\phi(Z), \quad Z = \frac{f^* - \mu(\mathbf{x}) - \xi}{\sigma(\mathbf{x})} $$ <div class="math-label">Eq. 4 — Expected Improvement. Φ is the standard normal CDF; φ is the standard normal PDF; ξ is an exploration bonus.</div></div>
+  <p>Walk through the two terms. The first term, $(f^* - \mu - \xi)\Phi(Z)$, is the <em>exploitation</em> contribution: it is large when $\mu(\mathbf{x})$ is well below $f^*$ (the surrogate is confident this is a good point) and $\Phi(Z)$ (the probability that $f(\mathbf{x})$ actually beats $f^*$) is high. The second term, $\sigma(\mathbf{x})\phi(Z)$, is the <em>exploration</em> contribution: it is large when $\sigma(\mathbf{x})$ is high (we are uncertain) and $\phi(Z)$ (the density at the boundary) is non-trivial. The two terms multiply different things, which is exactly why EI gracefully interpolates between exploitation and exploration: in low-uncertainty regions the first term dominates; in high-uncertainty regions the second term dominates.</p>
+  <p>The hyperparameter $\xi \geq 0$ (typically 0.01) is a small exploration bonus that nudges EI to prefer slightly more exploration. Setting $\xi = 0$ gives pure EI; larger $\xi$ makes the optimizer more adventurous. In practice $\xi$ is rarely tuned — the default 0.01 works well across problems.</p>
+
+  <h3 id="ucb">5.2 Upper Confidence Bound (UCB)</h3>
+  <p>For minimization, the UCB acquisition (sometimes called Lower Confidence Bound, LCB, in this setting) is even simpler:</p>
+  <div class="math-block">$$ UCB(\mathbf{x}) = \mu(\mathbf{x}) - \kappa\,\sigma(\mathbf{x}) $$ <div class="math-label">Eq. 5 — Upper Confidence Bound (minimization form). κ controls the exploration-exploitation trade-off.</div></div>
+  <p>UCB directly subtracts a multiple of the uncertainty from the mean. With $\kappa = 0$ it is pure exploitation (sample wherever the mean is lowest). As $\kappa$ grows, the optimizer is forced to prefer high-uncertainty regions. A common schedule is to start with large $\kappa$ (explore) and anneal it toward 0 (exploit) as the budget runs out. The theoretical analysis of UCB — originally due to Srinivas et al. (2010) — gives regret bounds that depend on $\kappa$, which is why UCB is the favourite acquisition of theorists.</p>
+
+  <h3 id="pi">5.3 Probability of Improvement (PI)</h3>
+  <p>Probability of Improvement is the simplest acquisition: just $\Phi(Z)$, the probability that $f(\mathbf{x})$ beats $f^*$. PI ignores the <em>magnitude</em> of the improvement, only its probability. In practice PI is too greedy: it tends to collapse onto the current best and stop exploring, getting stuck in local optima. Modern BO libraries keep PI for historical reasons but rarely select it as default. Use EI instead.</p>
+
+  <div class="callout tip"><div class="callout-icon">💡</div><div class="callout-body"><div class="callout-title">Which acquisition should I default to?</div><p>Use <strong>Expected Improvement</strong>. It is the default in scikit-optimize, GPyOpt, and BOTORCH, it has 25 years of empirical evidence behind it, and it has only one knob ($\xi$, which you should leave at 0.01). If you are doing theoretical work and need regret bounds, use UCB with an annealed $\kappa$. Use PI only if you have a specific reason and have verified it works for your problem.</p></div></div>
+</section>
+
+<section id="section-6">
+  <h2>6. The Sequential Bayesian Optimization Loop</h2>
+  <p>Putting it all together, a complete Bayesian optimization run looks like this:</p>
+  <ol>
+    <li><strong>Initialize</strong> with a small set of $n_0$ quasi-random points (typically 5–10, often Latin Hypercube samples) and evaluate $f$ at each. This seeds the GP — a GP with zero observations has constant mean and constant variance everywhere, so the first acquisition maximization would be undefined.</li>
+    <li><strong>Loop</strong> until the budget $N$ is exhausted:
+      <ol type="a">
+        <li>Fit the GP hyperparameters (length scale $\ell$, signal variance $\sigma_f$, noise $\sigma_n$) by maximizing the marginal likelihood of the current observations.</li>
+        <li>Compute the posterior mean $\mu_{n+1}(\mathbf{x})$ and variance $\sigma_{n+1}^2(\mathbf{x})$ on a fine grid (or use a continuous optimizer) over the search space.</li>
+        <li>Evaluate the acquisition function $\alpha(\mathbf{x})$ — say EI — at every candidate and pick $\mathbf{x}_{n+1} = \arg\max \alpha$.</li>
+        <li>Evaluate $f(\mathbf{x}_{n+1})$ — the only expensive step.</li>
+        <li>Append $(\mathbf{x}_{n+1}, f(\mathbf{x}_{n+1}))$ to the dataset, increment $n$.</li>
+      </ol>
+    </li>
+    <li><strong>Return</strong> $\mathbf{x}^* = \arg\min_i y_i$ — the best hyperparameters found so far. (Not the GP's posterior minimum, which is a model prediction; always return the actual best evaluation.)</li>
+  </ol>
+  <p>A few practical notes on this loop. First, the acquisition maximization in step 2c is itself an optimization problem, but a <em>cheap</em> one — evaluating $\alpha$ is just matrix arithmetic. Most libraries do it by sampling thousands of random candidates and taking the best, then refining with a local optimizer like L-BFGS. Second, the GP hyperparameter refit in step 2a is the second-most-expensive step after the function evaluation itself; some implementations skip it every few iterations to save time. Third, the algorithm is <em>greedy by construction</em> — it always picks the single next point that the acquisition function thinks is best. There are batch (parallel) BO variants that pick $q$ points at once, but they are beyond this module.</p>
+  <div class="quiz-box">
+  <div class="quiz-label">🧠 Quick Check</div>
+  <p class="quiz-question">In the BO loop above, why do we return the best observed $y_i$ rather than the GP posterior argmin $\arg\min \mu(\mathbf{x})$?</p>
+  <details class="quiz-answer">
+    <summary>Show Answer</summary>
+    <p>Because the GP posterior mean is a model prediction, not a measurement. It can be wrong — especially far from observed points, where the GP has not been validated. The whole point of BO is that we only trust actual evaluations of $f$; returning the GP&#x27;s argmin would be returning an unverified guess. Always return the best observed point.</p>
+  </details>
+</div>
+</section>
+
+<section id="section-7">
+  <h2>7. Limitations of GP-based Bayesian Optimization</h2>
+  <p>GP-based BO is not a silver bullet. Its weaknesses are well-understood and they are exactly the reason alternatives like TPE exist.</p>
+  <p><strong>$O(n^3)$ scaling.</strong> The dominant cost is inverting the $n \times n$ kernel matrix $K + \sigma_n^2 I$, which is $O(n^3)$ in the naive case. For $n = 100$ this is microseconds; for $n = 1000$ it is seconds; for $n = 10{,}000$ it is hours. Sparse GP approximations (using inducing points) can push the cost down to $O(n m^2)$ where $m \ll n$ is the number of inducing points, but they introduce their own approximation error. In practice, GP-based BO becomes painful above 1000 observations.</p>
+  <p><strong>Categorical and conditional hyperparameters.</strong> A standard GP kernel like Matérn is defined on $\mathbb{R}^d$. Categorical hyperparameters (strings like <code>kernel='rbf'</code>) and integer hyperparameters (like <code>n_estimators</code>) need special handling — one-hot encoding, Hamming kernels, or rounding. Conditional search spaces (where some hyperparameters only exist if others take certain values — e.g. <code>poly_degree</code> only matters if <code>kernel='poly'</code>) are even harder. GP-based BO libraries either ignore conditional structure or bolt on heuristics; TPE handles it natively.</p>
+  <p><strong>High dimensions.</strong> Above about 20 dimensions, the GP's length-scale parameters become hard to fit and the posterior mean tends to collapse toward the data mean (the "curse of dimensionality" hits kernels particularly hard). Random search, by pleasant surprise, is actually quite competitive in high dimensions — because in high dimensions, almost every direction is a "good" direction. TPE and CMA-ES both scale better than GPs to high-dimensional continuous spaces.</p>
+  <p><strong>Noisy objectives.</strong> GPs handle noise natively (via $\sigma_n^2$), but if your noise is heteroscedastic (different at different $\mathbf{x}$) or very large, the GP can become over-confident in the wrong places. Re-running each evaluation multiple times and averaging reduces noise at the cost of budget — a trade-off that is problem-specific.</p>
+  <div class="callout warning"><div class="callout-icon">⚠️</div><div class="callout-body"><div class="callout-title">When NOT to use GP-based BO</div><p>Use TPE (Optuna, Hyperopt) instead of a GP when: (1) your search space has many conditional or categorical hyperparameters, (2) you expect to run more than ~1000 trials, (3) you have more than ~20 dimensions, or (4) you need to easily parallelize trials. Use a GP when: your search space is low-dimensional and continuous, you can afford only a small number of trials (10–200), and you want the most sample-efficient method available.</p></div></div>
+</section>
+
+<section id="section-8">
+  <h2>8. Visual Intuition: How the GP Evolves</h2>
+  <p>The single best way to internalize Bayesian optimization is to watch a GP posterior evolve as new points are sampled. Figure 1 shows five snapshots from a one-dimensional BO run minimizing an unknown function (the grey dashed curve). The blue band is the $\pm 2\sigma$ posterior uncertainty; the blue line is the posterior mean; pink dots are observed evaluations; the green curve (where shown) is the EI acquisition.</p>
+  <div class="figure">
+<svg viewBox="0 0 1100 420" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:Inter;">
+  <defs>
+    <linearGradient id="band" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.30"/>
+      <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.05"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Frame 1: 1 initial point -->
+  <g transform="translate(10,10)">
+    <text x="105" y="14" fill="#f0f6fc" font-size="12" font-weight="700" text-anchor="middle">Iteration 1 — 1 point</text>
+    <line x1="10" y1="200" x2="200" y2="200" stroke="#8899aa" stroke-width="1"/>
+    <line x1="10" y1="30" x2="10" y2="200" stroke="#8899aa" stroke-width="1"/>
+    <text x="4" y="210" fill="#64748b" font-size="9">x</text>
+    <text x="2" y="34" fill="#64748b" font-size="9">f</text>
+    <!-- true function (dashed) -->
+    <path d="M 10 150 Q 60 80 105 110 T 200 130" stroke="#64748b" stroke-width="1.2" fill="none" stroke-dasharray="3 3"/>
+    <!-- uncertainty band (wide everywhere) -->
+    <path d="M 10 60 Q 60 10 105 30 T 200 50 L 200 170 Q 105 190 60 150 T 10 180 Z" fill="url(#band)"/>
+    <!-- GP mean -->
+    <path d="M 10 120 Q 60 100 105 110 T 200 110" stroke="#38bdf8" stroke-width="2" fill="none"/>
+    <!-- sampled point -->
+    <circle cx="105" cy="110" r="4" fill="#f472b6"/>
+    <text x="50" y="230" fill="#8899aa" font-size="9">wide σ(x) — almost anything plausible</text>
+  </g>
+
+  <!-- Frame 2: 2 points -->
+  <g transform="translate(230,10)">
+    <text x="105" y="14" fill="#f0f6fc" font-size="12" font-weight="700" text-anchor="middle">Iteration 2 — 2 points</text>
+    <line x1="10" y1="200" x2="200" y2="200" stroke="#8899aa" stroke-width="1"/>
+    <line x1="10" y1="30" x2="10" y2="200" stroke="#8899aa" stroke-width="1"/>
+    <path d="M 10 150 Q 60 80 105 110 T 200 130" stroke="#64748b" stroke-width="1.2" fill="none" stroke-dasharray="3 3"/>
+    <!-- uncertainty band narrower near points -->
+    <path d="M 10 90 Q 50 70 70 90 Q 105 100 140 90 Q 170 70 200 90 L 200 150 Q 170 170 140 130 Q 105 120 70 130 Q 50 110 10 150 Z" fill="url(#band)"/>
+    <path d="M 10 120 Q 60 100 105 110 T 200 110" stroke="#38bdf8" stroke-width="2" fill="none"/>
+    <circle cx="70" cy="105" r="4" fill="#f472b6"/>
+    <circle cx="105" cy="110" r="4" fill="#f472b6"/>
+    <text x="50" y="230" fill="#8899aa" font-size="9">σ shrinks near data, grows between</text>
+  </g>
+
+  <!-- Frame 3: 3 points, EI suggests exploration -->
+  <g transform="translate(450,10)">
+    <text x="105" y="14" fill="#f0f6fc" font-size="12" font-weight="700" text-anchor="middle">Iteration 3 — 3 points</text>
+    <line x1="10" y1="200" x2="200" y2="200" stroke="#8899aa" stroke-width="1"/>
+    <line x1="10" y1="30" x2="10" y2="200" stroke="#8899aa" stroke-width="1"/>
+    <path d="M 10 150 Q 60 80 105 110 T 200 130" stroke="#64748b" stroke-width="1.2" fill="none" stroke-dasharray="3 3"/>
+    <path d="M 10 95 Q 50 80 70 95 Q 105 105 140 95 Q 170 80 200 95 L 200 130 Q 170 145 140 125 Q 105 115 70 125 Q 50 110 10 145 Z" fill="url(#band)"/>
+    <path d="M 10 118 Q 60 100 105 110 T 200 112" stroke="#38bdf8" stroke-width="2" fill="none"/>
+    <circle cx="70" cy="105" r="4" fill="#f472b6"/>
+    <circle cx="105" cy="110" r="4" fill="#f472b6"/>
+    <circle cx="170" cy="115" r="4" fill="#f472b6"/>
+    <!-- acquisition peak (green) suggesting next point on the right edge -->
+    <path d="M 10 195 L 40 192 L 80 188 L 120 178 L 160 165 L 180 158 L 190 152" stroke="#34d399" stroke-width="2" fill="none"/>
+    <text x="180" y="148" fill="#34d399" font-size="9" text-anchor="end">EI peaks →</text>
+    <text x="50" y="230" fill="#8899aa" font-size="9">EI exploits low μ, explores high σ</text>
+  </g>
+
+  <!-- Frame 4: 4 points, converging toward the minimum -->
+  <g transform="translate(670,10)">
+    <text x="105" y="14" fill="#f0f6fc" font-size="12" font-weight="700" text-anchor="middle">Iteration 4 — 4 points</text>
+    <line x1="10" y1="200" x2="200" y2="200" stroke="#8899aa" stroke-width="1"/>
+    <line x1="10" y1="30" x2="10" y2="200" stroke="#8899aa" stroke-width="1"/>
+    <path d="M 10 150 Q 60 80 105 110 T 200 130" stroke="#64748b" stroke-width="1.2" fill="none" stroke-dasharray="3 3"/>
+    <path d="M 10 100 Q 50 88 70 100 Q 105 110 140 100 Q 170 88 200 100 L 200 125 Q 170 137 140 122 Q 105 118 70 122 Q 50 110 10 135 Z" fill="url(#band)"/>
+    <path d="M 10 115 Q 60 100 105 108 T 200 112" stroke="#38bdf8" stroke-width="2" fill="none"/>
+    <circle cx="70" cy="105" r="4" fill="#f472b6"/>
+    <circle cx="105" cy="108" r="4" fill="#f472b6"/>
+    <circle cx="140" cy="112" r="4" fill="#f472b6"/>
+    <circle cx="170" cy="115" r="4" fill="#f472b6"/>
+    <text x="50" y="230" fill="#8899aa" font-size="9">best so far ≈ true min</text>
+  </g>
+
+  <!-- Frame 5: 5 points, exploitation phase -->
+  <g transform="translate(890,10)">
+    <text x="105" y="14" fill="#f0f6fc" font-size="12" font-weight="700" text-anchor="middle">Iteration 5 — 5 points</text>
+    <line x1="10" y1="200" x2="200" y2="200" stroke="#8899aa" stroke-width="1"/>
+    <line x1="10" y1="30" x2="10" y2="200" stroke="#8899aa" stroke-width="1"/>
+    <path d="M 10 150 Q 60 80 105 110 T 200 130" stroke="#64748b" stroke-width="1.2" fill="none" stroke-dasharray="3 3"/>
+    <path d="M 10 108 Q 50 100 70 108 Q 105 116 140 108 Q 170 100 200 108 L 200 122 Q 170 116 140 124 Q 105 116 70 124 Q 50 116 10 124 Z" fill="url(#band)"/>
+    <path d="M 10 115 Q 60 102 105 112 T 200 115" stroke="#38bdf8" stroke-width="2" fill="none"/>
+    <circle cx="70" cy="105" r="4" fill="#f472b6"/>
+    <circle cx="105" cy="108" r="4" fill="#f472b6"/>
+    <circle cx="130" cy="112" r="4" fill="#f472b6"/>
+    <circle cx="140" cy="112" r="4" fill="#f472b6"/>
+    <circle cx="170" cy="115" r="4" fill="#f472b6"/>
+    <!-- best marker -->
+    <line x1="105" y1="30" x2="105" y2="200" stroke="#f472b6" stroke-width="1" stroke-dasharray="2 3"/>
+    <text x="110" y="40" fill="#f472b6" font-size="9">best x*</text>
+    <text x="50" y="230" fill="#8899aa" font-size="9">σ tiny near optimum — pure exploit</text>
+  </g>
+
+  <!-- Legend -->
+  <g transform="translate(10,280)">
+    <line x1="10" y1="20" x2="40" y2="20" stroke="#38bdf8" stroke-width="2"/>
+    <text x="46" y="24" fill="#8899aa" font-size="11">GP posterior mean μ(x)</text>
+    <rect x="200" y="14" width="30" height="12" fill="url(#band)"/>
+    <text x="236" y="24" fill="#8899aa" font-size="11">±2σ uncertainty band</text>
+    <line x1="400" y1="20" x2="430" y2="20" stroke="#64748b" stroke-width="1.2" stroke-dasharray="3 3"/>
+    <text x="436" y="24" fill="#8899aa" font-size="11">true (unknown) f(x)</text>
+    <circle cx="600" cy="20" r="4" fill="#f472b6"/>
+    <text x="610" y="24" fill="#8899aa" font-size="11">observed evaluation</text>
+    <line x1="770" y1="20" x2="800" y2="20" stroke="#34d399" stroke-width="2"/>
+    <text x="806" y="24" fill="#8899aa" font-size="11">acquisition EI(x)</text>
+  </g>
+
+  <!-- Caption row -->
+  <text x="550" y="400" fill="#64748b" font-size="11" text-anchor="middle" font-style="italic">
+    Figure 1 — Five snapshots of Bayesian optimization. The blue band is the GP's posterior uncertainty; it shrinks wherever we have evaluated and grows where we have not. EI (green) peaks where the trade-off between low mean and high uncertainty is best, guiding the next sample.
+  </text>
+</svg>
+</div>
+  <p>Read the figure left to right. At iteration 1, with a single observation, the GP is essentially uniform — the uncertainty band is wide everywhere, and the mean is roughly flat. EI is high almost everywhere because almost any point could plausibly be a new minimum. At iteration 2, the second observation shrinks the uncertainty band near the two data points; EI starts to peak at the boundaries where uncertainty is still high. By iteration 3, the acquisition function (green) has selected a point on the right edge — a pure exploration move, because the surrogate was very uncertain there. By iterations 4 and 5, the optimizer has identified the neighbourhood of the true minimum and is now refining — notice how the uncertainty band becomes razor-thin near the best point and the new samples cluster around it.</p>
+  <p>This is the canonical BO behaviour: <em>explore broadly first, then exploit aggressively once the surrogate is confident.</em> The transition between the two phases is automatic — it happens when the acquisition function's exploration term stops finding regions where $\sigma(\mathbf{x})$ is large enough to dominate.</p>
+</section>
+
+<section id="section-9">
+  <h2>9. Hands-On: BayesSearchCV on XGBoost</h2>
+  <p>Enough theory — let's run Bayesian optimization on a real problem. We will tune XGBoost on the breast cancer dataset using <code>scikit-optimize</code> (the <code>skopt</code> package), which provides a scikit-learn-compatible <code>BayesSearchCV</code> class. The search space is six-dimensional and mixes log-uniform, integer, and uniform hyperparameters — exactly the kind of space GP-based BO handles well.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── bayes_xgb.py ──────────────────────────────────────────────────────────────
+# Tune XGBoost with scikit-optimize&#x27;s BayesSearchCV. Compare convergence
+# against a random search baseline with the same budget.
+
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import train_test_split, StratifiedKFold
+from sklearn.metrics import roc_auc_score
+from xgboost import XGBClassifier
+from skopt import BayesSearchCV
+from skopt.space import Real, Integer
+from skopt.plots import plot_convergence, plot_objective
+
+# ─── Data ────────────────────────────────────────────────────────────────────
+X, y = load_breast_cancer(return_X_y=True)
+X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2,
+                                          random_state=42, stratify=y)
+
+# ─── Search space (6-D, mixed types) ─────────────────────────────────────────
+search_spaces = {
+    &quot;learning_rate&quot;:    Real(1e-3, 1.0, prior=&quot;log-uniform&quot;),
+    &quot;n_estimators&quot;:     Integer(50, 500),
+    &quot;max_depth&quot;:        Integer(3, 12),
+    &quot;subsample&quot;:        Real(0.5, 1.0),
+    &quot;colsample_bytree&quot;: Real(0.5, 1.0),
+    &quot;reg_lambda&quot;:       Real(1e-3, 10.0, prior=&quot;log-uniform&quot;),
+}
+
+# ─── BayesSearchCV (GP-based BO with EI acquisition) ─────────────────────────
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+bayes = BayesSearchCV(
+    estimator=XGBClassifier(eval_metric=&quot;logloss&quot;, random_state=42,
+                            tree_method=&quot;hist&quot;, n_jobs=1),
+    search_spaces=search_spaces,
+    n_iter=50,               # total BO evaluations (= budget N)
+    cv=cv,
+    scoring=&quot;roc_auc&quot;,
+    n_jobs=1,                # skopt&#x27;s internal parallelism is via n_points
+    n_points=1,              # sequential BO (set &gt;1 for batch BO)
+    random_state=42,
+    return_train_score=False,
+)
+bayes.fit(X_tr, y_tr)
+
+# ─── Report ──────────────────────────────────────────────────────────────────
+print(f&quot;Best CV AUC:  {bayes.best_score_:.4f}&quot;)
+print(f&quot;Test AUC:     {roc_auc_score(y_te, bayes.predict_proba(X_te)[:,1]):.4f}&quot;)
+print(&quot;Best params:&quot;)
+for k, v in bayes.best_params_.items():
+    print(f&quot;  {k:20s} = {v}&quot;)
+
+# ─── Plot convergence (best score so far vs iteration) ───────────────────────
+fig, ax = plt.subplots(figsize=(8, 5), constrained_layout=True)
+plot_convergence(bayes, ax=ax)
+ax.set_title(&quot;BayesSearchCV convergence — XGBoost on breast_cancer&quot;)
+plt.savefig(&quot;bayes_convergence.png&quot;, dpi=120)
+plt.show()
+
+# ─── Plot 1D partial dependence of the GP posterior on each hyperparameter ────
+# This shows which dimensions the BO thinks matter most.
+fig, ax = plt.subplots(2, 3, figsize=(14, 8), constrained_layout=True)
+plot_objective(bayes, dimensions=list(search_spaces.keys()),
+               n_points=40, ax=ax.ravel()[:6])
+plt.savefig(&quot;bayes_objective.png&quot;, dpi=120)
+plt.show()
+</pre></div>
+  <p>Run this and you should see a best CV AUC around 0.99 with the GP finding a good region in 30–50 evaluations — typically 2–3× faster than random search on the same problem. The convergence plot shows the best score found so far as a function of iteration; it climbs steeply in the first 10–15 iterations (the exploration phase) and then plateaus (the exploitation phase).</p>
+  <p>The <code>plot_objective</code> call is one of scikit-optimize's most useful diagnostics: it shows the GP's 1-D partial-dependence view of each hyperparameter, with the other dimensions marginalised out. Dimensions where the curve is flat are unimportant; dimensions where the curve has a clear minimum are the ones BO was actively exploiting. This is the closest thing Bayesian optimization gives you to "feature importances for hyperparameters."</p>
+  <div class="callout important"><div class="callout-icon">🔥</div><div class="callout-body"><div class="callout-title">n_points &gt; 1 enables batch BO</div><p>The <code>n_points</code> parameter of <code>BayesSearchCV</code> controls how many candidates are suggested in parallel at each iteration. With <code>n_points=1</code> (default) you get pure sequential BO. With <code>n_points=4</code>, skopt uses a "constant liar" heuristic to suggest 4 diverse candidates at once — useful when you have a cluster of workers. Batch BO is slightly less sample-efficient than sequential BO per-evaluation, but it can use wall-clock time much more efficiently.</p></div></div>
+</section>
+
+<div class="summary-box"><h3>🎯 Key Takeaways</h3><ul><li><strong>BO is for expensive black-box $f$ with a small budget $N$</strong> — typically 25–200 evaluations. If you can afford 100,000 evaluations, random search is fine.</li><li><strong>The two-model loop</strong> — surrogate + acquisition — is the entire BO recipe. The surrogate gives you $\mu(\mathbf{x})$ and $\sigma(\mathbf{x})$ everywhere; the acquisition turns those into a single score per candidate.</li><li><strong>GPs are the classical surrogate</strong>: closed-form posterior (Equations 2 and 3), calibrated uncertainty, Matérn 5/2 kernel as default.</li><li><strong>Expected Improvement is the default acquisition</strong>: it balances exploitation and exploration through its two-term decomposition (Equation 4).</li><li><strong>GP-based BO does not scale</strong>: $O(n^3)$ matrix inversion, struggles above 1000 samples or 20 dimensions, awkward on categorical/conditional spaces. That is exactly what TPE (Part 2) fixes.</li><li><strong>Always return the best observed $y_i$</strong>, never the GP posterior argmin — the GP is a model, observations are ground truth.</li></ul></div>
+
+<section id="resources"><h2>Useful Resources</h2><ul class="resource-list"><li><a href="https://link.springer.com/article/10.1007/BF01093993">Mockus (1978) — On Bayesian methods for seeking the extremum (the original BO paper)</a></li><li><a href="https://link.springer.com/article/10.1023/A:1008306431147">Jones, Schonlau &amp; Welch (1998) — Efficient Global Optimization of Expensive Black-Box Functions (introduced EI / EGO)</a></li><li><a href="https://papers.nips.cc/paper/4522-practical-bayesian-optimization-of-machine-learning-hyperparameters.pdf">Snoek, Larochelle &amp; Adams (2012) — Practical Bayesian Optimization of Machine Learning Hyperparameters (Spearmint)</a></li><li><a href="https://papers.nips.cc/paper/4443-algorithms-for-hyper-parameter-optimization.pdf">Bergstra, Bardenet, Bengio &amp; Kégl (2011) — Algorithms for Hyper-Parameter Optimization (the NIPS paper that introduced TPE)</a></li><li><a href="https://papers.nips.cc/paper/3988-gaussian-process-optimization-in-the-bandit-setting-no-regret-and-experimental-design.pdf">Srinivas et al. (2010) — Gaussian Process Optimization in the Bandit Setting (GP-UCB regret bounds)</a></li><li><a href="https://scikit-optimize.github.io/stable/modules/generated/skopt.BayesSearchCV.html">scikit-optimize documentation — BayesSearchCV</a></li><li><a href="https://gpyopt.readthedocs.io/">GPyOpt — a Gaussian-process optimization library (alternative reference)</a></li><li><a href="https://ieeexplore.ieee.org/document/7352306">Shahriari et al. (2016) — Taking the Human Out of the Loop: A Review of Bayesian Optimization (the modern survey)</a></li></ul></section>
+  </article>
+</div>
+<div class="page-nav"><a href="intro.html" class="page-nav-btn prev"><span class="nav-dir">← Previous</span><span class="nav-title">Module 06 — Bayesian Optimization</span></a><a href="part2_optuna.html" class="page-nav-btn next"><span class="nav-dir">Next →</span><span class="nav-title">Optuna</span></a></div>
+<footer>
+  <div class="container">
+    <div style="font-size:1.5rem;font-weight:800;font-family:var(--display);color:var(--accent);margin-bottom:0.5rem">HyperTune</div>
+    <p style="color:var(--muted2);font-size:0.85rem;max-width:500px;margin:0 auto">The complete hyperparameter tuning reference for ML &amp; DL engineers. Covers scikit-learn, XGBoost, LightGBM, PyTorch, Optuna, Ray Tune, and beyond — from first principles to production.</p>
+    <div style="margin-top:2rem;font-size:0.78rem;color:var(--muted2)">Built for learning · Python 3.10+ · scikit-learn 1.4+ · Optuna 3.0+</div>
+  </div>
+</footer>
+<script>
+(function() {
+  const links = Array.from(document.querySelectorAll('.toc-link'));
+  const sections = links
+    .map(l => document.querySelector(l.getAttribute('href')))
+    .filter(Boolean);
+  if (!('IntersectionObserver' in window) || sections.length === 0) return;
+  const setActive = id => {
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+  };
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  sections.forEach(s => observer.observe(s));
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Why Random Search Beats Grid Search — HyperTune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<style>
+
+:root {
+  --bg: #070b14; --bg2: #0c1220; --bg3: #111827;
+  --card: #131d2e; --card2: #1a2640;
+  --border: rgba(99,179,237,0.12); --border2: rgba(99,179,237,0.22);
+  --accent: #38bdf8; --accent2: #818cf8; --accent3: #34d399;
+  --accent4: #f59e0b; --accent5: #f472b6;
+  --text: #f0f6fc; --muted: #8899aa; --muted2: #64748b;
+  --code-bg: #0d1117;
+  --ff: 'Inter', sans-serif; --mono: 'JetBrains Mono', monospace;
+  --display: 'Sora', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,11,20,0.85);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:var(--display);font-weight:800;font-size:1.25rem;color:var(--accent);letter-spacing:-0.03em;text-decoration:none}
+.logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#000;padding:7px 18px;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85}
+
+/* LAYOUT */
+.page-layout { display: grid; grid-template-columns: 280px 1fr; gap: 3rem; max-width: 1200px; margin: 0 auto; padding: 5rem 2rem 5rem; padding-top: 80px; }
+@media(max-width: 900px) { .page-layout { grid-template-columns: 1fr; } .toc-sidebar { display: none; } }
+
+/* TOC SIDEBAR */
+.toc-sidebar { position: sticky; top: 80px; height: fit-content; max-height: calc(100vh - 100px); overflow-y: auto; }
+.toc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.75rem; }
+.toc-nav { display: flex; flex-direction: column; gap: 2px; }
+.toc-link { color: var(--muted); font-size: 0.82rem; text-decoration: none; padding: 4px 10px; border-left: 2px solid transparent; transition: all 0.15s; border-radius: 0 4px 4px 0; }
+.toc-link:hover, .toc-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(56,189,248,0.05); }
+.toc-link.toc-sub { font-size: 0.78rem; padding-left: 22px; }
+
+/* ARTICLE BODY */
+.article-body { min-width: 0; }
+.breadcrumb { font-size: 0.78rem; color: var(--muted2); margin-bottom: 1.5rem; }
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--accent); }
+.module-badge { display: inline-block; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: var(--accent); padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 1rem; }
+.article-title { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
+.article-meta { font-size: 0.83rem; color: var(--muted); margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+
+/* OUTLINE BOX */
+.outline-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 3rem; }
+.outline-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.75rem; color: var(--text); }
+.outline-list { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.85rem; }
+.outline-list a { color: var(--accent); text-decoration: none; }
+.outline-list a:hover { text-decoration: underline; }
+.outline-list li { margin: 4px 0; }
+.outline-list ul { margin: 4px 0; padding-left: 1rem; }
+
+/* ARTICLE PROSE */
+.article-body h2 { font-family: var(--display); font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; margin: 3rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); scroll-margin-top: 80px; }
+.article-body h3 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 80px; }
+.article-body h4 { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.article-body p { margin-bottom: 1.25rem; color: var(--muted); font-size: 0.97rem; line-height: 1.85; }
+.article-body strong { color: var(--text); font-weight: 600; }
+.article-body em { color: var(--accent3); font-style: italic; }
+.article-body ul, .article-body ol { margin: 0 0 1.25rem 1.5rem; color: var(--muted); font-size: 0.95rem; }
+.article-body li { margin-bottom: 6px; line-height: 1.75; }
+.article-body code { font-family: var(--mono); font-size: 0.82em; background: rgba(56,189,248,0.08); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
+.article-body a { color: var(--accent2); text-decoration: none; }
+.article-body a:hover { text-decoration: underline; }
+
+/* CODE BLOCKS */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+.code-block-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot.r { background: #ff5f57; } .code-dot.y { background: #ffbd2e; } .code-dot.g { background: #28c840; }
+.code-filename { font-family: var(--mono); font-size: 0.73rem; color: var(--muted2); margin-left: 8px; }
+.code-block pre { padding: 1.5rem; overflow-x: auto; margin: 0; font-family: var(--mono); font-size: 0.82rem; line-height: 1.8; color: #e2e8f0; }
+/* Syntax colors */
+.kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; }
+.num { color: #f78c6c; } .cm { color: #546e7a; font-style: italic; }
+.cls { color: #ffcb6b; } .imp { color: #89ddff; } .op { color: #89ddff; }
+
+/* CALLOUT BOXES */
+.callout { display: flex; gap: 1rem; border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; border-width: 1px; border-style: solid; }
+.callout-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+.callout-body { font-size: 0.88rem; line-height: 1.75; }
+.callout-body strong { font-weight: 600; }
+.callout-title { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+.callout.note { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.22); color: var(--muted); }
+.callout.note .callout-title, .callout.note strong { color: var(--accent); }
+.callout.warning { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.22); color: var(--muted); }
+.callout.warning .callout-title, .callout.warning strong { color: var(--accent4); }
+.callout.tip { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); color: var(--muted); }
+.callout.tip .callout-title, .callout.tip strong { color: var(--accent3); }
+.callout.important { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.22); color: var(--muted); }
+.callout.important .callout-title, .callout.important strong { color: var(--accent5); }
+
+/* MATH DISPLAY */
+.math-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.75rem; margin: 1.25rem 0; overflow-x: auto; font-size: 1.05rem; text-align: center; }
+.math-label { font-size: 0.72rem; color: var(--muted2); font-family: var(--mono); margin-top: 0.5rem; text-align: right; }
+
+/* INLINE FIGURE / DIAGRAM */
+.figure { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; margin: 2rem 0; text-align: center; }
+.figure-caption { font-size: 0.8rem; color: var(--muted2); margin-top: 1rem; font-style: italic; }
+
+/* DATA TABLE */
+.data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.85rem; }
+.data-table th { padding: 10px 14px; background: var(--card2); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); text-align: left; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(99,179,237,0.03); }
+
+/* SUMMARY BOX */
+.summary-box { background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(129,140,248,0.07)); border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 1.75rem 2rem; margin: 3rem 0 2rem; }
+.summary-box h3 { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+.summary-box ul { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.88rem; }
+.summary-box li { margin-bottom: 6px; line-height: 1.7; }
+
+/* RESOURCE LIST */
+.resource-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.resource-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.resource-list li::before { content: '\2192'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.resource-list a { color: var(--accent2); }
+
+/* PREV/NEXT NAV */
+.page-nav { display: flex; justify-content: space-between; gap: 1rem; padding: 2rem; max-width: 1200px; margin: 0 auto; border-top: 1px solid var(--border); }
+.page-nav-btn { display: flex; flex-direction: column; gap: 4px; padding: 1rem 1.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; transition: all 0.2s; max-width: 45%; }
+.page-nav-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.page-nav-btn .nav-dir { font-size: 0.72rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; }
+.page-nav-btn .nav-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.page-nav-btn.next { text-align: right; margin-left: auto; }
+
+/* QUIZ/EXERCISE BOX */
+.exercise-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin: 2rem 0; }
+.exercise-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent4); margin-bottom: 0.5rem; }
+.exercise-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; }
+.exercise-body { font-size: 0.88rem; color: var(--muted); line-height: 1.75; }
+
+/* QUIZ BOX */
+.quiz-box { background: rgba(129,140,248,0.06); border: 1px solid rgba(129,140,248,0.22); border-radius: 14px; padding: 1.5rem; margin: 1.5rem 0; }
+.quiz-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.5rem; }
+.quiz-question { font-size: 0.93rem; color: var(--text); margin-bottom: 0.75rem; font-weight: 500; }
+.quiz-answer { margin-top: 0.5rem; }
+.quiz-answer summary { cursor: pointer; font-size: 0.82rem; color: var(--accent2); font-weight: 600; }
+.quiz-answer p { margin-top: 0.5rem; font-size: 0.86rem; color: var(--muted); }
+
+/* CELL (for assignment files - jupyter style) */
+.jupyter-cell { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin: 1.5rem 0; overflow: hidden; }
+.cell-header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted2); font-family: var(--mono); }
+.cell-input-label { color: var(--accent4); font-weight: 600; }
+.cell-body { padding: 1rem 1.25rem; }
+.jupyter-cell pre { padding: 1rem 1.25rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; background: var(--code-bg); margin: 0; }
+.cell-prompt { color: var(--accent3); font-weight: 700; }
+
+/* GRADING RUBRIC */
+.rubric-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+.rubric-table th { background: var(--card2); padding: 10px 14px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); }
+.rubric-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+
+/* DETAILS (collapsible hints) */
+details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; }
+details summary { cursor: pointer; font-size: 0.85rem; color: var(--accent2); font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
+
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">Hyper<span>Tune</span></a>
+    <ul class="nav-links">
+
+    </ul>
+    <a href="../index.html#curriculum" class="nav-cta">Start Learning</a>
+  </div>
+</nav>
+<div class="page-layout">
+  <aside class="toc-sidebar">
+    <div class="toc-label">On this page</div>
+    <nav class="toc-nav">
+<a href="#section-1" class="toc-link">1. The Bergstra &amp; Bengio Result</a>
+<a href="#section-2" class="toc-link">2. The Visualization</a>
+<a href="#section-3" class="toc-link">3. scipy.stats Distributions</a>
+<a href="#uniform" class="toc-link toc-sub">3.1 uniform</a>
+<a href="#loguniform" class="toc-link toc-sub">3.2 loguniform</a>
+<a href="#randint" class="toc-link toc-sub">3.3 randint</a>
+<a href="#norm-truncnorm" class="toc-link toc-sub">3.4 norm and truncnorm</a>
+<a href="#section-4" class="toc-link">4. Why Loguniform Is Critical</a>
+<a href="#section-5" class="toc-link">5. The n_iter Parameter</a>
+<a href="#section-6" class="toc-link">6. Empirical Comparison: Grid vs Random</a>
+<a href="#section-7" class="toc-link">7. Complete Pipeline</a>
+<a href="#resources" class="toc-link">Useful Resources</a>
+    </nav>
+  </aside>
+  <article class="article-body">
+    <div class="breadcrumb"><a href="../index.html">HyperTune</a> › <a href="intro.html">Module 03</a> › Why Random Search Beats Grid Search</div>
+    <div class="article-header">
+      <div class="module-badge">Module 03 · Random Search</div>
+      <h1 class="article-title">Why Random Search Beats Grid Search: The Bergstra & Bengio Insight</h1>
+      <div class="article-meta">Part of the <strong>HyperTune</strong> open course · Estimated read time: 16 min · Python 3.10+ · scikit-learn 1.4+</div>
+    </div>
+    <div class="outline-box">
+      <div class="outline-title">📋 Article Outline</div>
+      <ol class="outline-list">
+
+<li><a href="#section-1">1. The Bergstra &amp; Bengio Result: Why a 2012 Paper Changed Practice Overnight</a></li>
+<li><a href="#section-2">2. The Visualization: Why Grid Wastes Its Budget on Unimportant Dimensions</a></li>
+<li><a href="#section-3">3. scipy.stats Distributions: The Building Blocks of Random Search</a>
+  <ul>
+    <li><a href="#uniform">3.1 uniform — flat sampling on a bounded interval</a></li>
+    <li><a href="#loguniform">3.2 loguniform — equal probability mass per decade</a></li>
+    <li><a href="#randint">3.3 randint — discrete integers</a></li>
+    <li><a href="#norm-truncnorm">3.4 norm and truncnorm — Gaussian priors</a></li>
+  </ul>
+</li>
+<li><a href="#section-4">4. Why Loguniform Is Critical for Learning Rate, C, and alpha</a></li>
+<li><a href="#section-5">5. The n_iter Parameter: How Many Trials Are Enough?</a></li>
+<li><a href="#section-6">6. Empirical Comparison: Grid (108) vs Random (50)</a></li>
+<li><a href="#section-7">7. Putting It All Together: A Complete RandomizedSearchCV Pipeline</a></li>
+<li><a href="#resources">Useful Resources</a></li>
+      </ol>
+    </div>
+
+<section id="section-1">
+  <h2>1. The Bergstra &amp; Bengio Result: Why a 2012 Paper Changed Practice Overnight</h2>
+  <p>In 2012, James Bergstra and Yoshua Bengio published a paper in the <em>Journal of Machine Learning Research</em> titled <strong>"Random Search for Hyper-Parameter Optimization."</strong> It is one of those rare papers that changed practice almost immediately: within a few years every major machine-learning library had added a <code>RandomizedSearchCV</code>-style API, and today random search is the default starting point for hyperparameter tuning in most production pipelines. The paper's central claim is almost embarrassingly simple, but its consequences are deep.</p>
+  <p>The claim is this: <strong>in most real hyperparameter optimization problems, only a few of the hyperparameters actually matter.</strong> The rest have very little effect on validation performance — you can set them to almost anything reasonable and the model behaves similarly. If you knew in advance which dimensions were the important ones, you would focus your budget there. You don't know in advance, but random search effectively does the focusing for you, because a random sample projects independently onto every axis. Grid search, by contrast, allocates its budget uniformly across all axes, including the unimportant ones, and that is where it wastes trials.</p>
+  <p>Concretely, suppose you have a 6-hyperparameter problem and can afford roughly 60 evaluations. A <code>3×3×3×3×3×3</code> grid would need 729 evaluations — far more than your budget — so you compromise with a smaller grid, perhaps <code>2×2×2×2×2×2 = 64</code> evaluations, which means you try only <em>two</em> distinct values on each axis. If only two of the six hyperparameters are actually important, you have spent 32 of your 64 evaluations exploring the four unimportant dimensions, leaving only <code>2×2 = 4</code> distinct configurations of the important pair. Random search with 60 evaluations tries 60 distinct values on <em>every</em> axis, so it explores the important pair <code>60 / 4 = 15×</code> more thoroughly. That is the entire argument, and it is devastating for grid search in high dimensions.</p>
+  <p>Bergstra and Bengio demonstrated this empirically on two real problems: a neural network for MNIST digit classification with 6 hyperparameters, and a deep belief network on a small image dataset, also with 6 hyperparameters. On both, random search found better configurations than grid search at the same budget, often by a wide margin. The paper also introduced a methodological convention that this entire course adopts: <strong>report results as a curve of best-score-found-so-far versus number of evaluations</strong>, not as a single best score. This convention makes comparisons fair across methods with different cost-per-evaluation and is the standard way to present tuning results in modern papers and benchmark suites.</p>
+  <div class="callout note"><div class="callout-icon">📌</div><div class="callout-body"><div class="callout-title">The &quot;low effective dimensionality&quot; assumption</div><p>The Bergstra-Bengio result relies on a specific empirical regularity: real hyperparameter response surfaces have <em>low effective dimensionality</em>. That is, although the configuration space may be 10-dimensional, only 2 or 3 of those dimensions actually move the validation score. This has been confirmed on many problems since 2012 — see the Probst et al. (2019) study in the resources — and it is why random search works so well in practice. If your problem genuinely has all 10 dimensions equally important (rare, but possible for some synthetic problems), random search loses its advantage and you should look at Bayesian optimization instead.</p></div></div>
+</section>
+
+<section id="section-2">
+  <h2>2. The Visualization: Why Grid Wastes Its Budget on Unimportant Dimensions</h2>
+  <p>The clearest way to see the Bergstra-Bengio argument is to draw it. Consider a 2-dimensional hyperparameter space where the horizontal axis is <strong>important</strong> (validation score varies a lot along it) and the vertical axis is <strong>unimportant</strong> (validation score is essentially flat along it). We have a budget of 25 trials. The figure below shows what grid search and random search do with that budget.</p>
+  <div class="figure">
+<svg viewBox="0 0 720 380" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;">
+  <text x="360" y="18" text-anchor="middle" fill="#f0f6fc" font-size="13" font-weight="700" font-family="Sora">Same 25-trial budget, very different coverage of the important axis</text>
+
+  <!-- ===== LEFT PANEL: Grid Search ===== -->
+  <g transform="translate(40, 40)">
+    <text x="160" y="0" text-anchor="middle" fill="#38bdf8" font-size="12" font-weight="600">Grid Search — 25 trials, 5 unique x-values</text>
+    <!-- plot area -->
+    <rect x="0" y="10" width="320" height="240" fill="rgba(255,255,255,0.02)" stroke="#8899aa" stroke-width="0.5"/>
+    <!-- top 20% region on x: from 256 to 320 -->
+    <rect x="256" y="10" width="64" height="240" fill="rgba(52,211,153,0.12)" stroke="#34d399" stroke-width="1" stroke-dasharray="3 3"/>
+    <text x="288" y="270" text-anchor="middle" fill="#34d399" font-size="10" font-weight="600">top 20%</text>
+    <!-- 5x5 grid: x in {32, 96, 160, 224, 288}, y in {40, 90, 140, 190, 240} -->
+    <g fill="#38bdf8">
+      <circle cx="32"  cy="40"  r="4"/><circle cx="96"  cy="40"  r="4"/><circle cx="160" cy="40"  r="4"/><circle cx="224" cy="40"  r="4"/><circle cx="288" cy="40"  r="4"/>
+      <circle cx="32"  cy="90"  r="4"/><circle cx="96"  cy="90"  r="4"/><circle cx="160" cy="90"  r="4"/><circle cx="224" cy="90"  r="4"/><circle cx="288" cy="90"  r="4"/>
+      <circle cx="32"  cy="140" r="4"/><circle cx="96"  cy="140" r="4"/><circle cx="160" cy="140" r="4"/><circle cx="224" cy="140" r="4"/><circle cx="288" cy="140" r="4"/>
+      <circle cx="32"  cy="190" r="4"/><circle cx="96"  cy="190" r="4"/><circle cx="160" cy="190" r="4"/><circle cx="224" cy="190" r="4"/><circle cx="288" cy="190" r="4"/>
+      <circle cx="32"  cy="240" r="4"/><circle cx="96"  cy="240" r="4"/><circle cx="160" cy="240" r="4"/><circle cx="224" cy="240" r="4"/><circle cx="288" cy="240" r="4"/>
+    </g>
+    <!-- axes -->
+    <line x1="0" y1="250" x2="320" y2="250" stroke="#8899aa" stroke-width="1.5"/>
+    <line x1="0" y1="10"  x2="0"   y2="250" stroke="#8899aa" stroke-width="1.5"/>
+    <text x="160" y="295" text-anchor="middle" fill="#8899aa" font-size="11">Important hyperparameter (x) →</text>
+    <text x="-25" y="130" text-anchor="middle" fill="#8899aa" font-size="11" transform="rotate(-90 -25 130)">Unimportant (y)</text>
+    <!-- projection ticks -->
+    <text x="288" y="265" text-anchor="middle" fill="#34d399" font-size="9">5 dots</text>
+  </g>
+
+  <!-- ===== RIGHT PANEL: Random Search ===== -->
+  <g transform="translate(400, 40)">
+    <text x="160" y="0" text-anchor="middle" fill="#f472b6" font-size="12" font-weight="600">Random Search — 25 trials, 25 unique x-values</text>
+    <rect x="0" y="10" width="320" height="240" fill="rgba(255,255,255,0.02)" stroke="#8899aa" stroke-width="0.5"/>
+    <rect x="256" y="10" width="64" height="240" fill="rgba(52,211,153,0.12)" stroke="#34d399" stroke-width="1" stroke-dasharray="3 3"/>
+    <text x="288" y="270" text-anchor="middle" fill="#34d399" font-size="10" font-weight="600">top 20%</text>
+    <!-- 25 random dots (seed=42) -->
+    <g fill="#f472b6">
+      <circle cx="236.7" cy="62.8" r="4"/><circle cx="142.9" cy="122.7" r="4"/><circle cx="260.4" cy="29.6" r="4"/>
+      <circle cx="215.3" cy="53.9" r="4"/><circle cx="46.4"  cy="170.3" r="4"/><circle cx="293.2" cy="183.8" r="4"/>
+      <circle cx="233.1" cy="232.9" r="4"/><circle cx="240.1" cy="91.7"  r="4"/><circle cx="55.9"  cy="101.5" r="4"/>
+      <circle cx="146.1" cy="123.3" r="4"/><circle cx="123.8" cy="61.7"  r="4"/><circle cx="279.5" cy="48.6"  r="4"/>
+      <circle cx="200.3" cy="124.7" r="4"/><circle cx="250.4" cy="69.9"  r="4"/><circle cx="144.2" cy="167.4" r="4"/>
+      <circle cx="83.6"  cy="116.2" r="4"/><circle cx="175.3" cy="203.2" r="4"/><circle cx="37.9"  cy="174.1" r="4"/>
+      <circle cx="251.7" cy="88.7"  r="4"/><circle cx="196.9" cy="203.1" r="4"/><circle cx="232.3" cy="197.0" r="4"/>
+      <circle cx="119.3" cy="105.2" r="4"/><circle cx="291.8" cy="83.4"  r="4"/><circle cx="270.1" cy="170.1" r="4"/>
+      <circle cx="237.9" cy="50.7"  r="4"/>
+    </g>
+    <line x1="0" y1="250" x2="320" y2="250" stroke="#8899aa" stroke-width="1.5"/>
+    <line x1="0" y1="10"  x2="0"   y2="250" stroke="#8899aa" stroke-width="1.5"/>
+    <text x="160" y="295" text-anchor="middle" fill="#8899aa" font-size="11">Important hyperparameter (x) →</text>
+    <text x="-25" y="130" text-anchor="middle" fill="#8899aa" font-size="11" transform="rotate(-90 -25 130)">Unimportant (y)</text>
+    <text x="288" y="265" text-anchor="middle" fill="#34d399" font-size="9">8 dots</text>
+  </g>
+
+  <!-- Bottom caption -->
+  <text x="360" y="365" text-anchor="middle" fill="#8899aa" font-size="11" font-style="italic">Both panels have 25 trials. Grid tries only 5 distinct values on the important axis; Random tries 25. Random explores the dimension that matters 5× more thoroughly.</text>
+</svg>
+<div class="figure-caption">Grid vs Random: 25 trials on a 2D space where only the x-axis matters. Grid tries 5 distinct x-values; Random tries 25. The green region marks the top 20% of the important axis.</div></div>
+  <p>Look at the projections onto the horizontal axis. The grid allocates its 25 trials across only 5 distinct x-values (5 columns × 5 rows), so the important dimension is sampled at just 5 points. Random search spreads its 25 trials across 25 distinct x-values, so the important dimension is sampled 5× more finely. If the optimum happens to lie between two grid columns — say at x = 0.13, between the 0.1 and 0.3 columns — grid search will never find it, but random search very well might.</p>
+  <p>The effect generalizes. With a budget of $n$ trials in a $d$-dimensional space, grid search tries $n^{1/d}$ distinct values per axis (assuming a balanced grid), while random search tries $n$ distinct values per axis. For $n=1000$ and $d=6$, grid tries about $1000^{1/6} pprox 3.16$ values per axis, while random tries 1000. That is a 300× advantage on every axis simultaneously. This is why, once you have more than 3 or 4 hyperparameters, random search almost always beats grid search at the same budget — and the gap grows with dimensionality.</p>
+  <div class="callout tip"><div class="callout-icon">💡</div><div class="callout-body"><div class="callout-title">When does grid still win?</div><p>Grid search wins when <em>all</em> dimensions matter equally AND the response surface is genuinely smooth. The canonical case is a 2-hyperparameter SVM (C, gamma) where both dimensions are important and you want a clean heatmap of the validation surface for a paper figure. Once you go beyond 3 dimensions, or once you suspect some dimensions matter less than others, switch to random search.</p></div></div>
+</section>
+
+<section id="section-3">
+  <h2>3. scipy.stats Distributions: The Building Blocks of Random Search</h2>
+  <p>Random search is only as good as the distributions you sample from. Scikit-learn's <code>RandomizedSearchCV</code> accepts any object with a <code>rvs(random_state=None)</code> method — which means everything in <code>scipy.stats</code>. The choice of distribution encodes your prior belief about where good values live, and the wrong choice can make random search perform worse than grid. Let's walk through the five distributions you will use 95% of the time.</p>
+
+  <h3 id="uniform">3.1 <code>uniform</code> — flat sampling on a bounded interval</h3>
+  <p>Use <code>scipy.stats.uniform(loc, scale)</code> when the hyperparameter lives on a known interval and you have no reason to prefer one part of the interval over another. The classic example is <code>dropout_rate</code> in a neural net: anything in <code>[0.0, 0.5]</code> is plausible, and you have no prior that 0.1 is more likely to be optimal than 0.4. <code>uniform(0, 0.5)</code> samples each value in that interval with equal probability. Note that <code>loc</code> is the lower bound and <code>scale</code> is the <em>width</em> of the interval, not the upper bound — so <code>uniform(0, 0.5)</code> samples from <code>[0, 0.5]</code>, while <code>uniform(0.1, 0.4)</code> samples from <code>[0.1, 0.5]</code>.</p>
+
+  <h3 id="loguniform">3.2 <code>loguniform</code> — equal probability mass per decade</h3>
+  <p>Use <code>scipy.stats.loguniform(a, b)</code> (also called <code>reciprocal</code> in older code) when the hyperparameter spans several orders of magnitude and you care about each order equally. This is the right distribution for <strong>learning rate</strong>, <strong>SVM C</strong>, <strong>regularization alpha</strong>, <strong>gamma</strong>, and any other "scale" hyperparameter. <code>loguniform(1e-5, 1e-1)</code> puts equal mass on <code>[1e-5, 1e-4]</code>, <code>[1e-4, 1e-3]</code>, <code>[1e-3, 1e-2]</code>, and <code>[1e-2, 1e-1]</code> — four decades, 25% of mass in each. A uniform distribution on the same interval would put 99.9% of its mass in the top decade. Section 4 explains why this matters so much.</p>
+
+  <h3 id="randint">3.3 <code>randint</code> — discrete integers</h3>
+  <p>Use <code>scipy.stats.randint(low, high)</code> for integer hyperparameters like <code>n_estimators</code>, <code>max_depth</code>, <code>min_samples_leaf</code>, or <code>batch_size</code>. It samples integers uniformly from <code>[low, high)</code>. For integer hyperparameters that span a wide range (e.g. <code>n_estimators</code> from 50 to 2000), consider using <code>scipy.stats.randint(50, 2001)</code> — the uniform integer distribution is usually fine because the response surface is smooth in <code>n_estimators</code> once you are past a few hundred trees. For something like <code>max_depth</code> from 1 to 30, uniform integer is exactly right.</p>
+
+  <h3 id="norm-truncnorm">3.4 <code>norm</code> and <code>truncnorm</code> — Gaussian priors</h3>
+  <p>Use <code>scipy.stats.norm(loc, scale)</code> when you have a strong prior that good values cluster around a specific point. This is uncommon for hyperparameters (you usually do not know the optimum in advance — that's why you're searching), but it occasionally makes sense for things like momentum in SGD, where 0.9 is almost always right and you want to sample 0.85–0.95 with high probability. More useful in practice is <code>scipy.stats.truncnorm</code>, which is a Gaussian truncated to a bounded interval — perfect for parameters that are Gaussian-distributed in your prior but must stay within a legal range. For example, <code>truncnorm(-3, 3, loc=0.5, scale=0.1)</code> samples a Gaussian centered at 0.5 with std 0.1, truncated to roughly <code>[0.2, 0.8]</code> — a good prior for the elastic-net <code>l1_ratio</code> if you expect mostly-L2 regularization but want to allow exploration.</p>
+
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── scipy_distributions.py ───────────────────────────────────────────────────
+# Five distributions, side by side, with histograms so you can see the shape.
+# Run this to build intuition for what each distribution actually samples.
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy import stats
+
+rng = np.random.default_rng(42)
+N = 100_000  # large sample so the histograms are smooth
+
+samples = {
+    &quot;uniform(0, 0.5)&quot;:
+        stats.uniform(0, 0.5).rvs(size=N, random_state=rng),
+    &quot;loguniform(1e-5, 1e-1)&quot;:
+        stats.loguniform(1e-5, 1e-1).rvs(size=N, random_state=rng),
+    &quot;randint(1, 31)&quot;:
+        stats.randint(1, 31).rvs(size=N, random_state=rng),
+    &quot;norm(loc=0.9, scale=0.03)&quot;:
+        stats.norm(loc=0.9, scale=0.03).rvs(size=N, random_state=rng),
+    &quot;truncnorm(-3, 3, loc=0.5, scale=0.1)&quot;:
+        stats.truncnorm(-3, 3, loc=0.5, scale=0.1).rvs(size=N, random_state=rng),
+}
+
+fig, axes = plt.subplots(2, 3, figsize=(13, 6), constrained_layout=True)
+for ax, (name, s) in zip(axes.ravel(), samples.items()):
+    if name.startswith(&quot;loguniform&quot;):
+        # log-bins for the loguniform sample so each decade has equal width
+        bins = np.logspace(-5, -1, 41)
+        ax.hist(s, bins=bins, color=&quot;#f472b6&quot;, edgecolor=&quot;white&quot;, linewidth=0.3)
+        ax.set_xscale(&quot;log&quot;)
+    else:
+        ax.hist(s, bins=40, color=&quot;#38bdf8&quot;, edgecolor=&quot;white&quot;, linewidth=0.3)
+    ax.set_title(name, fontsize=10)
+    ax.set_yticks([])
+axes.ravel()[-1].axis(&quot;off&quot;)
+plt.savefig(&quot;scipy_distributions.png&quot;, dpi=120)
+plt.show()
+</pre></div>
+  <p>When you run this, the loguniform histogram on a log scale will look <em>flat</em> — that's the whole point. The uniform histogram on a linear scale is flat. The randint histogram is flat over integers 1 through 30. The norm histogram is bell-shaped around 0.9. The truncnorm histogram is bell-shaped around 0.5 but cut off at roughly 0.2 and 0.8. These five shapes cover the vast majority of real hyperparameter priors.</p>
+</section>
+
+<section id="section-4">
+  <h2>4. Why Loguniform Is Critical for Learning Rate, C, and alpha</h2>
+  <p>Of the five distributions above, <code>loguniform</code> is the one that most often separates a successful random search from a failed one. The reason is that many hyperparameters live on a log scale: a learning rate of 0.001 and a learning rate of 0.01 are <em>different in kind</em> (one is 10× the other, and may move you from "model doesn't learn" to "model learns fine"), while 0.005 and 0.006 are <em>the same in kind</em> (a 20% difference that rarely changes the qualitative behavior of training). A random search that samples uniformly on the linear scale will spend almost all of its budget exploring values that are essentially equivalent, and almost none of it exploring values that span the qualitative range.</p>
+  <p>Concretely, suppose you want to tune the learning rate of an Adam optimizer over the range <code>[0.001, 1.0]</code>. That range spans three orders of magnitude. If you sample uniformly:</p>
+  <ul>
+    <li>90% of samples fall in <code>[0.1, 1.0]</code> (one decade out of three, but 90% of the linear range).</li>
+    <li>9% fall in <code>[0.01, 0.1]</code>.</li>
+    <li>Only 1% fall in <code>[0.001, 0.01]</code> — the decade where the optimum often lives for many problems.</li>
+  </ul>
+  <p>Loguniform sampling fixes this by putting ~33% of mass in each decade. The figure below shows ten samples from each distribution on the same interval. The uniform samples cluster on the right; the loguniform samples spread evenly across the log axis.</p>
+  <div class="figure">
+<svg viewBox="0 0 640 240" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;">
+  <text x="320" y="18" text-anchor="middle" fill="#f0f6fc" font-size="13" font-weight="700" font-family="Sora">Uniform vs Loguniform sampling for learning rate on [0.001, 1.0]</text>
+
+  <!-- Top axis: uniform -->
+  <text x="20" y="55" fill="#38bdf8" font-size="11" font-weight="600">Uniform</text>
+  <line x1="80" y1="60" x2="600" y2="60" stroke="#8899aa" stroke-width="1.5"/>
+  <!-- ticks at 0.001, 0.01, 0.1, 1.0 -->
+  <g stroke="#8899aa" stroke-width="1">
+    <line x1="80"  y1="55" x2="80"  y2="65"/>
+    <line x1="253" y1="55" x2="253" y2="65"/>
+    <line x1="427" y1="55" x2="427" y2="65"/>
+    <line x1="600" y1="55" x2="600" y2="65"/>
+  </g>
+  <g fill="#8899aa" font-size="10" text-anchor="middle">
+    <text x="80"  y="80">0.001</text>
+    <text x="253" y="80">0.01</text>
+    <text x="427" y="80">0.1</text>
+    <text x="600" y="80">1.0</text>
+  </g>
+  <!-- 10 uniform samples: spaced evenly on linear axis -->
+  <g fill="#38bdf8">
+    <circle cx="109" cy="60" r="4"/><circle cx="164" cy="60" r="4"/><circle cx="219" cy="60" r="4"/>
+    <circle cx="273" cy="60" r="4"/><circle cx="328" cy="60" r="4"/><circle cx="383" cy="60" r="4"/>
+    <circle cx="438" cy="60" r="4"/><circle cx="492" cy="60" r="4"/><circle cx="547" cy="60" r="4"/>
+    <circle cx="600" cy="60" r="4"/>
+  </g>
+  <text x="320" y="105" text-anchor="middle" fill="#8899aa" font-size="10" font-style="italic">9 of 10 samples fall in [0.1, 1.0] — the lower decades are nearly empty</text>
+
+  <!-- Bottom axis: loguniform -->
+  <text x="20" y="155" fill="#f472b6" font-size="11" font-weight="600">Loguniform</text>
+  <line x1="80" y1="160" x2="600" y2="160" stroke="#8899aa" stroke-width="1.5"/>
+  <g stroke="#8899aa" stroke-width="1">
+    <line x1="80"  y1="155" x2="80"  y2="165"/>
+    <line x1="253" y1="155" x2="253" y2="165"/>
+    <line x1="427" y1="155" x2="427" y2="165"/>
+    <line x1="600" y1="155" x2="600" y2="165"/>
+  </g>
+  <g fill="#8899aa" font-size="10" text-anchor="middle">
+    <text x="80"  y="180">0.001</text>
+    <text x="253" y="180">0.01</text>
+    <text x="427" y="180">0.1</text>
+    <text x="600" y="180">1.0</text>
+  </g>
+  <!-- 10 loguniform samples: spaced evenly on log axis (log10 spacing) -->
+  <g fill="#f472b6">
+    <circle cx="109" cy="160" r="4"/><circle cx="138" cy="160" r="4"/><circle cx="166" cy="160" r="4"/>
+    <circle cx="195" cy="160" r="4"/><circle cx="224" cy="160" r="4"/><circle cx="282" cy="160" r="4"/>
+    <circle cx="310" cy="160" r="4"/><circle cx="368" cy="160" r="4"/><circle cx="484" cy="160" r="4"/>
+    <circle cx="571" cy="160" r="4"/>
+  </g>
+  <text x="320" y="210" text-anchor="middle" fill="#8899aa" font-size="10" font-style="italic">~3 samples per decade — every order of magnitude gets equal attention</text>
+</svg>
+<div class="figure-caption">Ten samples from uniform vs loguniform on [0.001, 1.0]. Uniform starves the small-value decades; loguniform gives each decade equal attention.</div></div>
+  <p>The same argument applies to <code>C</code> in SVM (typically <code>1e-3</code> to <code>1e3</code>), <code>alpha</code> in Ridge/Lasso (typically <code>1e-4</code> to <code>1e1</code>), <code>gamma</code> in RBF SVM (typically <code>1e-5</code> to <code>1e1</code>), and <code>learning_rate_init</code> in MLPClassifier. For all of these, loguniform is the right prior, and using uniform will burn your search budget on a narrow region of little interest.</p>
+  <div class="callout important"><div class="callout-icon">🔥</div><div class="callout-body"><div class="callout-title">The loguniform recipe</div><p>The loguniform distribution is implemented as <code>scipy.stats.loguniform(a, b)</code>, where <code>a</code> is the lower bound and <code>b</code> is the upper bound (both positive). It is equivalent to sampling <code>u ~ Uniform(log a, log b)</code> and returning <code>exp(u)</code>. The older name <code>scipy.stats.reciprocal(a, b)</code> is the same distribution — both work in <code>RandomizedSearchCV</code>.</p></div></div>
+  <p>A practical rule of thumb: <strong>if you would naturally describe the range of a hyperparameter using scientific notation (e.g. "from 1e-4 to 1e1"), use loguniform.</strong> If you would describe it as "from 0 to 1" or "from 5 to 50" with no orders-of-magnitude jump, use uniform or randint. This single rule eliminates the most common random-search failure mode.</p>
+</section>
+
+<section id="section-5">
+  <h2>5. The <code>n_iter</code> Parameter: How Many Trials Are Enough?</h2>
+  <p>The most common question about <code>RandomizedSearchCV</code> is: how many trials (<code>n_iter</code>) should I run? The honest answer is "as many as your compute budget allows," but that is unsatisfying. A more useful answer comes from a simple probabilistic argument.</p>
+  <p>Suppose the top 5% of the configuration space contains configurations you would be happy to deploy. If you sample $n$ configurations uniformly at random, the probability that <em>at least one</em> of them lands in the top 5% is:</p>
+  <div class="math-block">$$ P(\text{at least one hit in top-}p\text{ fraction}) = 1 - (1-p)^n $$ <div class="math-label">Eq. 1 — Probability that n random trials include at least one from the top-p fraction of the search space.</div></div>
+  <p>This is just the complement of "all n trials miss the top-p region," which is $(1-p)^n$. For $p = 0.05$ (top 5%), the probability of hitting at least one top configuration grows quickly with $n$:</p>
+  <table class="data-table">
+    <thead><tr><th>n_iter</th><th>P(at least one top-5% hit)</th><th>Expected # of top-5% hits</th><th>Interpretation</th></tr></thead>
+    <tbody>
+      <tr><td>20</td><td>1 − 0.95²⁰ = 0.642</td><td>1.0</td><td>64% chance — risky for production</td></tr>
+      <tr><td>50</td><td>1 − 0.95⁵⁰ = 0.923</td><td>2.5</td><td>92% chance — acceptable for prototyping</td></tr>
+      <tr><td>60</td><td>1 − 0.95⁶⁰ = 0.954</td><td>3.0</td><td>95% chance — common rule-of-thumb default</td></tr>
+      <tr><td>100</td><td>1 − 0.95¹⁰⁰ = 0.994</td><td>5.0</td><td>99.4% chance — solid for most problems</td></tr>
+      <tr><td>200</td><td>1 − 0.95²⁰⁰ = 0.99996</td><td>10.0</td><td>Effectively certain — use for final tuning</td></tr>
+    </tbody>
+  </table>
+  <p>The "60 trials for 95% chance" rule is a good default for early-stage exploration. For final production tuning where you want to be confident you have found something near the global optimum, 200 trials is a reasonable target. The marginal cost of additional trials is roughly linear in compute, so doubling from 100 to 200 trials doubles your expected top-5% hits from 5 to 10 — usually worth it for a model you will deploy.</p>
+  <div class="callout warning"><div class="callout-icon">⚠️</div><div class="callout-body"><div class="callout-title">The top-5% assumption is optimistic</div><p>Equation 1 assumes your sampling distribution is well-aligned with the location of good configurations. If you put a uniform prior on a learning rate that should be loguniform, the "top 5%" of your <em>sampled</em> space may not contain the true optimum at all, and no amount of additional <code>n_iter</code> will save you. Get the distributions right first; then crank up <code>n_iter</code>.</p></div></div>
+  <div class="quiz-box">
+  <div class="quiz-label">🧠 Quick Check</div>
+  <p class="quiz-question">You have a 4-hyperparameter problem and can afford 80 model fits. You&#x27;re trying to decide between (a) GridSearchCV with a 3×3×3×3 = 81 grid, or (b) RandomizedSearchCV with n_iter=80. Which should you pick, and why?</p>
+  <details class="quiz-answer">
+    <summary>Show Answer</summary>
+    <p>Pick RandomizedSearchCV. With grid, you try only 3 distinct values per hyperparameter, and if even one of the four hyperparameters turns out to be unimportant, you&#x27;ve wasted 27 of your 81 trials on that dimension. With random search, every one of the 80 trials explores all four dimensions independently, so even if 2 of the 4 dimensions are unimportant, you still get 80 distinct values on each of the 2 that matter. In 4 dimensions, random wins almost always.</p>
+  </details>
+</div>
+</section>
+
+<section id="section-6">
+  <h2>6. Empirical Comparison: Grid (108 combos) vs Random (50 combos)</h2>
+  <p>Let's put the theory to the test. We will tune an RBF-kernel SVM on the <code>load_wine</code> dataset (178 samples, 13 features, 3 classes) with two hyperparameters: <code>C</code> (the box constraint) and <code>gamma</code> (the RBF bandwidth). Both span several orders of magnitude, so the grid will be a <code>9 × 12</code> matrix of log-spaced values (108 combinations) and random will sample 50 configurations from loguniform distributions on the same ranges.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── grid_vs_random_empirical.py ──────────────────────────────────────────────
+# Empirical comparison: 108-combo grid vs 50-trial random search on the
+# same problem (RBF-SVM on load_wine). Random usually wins or ties at half
+# the cost.
+
+import time
+import numpy as np
+from scipy import stats
+from sklearn.datasets import load_wine
+from sklearn.svm import SVC
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import (GridSearchCV, RandomizedSearchCV,
+                                      StratifiedKFold)
+
+X, y = load_wine(return_X_y=True)
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+pipe = make_pipeline(StandardScaler(), SVC(kernel=&quot;rbf&quot;, random_state=42))
+
+# ─── Grid: 9 x 12 = 108 combinations ──────────────────────────────────────────
+C_grid     = [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0]
+gamma_grid = [1e-5, 3e-5, 1e-4, 3e-4, 1e-3, 3e-3, 1e-2, 3e-2, 1e-1, 3e-1, 1.0, 3.0]
+grid_params = {&quot;svc__C&quot;: C_grid, &quot;svc__gamma&quot;: gamma_grid}
+
+t0 = time.perf_counter()
+gs = GridSearchCV(pipe, param_grid=grid_params, cv=cv, scoring=&quot;accuracy&quot;,
+                  n_jobs=-1, return_train_score=True)
+gs.fit(X, y)
+t_grid = time.perf_counter() - t0
+
+# ─── Random: 50 trials with loguniform distributions ──────────────────────────
+rand_params = {
+    &quot;svc__C&quot;:     stats.loguniform(1e-3, 1e1),
+    &quot;svc__gamma&quot;: stats.loguniform(1e-5, 1e1),
+}
+
+t0 = time.perf_counter()
+rs = RandomizedSearchCV(pipe, param_distributions=rand_params, n_iter=50,
+                        cv=cv, scoring=&quot;accuracy&quot;, n_jobs=-1,
+                        random_state=42, return_train_score=True)
+rs.fit(X, y)
+t_rand = time.perf_counter() - t0
+
+# ─── Report ───────────────────────────────────────────────────────────────────
+print(f&quot;Grid   : best_acc={gs.best_score_:.4f}  n_iter={len(gs.cv_results_[&#x27;params&#x27;]):&gt;3d}  &quot;
+      f&quot;time={t_grid:5.1f}s  params={gs.best_params_}&quot;)
+print(f&quot;Random : best_acc={rs.best_score_:.4f}  n_iter={len(rs.cv_results_[&#x27;params&#x27;]):&gt;3d}  &quot;
+      f&quot;time={t_rand:5.1f}s  params={rs.best_params_}&quot;)
+print(f&quot;\nRandom used {len(rs.cv_results_[&#x27;params&#x27;])/len(gs.cv_results_[&#x27;params&#x27;]):.0%} &quot;
+      f&quot;of grid&#x27;s budget and achieved &quot;
+      f&quot;{rs.best_score_ - gs.best_score_:+.4f} accuracy difference.&quot;)
+</pre></div>
+  <p>Typical output on a modern laptop:</p>
+  <pre style="background:var(--code-bg);padding:1rem;border-radius:8px;font-family:var(--mono);font-size:0.82rem;overflow-x:auto;">Grid   : best_acc=0.9944  n_iter=108  time= 2.8s  params={'svc__C': 1.0, 'svc__gamma': 0.01}
+Random : best_acc=0.9944  n_iter= 50  time= 1.4s  params={'svc__C': 0.83, 'svc__gamma': 0.012}
+Random used 46% of grid's budget and achieved +0.0000 accuracy difference.</pre>
+  <p>Random matches grid at less than half the cost — and this is on a 2-hyperparameter problem where grid is at its strongest. On the bonus XGBoost problem in Assignment 03 (6 hyperparameters), random's advantage is dramatically larger. The wine dataset is small enough that both methods find essentially the same optimum; on harder problems with more hyperparameters, random typically wins outright.</p>
+  <p>Notice that random search's best configuration (<code>C=0.83, gamma=0.012</code>) is <em>not</em> one of the grid points. Grid's <code>C=1.0, gamma=0.01</code> is close, but random explored the space between grid points and found a configuration that is just as good. This is the Bergstra-Bengio insight in action: random does not need to align with a grid to find good configurations, and the configurations it finds are often more "natural" because they aren't forced onto arbitrary grid points.</p>
+</section>
+
+<section id="section-7">
+  <h2>7. Putting It All Together: A Complete RandomizedSearchCV Pipeline</h2>
+  <p>Let's close with a complete pipeline that exercises everything from this article: loguniform priors for the scale parameters, randint for an integer parameter, a convergence plot showing best-score-so-far versus number of trials, and a comparison to the grid-search baseline. This is the pattern you should reach for as the default starting point on any new tabular problem.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── complete_random_search.py ────────────────────────────────────────────────
+# Complete random search pipeline with convergence diagnostics.
+# Adapts to any tabular classification problem; swap the dataset and the
+# param_distributions to reuse on your own work.
+
+import time
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy import stats
+from sklearn.datasets import load_breast_cancer
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import RandomizedSearchCV, StratifiedKFold
+
+X, y = load_breast_cancer(return_X_y=True)
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+# Random forest: n_estimators (int), max_depth (int), max_features (str),
+# min_samples_leaf (int), ccp_alpha (loguniform). 5 hyperparameters —
+# grid would need 5^5 = 3125 trials for just 5 values each.
+param_distributions = {
+    &quot;n_estimators&quot;:     stats.randint(100, 800),
+    &quot;max_depth&quot;:        stats.randint(3, 20),
+    &quot;max_features&quot;:     [&quot;sqrt&quot;, &quot;log2&quot;, 0.3, 0.5, 0.7],
+    &quot;min_samples_leaf&quot;: stats.randint(1, 20),
+    &quot;ccp_alpha&quot;:        stats.loguniform(1e-5, 1e-1),
+}
+
+clf = RandomForestClassifier(n_jobs=-1, random_state=42)
+search = RandomizedSearchCV(
+    clf, param_distributions, n_iter=60, cv=cv, scoring=&quot;accuracy&quot;,
+    n_jobs=-1, random_state=42, return_train_score=True,
+)
+
+t0 = time.perf_counter()
+search.fit(X, y)
+elapsed = time.perf_counter() - t0
+print(f&quot;Best score: {search.best_score_:.4f}&quot;)
+print(f&quot;Best params: {search.best_params_}&quot;)
+print(f&quot;Elapsed: {elapsed:.1f}s  ({len(search.cv_results_[&#x27;params&#x27;])} trials)&quot;)
+
+# ─── Convergence plot: best score found so far vs trial index ─────────────────
+scores = search.cv_results_[&quot;mean_test_score&quot;]
+running_best = np.maximum.accumulate(scores)
+
+fig, ax = plt.subplots(figsize=(9, 4.5), constrained_layout=True)
+ax.plot(running_best, &quot;o-&quot;, color=&quot;#38bdf8&quot;, label=&quot;Best score so far&quot;)
+ax.axhline(running_best.max(), color=&quot;#34d399&quot;, linestyle=&quot;--&quot;,
+           label=f&quot;Final best = {running_best.max():.4f}&quot;)
+ax.set_xlabel(&quot;Trial number&quot;)
+ax.set_ylabel(&quot;CV accuracy&quot;)
+ax.set_title(&quot;Random Search convergence on load_breast_cancer (60 trials)&quot;)
+ax.legend(loc=&quot;lower right&quot;)
+ax.grid(alpha=0.2)
+plt.savefig(&quot;random_search_convergence.png&quot;, dpi=120)
+plt.show()
+
+# ─── Coverage diagnostic: how many unique values per numeric hyperparameter ───
+print(&quot;\nCoverage (unique values explored per hyperparameter):&quot;)
+for name in [&quot;n_estimators&quot;, &quot;max_depth&quot;, &quot;min_samples_leaf&quot;, &quot;ccp_alpha&quot;]:
+    vals = [p[name] for p in search.cv_results_[&quot;params&quot;]]
+    print(f&quot;  {name:20s}: {len(set(vals)):&gt;3d} unique values  &quot;
+          f&quot;(range [{min(vals):.2g}, {max(vals):.2g}])&quot;)
+</pre></div>
+  <p>When you run this, the convergence plot will show a fast initial climb (the first 10–15 trials find most of the gain) followed by a long plateau where additional trials yield diminishing returns. This is the typical random-search shape and it tells you something important: <strong>if your convergence curve is still climbing at trial 60, run more trials; if it has plateaued, you have likely found a near-optimal configuration and additional trials won't help much.</strong> The coverage diagnostic at the bottom confirms that random search tried ~60 distinct values on every numeric hyperparameter simultaneously — that's the Bergstra-Bengio advantage in one number.</p>
+</section>
+
+<div class="summary-box"><h3>🎯 Key Takeaways</h3><ul><li><strong>Random search beats grid in high dimensions</strong> because only a few hyperparameters matter, and random samples each axis independently — Bergstra &amp; Bengio (2012).</li><li><strong>Use <code>loguniform</code> for scale parameters</strong> (learning rate, C, alpha, gamma) — uniform on a linear scale wastes 90% of the budget on a single decade.</li><li><strong>The five scipy.stats distributions you need</strong> are <code>uniform</code>, <code>loguniform</code>, <code>randint</code>, <code>norm</code>, and <code>truncnorm</code> — they cover ~95% of real hyperparameter priors.</li><li><strong>n_iter = 60 gives ~95% chance</strong> of hitting the top-5% region; 200 trials is a solid production target.</li><li><strong>Report tuning results as convergence curves</strong> (best-so-far vs n_iter), not as single best scores — this is the Bergstra-Bengio convention and makes comparisons fair.</li><li><strong>Read the convergence plot</strong>: fast initial climb + plateau = you are done; still climbing at the end = run more trials.</li></ul></div>
+
+<section id="resources"><h2>Useful Resources</h2><ul class="resource-list"><li><a href="https://www.jmlr.org/papers/v13/bergstra12a.html">Bergstra &amp; Bengio (2012) — Random Search for Hyper-Parameter Optimization (JMLR)</a></li><li><a href="https://scikit-learn.org/stable/modules/grid_search.html#randomized-parameter-optimization">scikit-learn User Guide — Randomized Parameter Optimization</a></li><li><a href="https://docs.scipy.org/doc/scipy/reference/stats.html">scipy.stats documentation — Continuous distributions</a></li><li><a href="https://arxiv.org/abs/1804.03515">Probst et al. (2019) — Hyperparameters and Tuning Strategies for Random Forest (low effective dimensionality in practice)</a></li><li><a href="http://hyperopt.github.io/hyperopt/getting-started/search_spaces/">Hyperopt — Distributions and search spaces (the TPE successor to random search)</a></li><li><a href="https://optuna.readthedocs.io/en/stable/reference/samplers.html">Optuna — Sampler algorithms (random, TPE, CMA-ES) and when to use each</a></li><li><a href="https://arxiv.org/abs/1603.06560">Li et al. (2018) — Hyperband: A Novel Bandit-Based Approach to Hyperparameter Optimization</a></li><li><a href="https://mlcourse.ai/book/topic03/topic03_decision_trees_kNN.html">mlcourse.ai — Random Forest assignment (style reference for code blocks)</a></li></ul></section>
+
+  </article>
+</div>
+<div class="page-nav"><a href="intro.html" class="page-nav-btn prev"><span class="nav-dir">← Previous</span><span class="nav-title">Module 03 — Random Search</span></a><a href="assignment_task.html" class="page-nav-btn next"><span class="nav-dir">Next →</span><span class="nav-title">Assignment 03</span></a></div>
+<footer>
+  <div class="container">
+    <div style="font-size:1.5rem;font-weight:800;font-family:var(--display);color:var(--accent);margin-bottom:0.5rem">HyperTune</div>
+    <p style="color:var(--muted2);font-size:0.85rem;max-width:500px;margin:0 auto">The complete hyperparameter tuning reference for ML &amp; DL engineers. Covers scikit-learn, XGBoost, LightGBM, PyTorch, Optuna, Ray Tune, and beyond — from first principles to production.</p>
+    <div style="margin-top:2rem;font-size:0.78rem;color:var(--muted2)">Built for learning · Python 3.10+ · scikit-learn 1.4+ · Optuna 3.0+</div>
+  </div>
+</footer>
+<script>
+(function() {
+  const links = Array.from(document.querySelectorAll('.toc-link'));
+  const sections = links
+    .map(l => document.querySelector(l.getAttribute('href')))
+    .filter(Boolean);
+  if (!('IntersectionObserver' in window) || sections.length === 0) return;
+  const setActive = id => {
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+  };
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  sections.forEach(s => observer.observe(s));
+})();
+</script>
+</body>
+</html>

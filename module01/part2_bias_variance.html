@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Bias-Variance Tradeoff — HyperTune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<style>
+
+:root {
+  --bg: #070b14; --bg2: #0c1220; --bg3: #111827;
+  --card: #131d2e; --card2: #1a2640;
+  --border: rgba(99,179,237,0.12); --border2: rgba(99,179,237,0.22);
+  --accent: #38bdf8; --accent2: #818cf8; --accent3: #34d399;
+  --accent4: #f59e0b; --accent5: #f472b6;
+  --text: #f0f6fc; --muted: #8899aa; --muted2: #64748b;
+  --code-bg: #0d1117;
+  --ff: 'Inter', sans-serif; --mono: 'JetBrains Mono', monospace;
+  --display: 'Sora', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,11,20,0.85);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:var(--display);font-weight:800;font-size:1.25rem;color:var(--accent);letter-spacing:-0.03em;text-decoration:none}
+.logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#000;padding:7px 18px;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85}
+
+/* LAYOUT */
+.page-layout { display: grid; grid-template-columns: 280px 1fr; gap: 3rem; max-width: 1200px; margin: 0 auto; padding: 5rem 2rem 5rem; padding-top: 80px; }
+@media(max-width: 900px) { .page-layout { grid-template-columns: 1fr; } .toc-sidebar { display: none; } }
+
+/* TOC SIDEBAR */
+.toc-sidebar { position: sticky; top: 80px; height: fit-content; max-height: calc(100vh - 100px); overflow-y: auto; }
+.toc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.75rem; }
+.toc-nav { display: flex; flex-direction: column; gap: 2px; }
+.toc-link { color: var(--muted); font-size: 0.82rem; text-decoration: none; padding: 4px 10px; border-left: 2px solid transparent; transition: all 0.15s; border-radius: 0 4px 4px 0; }
+.toc-link:hover, .toc-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(56,189,248,0.05); }
+.toc-link.toc-sub { font-size: 0.78rem; padding-left: 22px; }
+
+/* ARTICLE BODY */
+.article-body { min-width: 0; }
+.breadcrumb { font-size: 0.78rem; color: var(--muted2); margin-bottom: 1.5rem; }
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--accent); }
+.module-badge { display: inline-block; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: var(--accent); padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 1rem; }
+.article-title { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
+.article-meta { font-size: 0.83rem; color: var(--muted); margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+
+/* OUTLINE BOX */
+.outline-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 3rem; }
+.outline-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.75rem; color: var(--text); }
+.outline-list { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.85rem; }
+.outline-list a { color: var(--accent); text-decoration: none; }
+.outline-list a:hover { text-decoration: underline; }
+.outline-list li { margin: 4px 0; }
+.outline-list ul { margin: 4px 0; padding-left: 1rem; }
+
+/* ARTICLE PROSE */
+.article-body h2 { font-family: var(--display); font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; margin: 3rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); scroll-margin-top: 80px; }
+.article-body h3 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 80px; }
+.article-body h4 { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.article-body p { margin-bottom: 1.25rem; color: var(--muted); font-size: 0.97rem; line-height: 1.85; }
+.article-body strong { color: var(--text); font-weight: 600; }
+.article-body em { color: var(--accent3); font-style: italic; }
+.article-body ul, .article-body ol { margin: 0 0 1.25rem 1.5rem; color: var(--muted); font-size: 0.95rem; }
+.article-body li { margin-bottom: 6px; line-height: 1.75; }
+.article-body code { font-family: var(--mono); font-size: 0.82em; background: rgba(56,189,248,0.08); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
+.article-body a { color: var(--accent2); text-decoration: none; }
+.article-body a:hover { text-decoration: underline; }
+
+/* CODE BLOCKS */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+.code-block-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot.r { background: #ff5f57; } .code-dot.y { background: #ffbd2e; } .code-dot.g { background: #28c840; }
+.code-filename { font-family: var(--mono); font-size: 0.73rem; color: var(--muted2); margin-left: 8px; }
+.code-block pre { padding: 1.5rem; overflow-x: auto; margin: 0; font-family: var(--mono); font-size: 0.82rem; line-height: 1.8; color: #e2e8f0; }
+/* Syntax colors */
+.kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; }
+.num { color: #f78c6c; } .cm { color: #546e7a; font-style: italic; }
+.cls { color: #ffcb6b; } .imp { color: #89ddff; } .op { color: #89ddff; }
+
+/* CALLOUT BOXES */
+.callout { display: flex; gap: 1rem; border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; border-width: 1px; border-style: solid; }
+.callout-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+.callout-body { font-size: 0.88rem; line-height: 1.75; }
+.callout-body strong { font-weight: 600; }
+.callout-title { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+.callout.note { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.22); color: var(--muted); }
+.callout.note .callout-title, .callout.note strong { color: var(--accent); }
+.callout.warning { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.22); color: var(--muted); }
+.callout.warning .callout-title, .callout.warning strong { color: var(--accent4); }
+.callout.tip { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); color: var(--muted); }
+.callout.tip .callout-title, .callout.tip strong { color: var(--accent3); }
+.callout.important { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.22); color: var(--muted); }
+.callout.important .callout-title, .callout.important strong { color: var(--accent5); }
+
+/* MATH DISPLAY */
+.math-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.75rem; margin: 1.25rem 0; overflow-x: auto; font-size: 1.05rem; text-align: center; }
+.math-label { font-size: 0.72rem; color: var(--muted2); font-family: var(--mono); margin-top: 0.5rem; text-align: right; }
+
+/* INLINE FIGURE / DIAGRAM */
+.figure { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; margin: 2rem 0; text-align: center; }
+.figure-caption { font-size: 0.8rem; color: var(--muted2); margin-top: 1rem; font-style: italic; }
+
+/* DATA TABLE */
+.data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.85rem; }
+.data-table th { padding: 10px 14px; background: var(--card2); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); text-align: left; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(99,179,237,0.03); }
+
+/* SUMMARY BOX */
+.summary-box { background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(129,140,248,0.07)); border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 1.75rem 2rem; margin: 3rem 0 2rem; }
+.summary-box h3 { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+.summary-box ul { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.88rem; }
+.summary-box li { margin-bottom: 6px; line-height: 1.7; }
+
+/* RESOURCE LIST */
+.resource-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.resource-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.resource-list li::before { content: '\2192'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.resource-list a { color: var(--accent2); }
+
+/* PREV/NEXT NAV */
+.page-nav { display: flex; justify-content: space-between; gap: 1rem; padding: 2rem; max-width: 1200px; margin: 0 auto; border-top: 1px solid var(--border); }
+.page-nav-btn { display: flex; flex-direction: column; gap: 4px; padding: 1rem 1.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; transition: all 0.2s; max-width: 45%; }
+.page-nav-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.page-nav-btn .nav-dir { font-size: 0.72rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; }
+.page-nav-btn .nav-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.page-nav-btn.next { text-align: right; margin-left: auto; }
+
+/* QUIZ/EXERCISE BOX */
+.exercise-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin: 2rem 0; }
+.exercise-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent4); margin-bottom: 0.5rem; }
+.exercise-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; }
+.exercise-body { font-size: 0.88rem; color: var(--muted); line-height: 1.75; }
+
+/* QUIZ BOX */
+.quiz-box { background: rgba(129,140,248,0.06); border: 1px solid rgba(129,140,248,0.22); border-radius: 14px; padding: 1.5rem; margin: 1.5rem 0; }
+.quiz-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.5rem; }
+.quiz-question { font-size: 0.93rem; color: var(--text); margin-bottom: 0.75rem; font-weight: 500; }
+.quiz-answer { margin-top: 0.5rem; }
+.quiz-answer summary { cursor: pointer; font-size: 0.82rem; color: var(--accent2); font-weight: 600; }
+.quiz-answer p { margin-top: 0.5rem; font-size: 0.86rem; color: var(--muted); }
+
+/* CELL (for assignment files - jupyter style) */
+.jupyter-cell { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin: 1.5rem 0; overflow: hidden; }
+.cell-header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted2); font-family: var(--mono); }
+.cell-input-label { color: var(--accent4); font-weight: 600; }
+.cell-body { padding: 1rem 1.25rem; }
+.jupyter-cell pre { padding: 1rem 1.25rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; background: var(--code-bg); margin: 0; }
+.cell-prompt { color: var(--accent3); font-weight: 700; }
+
+/* GRADING RUBRIC */
+.rubric-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+.rubric-table th { background: var(--card2); padding: 10px 14px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); }
+.rubric-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+
+/* DETAILS (collapsible hints) */
+details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; }
+details summary { cursor: pointer; font-size: 0.85rem; color: var(--accent2); font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
+
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">Hyper<span>Tune</span></a>
+    <ul class="nav-links">
+
+    </ul>
+    <a href="../index.html#curriculum" class="nav-cta">Start Learning</a>
+  </div>
+</nav>
+<div class="page-layout">
+  <aside class="toc-sidebar">
+    <div class="toc-label">On this page</div>
+    <nav class="toc-nav">
+<a href="#section-1" class="toc-link">1. Intuition First</a>
+<a href="#section-2" class="toc-link">2. The Mathematical Decomposition</a>
+<a href="#section-3" class="toc-link">3. The U-Curve and the Sweet Spot</a>
+<a href="#section-4" class="toc-link">4. Connecting HPs to Bias and Variance</a>
+<a href="#max-depth" class="toc-link toc-sub">4.1 max_depth</a>
+<a href="#c-svm" class="toc-link toc-sub">4.2 C in SVMs</a>
+<a href="#learning-rate-nn" class="toc-link toc-sub">4.3 learning_rate</a>
+<a href="#n-estimators-rf" class="toc-link toc-sub">4.4 n_estimators</a>
+<a href="#regularization-alpha" class="toc-link toc-sub">4.5 Regularization</a>
+<a href="#section-5" class="toc-link">5. Demonstrating the U-Curve</a>
+<a href="#section-6" class="toc-link">6. Double Descent</a>
+<a href="#section-7" class="toc-link">7. Decomposition in Code</a>
+<a href="#resources" class="toc-link">Useful Resources</a>
+    </nav>
+  </aside>
+  <article class="article-body">
+    <div class="breadcrumb"><a href="../index.html">HyperTune</a> › <a href="intro.html">Module 01</a> › The Bias-Variance Tradeoff</div>
+    <div class="article-header">
+      <div class="module-badge">Module 01 · Foundations</div>
+      <h1 class="article-title">The Bias-Variance Tradeoff: How Hyperparameters Control It</h1>
+      <div class="article-meta">Part of the <strong>HyperTune</strong> open course · Estimated read time: 15 min · Python 3.10+ · scikit-learn 1.4+</div>
+    </div>
+    <div class="outline-box">
+      <div class="outline-title">📋 Article Outline</div>
+      <ol class="outline-list">
+
+<li><a href="#section-1">1. Intuition First: What Are Bias and Variance?</a></li>
+<li><a href="#section-2">2. The Mathematical Decomposition</a></li>
+<li><a href="#section-3">3. The U-Curve and the Sweet Spot</a></li>
+<li><a href="#section-4">4. Connecting Specific Hyperparameters to Bias and Variance</a>
+  <ul>
+    <li><a href="#max-depth">4.1 max_depth in Decision Trees</a></li>
+    <li><a href="#c-svm">4.2 C in SVMs</a></li>
+    <li><a href="#learning-rate-nn">4.3 learning_rate in Neural Networks</a></li>
+    <li><a href="#n-estimators-rf">4.4 n_estimators in Random Forests</a></li>
+    <li><a href="#regularization-alpha">4.5 Regularization Strength</a></li>
+  </ul>
+</li>
+<li><a href="#section-5">5. Demonstrating the U-Curve in Code</a></li>
+<li><a href="#section-6">6. Double Descent: When the U-Curve Lies</a></li>
+<li><a href="#section-7">7. The Bias-Variance Decomposition in Code</a></li>
+<li><a href="#resources">Useful Resources</a></li>
+      </ol>
+    </div>
+
+<section id="section-1">
+  <h2>1. Intuition First: What Are Bias and Variance?</h2>
+  <p>Imagine you are trying to hit a target with darts, blindfolded, and a friend is reading out suggestions after each throw. <strong>Bias</strong> is whether your average throw lands in the bullseye or systematically off to the left. <strong>Variance</strong> is how scattered your throws are around your own average — even if that average is dead center, you might still never actually hit the bullseye because individual throws are all over the place. The dart-throwing analogy is decades old but it survives because it captures exactly the two failure modes that statistical models exhibit.</p>
+  <p>In machine learning, the "target" is the true data-generating function $f(x)$, and each "throw" is a model $\hat{f}(x)$ trained on a particular sample of training data. A model with high bias is systematically wrong — its average prediction across many training sets is far from $f(x)$, usually because it is too simple to capture the real structure of the data. A model with high variance is unstable — its predictions swing wildly depending on exactly which training samples it saw, even though on average it might be approximately right. The art of model selection (and the art of hyperparameter tuning) is to find the model whose bias and variance combine to give the smallest total error on unseen data.</p>
+  <p>Crucially, bias and variance are not properties of a single fitted model — they are properties of the <em>training procedure</em>, averaged over the hypothetical distribution of training sets you could have drawn. When we say "this model has high variance," we really mean "if we retrained this model on many different training sets of the same size, its predictions would vary a lot." This is why we need cross-validation to estimate these quantities: a single fit gives us one sample from the distribution, not the distribution itself.</p>
+</section>
+
+<section id="section-2">
+  <h2>2. The Mathematical Decomposition</h2>
+  <p>For squared-error regression, the bias-variance decomposition is a precise mathematical identity, not an approximation. Let $f(x)$ be the true function, $\hat{f}(x)$ be our model's prediction, and $\sigma^2$ be the irreducible noise in the data-generating process — the variance of $y$ around $f(x)$ that no model can ever eliminate. Then the expected test MSE decomposes cleanly into three terms.</p>
+  <div class="math-block">$$ \mathbb{{E}}\left[(y - \hat{{f}}(x))^2\right] = \underbrace{{\left(\mathbb{{E}}[\hat{{f}}(x)] - f(x)\right)^2}}_{{\text{{Bias}}^2}} + \underbrace{{\mathbb{{E}}\left[\left(\hat{{f}}(x) - \mathbb{{E}}[\hat{{f}}(x)]\right)^2\right]}}_{{\text{{Variance}}}} + \underbrace{{\sigma^2}}_{{\text{{Irreducible noise}}}} $$ <div class="math-label">Eq. 1 — The bias-variance decomposition for squared-error loss.</div></div>
+  <p>Read the equation left to right. <strong>$\mathbb{E}[(y - \hat{f}(x))^2]$</strong> is the expected squared test error, where the expectation is over both the training set (which determines $\hat{f}$) and the test point $(x, y)$. <strong>$\mathbb{E}[\hat{f}(x)] - f(x)$</strong> is the bias: how far the average prediction (over training sets) is from the truth. <strong>$\mathbb{E}[(\hat{f}(x) - \mathbb{E}[\hat{f}(x)])^2]$</strong> is the variance: how much individual predictions scatter around their own mean. And <strong>$\sigma^2$</strong> is the irreducible noise floor — the part of $y$ that even a perfect model could not predict.</p>
+  <p>Let's translate each symbol to a concrete object. $f(x)$ is the Bayes-optimal prediction — the conditional mean $\mathbb{E}[y | x]$. $\hat{f}(x)$ is whatever your specific estimator produces. The expectation $\mathbb{E}[\hat{f}(x)]$ is over the distribution of training sets; in practice we approximate it with cross-validation or bootstrap. The irreducible noise $\sigma^2$ is set by the data-generating process, not by your model, and it is the absolute lower bound on test error.</p>
+  <div class="callout note"><div class="callout-icon">📌</div><div class="callout-body"><div class="callout-title">Why the decomposition is for squared error only</div><p>The clean three-way split into Bias² + Variance + σ² is exact for squared-error loss. For 0-1 classification loss there is no exact decomposition of the same form — bias and variance interact in non-additive ways. There are analogues (Pedregosa et al. and others have proposed definitions) but they don't share the same algebraic cleanliness. For practical hyperparameter reasoning, the squared-error decomposition is the right mental model even when you're doing classification, because the qualitative behavior (low complexity → high bias, high complexity → high variance) carries over.</p></div></div>
+</section>
+
+<section id="section-3">
+  <h2>3. The U-Curve and the Sweet Spot</h2>
+  <p>If you plot total error against model complexity, you get the famous U-shaped curve. On the left, complexity is too low and bias dominates — your linear model can't capture the curvature of the true function. On the right, complexity is too high and variance dominates — your high-degree polynomial fits every wiggle of the training data, including the noise. In the middle, there is a sweet spot where bias has come down enough and variance hasn't yet blown up, and total error is minimized.</p>
+  <div class="figure">
+<svg viewBox="0 0 600 360" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;">
+  <defs>
+    <linearGradient id="totalGrad" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#f472b6" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#f472b6" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- Axes -->
+  <line x1="60" y1="300" x2="560" y2="300" stroke="#8899aa" stroke-width="1.5"/>
+  <line x1="60" y1="40" x2="60" y2="300" stroke="#8899aa" stroke-width="1.5"/>
+  <text x="300" y="340" fill="#8899aa" font-size="13" text-anchor="middle" font-family="Inter">Model complexity (e.g. max_depth)</text>
+  <text x="20" y="170" fill="#8899aa" font-size="13" text-anchor="middle" font-family="Inter" transform="rotate(-90 20 170)">Error</text>
+  <!-- Bias² curve (decreasing) -->
+  <path d="M 80 80 Q 200 200 320 260 T 540 290" stroke="#f59e0b" stroke-width="2.5" fill="none"/>
+  <text x="500" y="280" fill="#f59e0b" font-size="13" font-weight="600">Bias²</text>
+  <!-- Variance curve (increasing) -->
+  <path d="M 80 290 Q 200 290 320 250 T 540 70" stroke="#38bdf8" stroke-width="2.5" fill="none"/>
+  <text x="500" y="80" fill="#38bdf8" font-size="13" font-weight="600">Variance</text>
+  <!-- Total error = bias² + variance + noise -->
+  <path d="M 80 110 Q 200 170 320 200 T 540 100" stroke="#f472b6" stroke-width="3" fill="none"/>
+  <text x="500" y="120" fill="#f472b6" font-size="13" font-weight="600">Total error</text>
+  <!-- Sweet spot marker -->
+  <line x1="320" y1="40" x2="320" y2="300" stroke="#34d399" stroke-width="1" stroke-dasharray="4 4"/>
+  <circle cx="320" cy="200" r="6" fill="#34d399"/>
+  <text x="330" y="60" fill="#34d399" font-size="13" font-weight="700">Sweet spot</text>
+  <!-- Underfit / Overfit zones -->
+  <text x="140" y="30" fill="#8899aa" font-size="11">Underfitting</text>
+  <text x="450" y="30" fill="#8899aa" font-size="11">Overfitting</text>
+  <!-- Noise floor -->
+  <line x1="60" y1="270" x2="560" y2="270" stroke="#64748b" stroke-width="1" stroke-dasharray="2 4"/>
+  <text x="540" y="265" fill="#64748b" font-size="10" text-anchor="end">noise floor σ²</text>
+</svg>
+<div class="figure-caption">Figure 1 — The bias-variance U-curve. As model complexity rises, bias² falls but variance rises. The sweet spot is where their sum is minimized. The dashed line at the bottom is the irreducible noise floor σ², which no model can beat.</div></div>
+  <p>Every regularization hyperparameter in scikit-learn moves you left or right on this curve. <strong>Increasing</strong> <code>max_depth</code> moves you right (more complexity, lower bias, higher variance). <strong>Increasing</strong> <code>alpha</code> in Ridge moves you left (more regularization, higher bias, lower variance). <strong>Increasing</strong> <code>min_samples_leaf</code> moves you left. <strong>Decreasing</strong> <code>C</code> in an SVM moves you left. The entire job of hyperparameter tuning is to find the sweet spot for your particular dataset — and the sweet spot moves around depending on how much data you have, how noisy it is, and what model family you are using.</p>
+</section>
+
+<section id="section-4">
+  <h2>4. Connecting Specific Hyperparameters to Bias and Variance</h2>
+  <p>Once you internalize the U-curve, you can read any hyperparameter's effect by asking one question: <em>does this make the model more or less flexible?</em> More flexible means lower bias, higher variance. Less flexible means the opposite. Let's walk through the most important hyperparameters you will tune.</p>
+  <h3 id="max-depth">4.1 max_depth in Decision Trees</h3>
+  <p>A tree of depth 1 makes a single split — its decision boundary is one axis-aligned line. That is extremely inflexible: high bias, low variance. A tree of depth 30 can have up to $2^{30}$ leaves, more than enough to memorize any realistic training set: low bias (on training), catastrophically high variance. The sweet spot is usually in the 4–12 range for tabular data, depending on sample size and feature count.</p>
+  <h3 id="c-svm">4.2 C in SVMs</h3>
+  <p><code>C</code> is the box constraint — the penalty applied to misclassifications during training. Low <code>C</code> means misclassifications are cheap, so the optimizer prefers a wider margin with more violations: high bias, low variance. High <code>C</code> means misclassifications are expensive, so the optimizer will fit a tight boundary that classifies training points correctly even at the cost of a narrow, wiggly margin: low bias, high variance. The C-gamma pair is the single most important tuning decision for RBF SVMs.</p>
+  <h3 id="learning-rate-nn">4.3 learning_rate in Neural Networks</h3>
+  <p>Learning rate doesn't fit cleanly into the bias-variance picture because it affects the optimization process, not the model family. But empirically: too high a learning rate causes the optimizer to bounce around the loss landscape and may converge to a sharper minimum (which generalizes worse — higher variance). Too low a learning rate causes the optimizer to settle into whichever basin it starts nearest, often failing to find a good one (effectively high bias). A well-tuned schedule (which we cover in Module 08) gives you the best of both: large steps early, small steps late.</p>
+  <h3 id="n-estimators-rf">4.4 n_estimators in Random Forests</h3>
+  <p>Here is a case where the bias-variance story is unusual: <strong>adding more trees reduces variance without changing bias</strong>. Each tree in a random forest has the same bias as a single decision tree (averaged over bootstrap samples, slightly higher than an unbootstrapped tree). Averaging many trees reduces variance by a factor of roughly $1/n$ if the trees were independent — in practice less, because they are correlated, but still substantial. This is why random forests have a "plateau" curve of OOB error vs n_estimators rather than a U-curve: more is essentially always at least as good, with diminishing returns.</p>
+  <h3 id="regularization-alpha">4.5 Regularization Strength (alpha, lambda)</h3>
+  <p>L2 regularization (Ridge, <code>alpha</code> in many sklearn models) adds a penalty $\lambda \|w\|^2$ to the loss. Larger $\lambda$ shrinks the coefficients toward zero, reducing variance at the cost of bias — the model becomes less able to fit subtle patterns but also less likely to chase noise. L1 regularization (Lasso) does the same but with $\lambda |w|$, which produces sparse coefficients (some go exactly to zero). Both move you left on the U-curve; the question is whether you want the smooth shrinkage of L2 or the sparsity-inducing shrinkage of L1.</p>
+  <div class="callout tip"><div class="callout-icon">💡</div><div class="callout-body"><div class="callout-title">Read any hyperparameter with one question</div><p>When you encounter a new hyperparameter, ask: <strong>"Does raising this make the model more flexible or less flexible?"</strong> More flexible → lowers bias, raises variance. Less flexible → raises bias, lowers variance. There are a handful of exceptions (n_estimators in ensembles is the main one), but this rule covers 90% of the hyperparameters you will tune.</p></div></div>
+</section>
+
+<section id="section-5">
+  <h2>5. Demonstrating the U-Curve in Code</h2>
+  <p>Let's make this concrete. We'll train <code>DecisionTreeClassifier</code> on the breast cancer dataset with <code>max_depth</code> ranging from 1 to 20, and plot train accuracy and 5-fold CV accuracy on the same axes. The widening gap between train and CV accuracy is the empirical signature of variance growing as complexity rises.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── bias_variance_curve.py ────────────────────────────────────────────────────
+# Empirically demonstrate the bias-variance tradeoff by sweeping max_depth
+# on the breast cancer dataset. Plot train vs CV accuracy to see where the
+# gap (variance) starts to explode.
+
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import load_breast_cancer
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import cross_val_score
+
+X, y = load_breast_cancer(return_X_y=True)
+depths = np.arange(1, 21)
+
+train_acc, cv_mean, cv_std = [], [], []
+for d in depths:
+    clf = DecisionTreeClassifier(max_depth=d, random_state=42)
+    clf.fit(X, y)
+    train_acc.append(clf.score(X, y))
+    cv = cross_val_score(clf, X, y, cv=5, scoring=&quot;accuracy&quot;)
+    cv_mean.append(cv.mean())
+    cv_std.append(cv.std())
+
+# ─── Plot ──────────────────────────────────────────────────────────────────────
+plt.figure(figsize=(9, 5.5), constrained_layout=True)
+plt.plot(depths, train_acc, &quot;o-&quot;, color=&quot;#38bdf8&quot;, label=&quot;Train accuracy&quot;)
+plt.plot(depths, cv_mean, &quot;s-&quot;, color=&quot;#f472b6&quot;, label=&quot;CV accuracy (5-fold)&quot;)
+plt.fill_between(depths,
+                 np.array(cv_mean) - np.array(cv_std),
+                 np.array(cv_mean) + np.array(cv_std),
+                 color=&quot;#f472b6&quot;, alpha=0.15, label=&quot;CV ±1 std&quot;)
+plt.xlabel(&quot;max_depth&quot;, fontsize=12)
+plt.ylabel(&quot;Accuracy&quot;, fontsize=12)
+plt.title(&quot;Bias-Variance U-curve: Decision Tree on breast_cancer&quot;, fontsize=13)
+plt.legend(loc=&quot;lower right&quot;)
+plt.grid(alpha=0.2)
+plt.savefig(&quot;bias_variance_curve.png&quot;, dpi=120)
+plt.show()
+
+# ─── Report the sweet spot ────────────────────────────────────────────────────
+best_idx = int(np.argmax(cv_mean))
+print(f&quot;Best max_depth = {depths[best_idx]}  (CV acc = {cv_mean[best_idx]:.4f})&quot;)
+print(f&quot;At that depth: train acc = {train_acc[best_idx]:.4f}, &quot;
+      f&quot;train-CV gap = {train_acc[best_idx] - cv_mean[best_idx]:.4f}&quot;)
+</pre></div>
+  <p>What you will see when you run this: train accuracy climbs monotonically from about 0.93 at depth 1 to 1.00 by depth 6 or 7 (the tree has fully memorized the training set). CV accuracy peaks around depth 3–5 at about 0.93–0.94, then slowly degrades as the tree overfits. The widening gap between train and CV accuracy — from 0.01 at depth 2 to 0.07+ at depth 20 — is exactly the variance term growing. The sweet spot, where the gap is small and CV accuracy is highest, is your hyperparameter target.</p>
+</section>
+
+<section id="section-6">
+  <h2>6. Double Descent: When the U-Curve Lies</h2>
+  <p>For most of the last three decades, the U-curve was treated as a fundamental law: there is a sweet spot, beyond which more complexity hurts. Then modern deep learning happened, and practitioners noticed that if you keep increasing model complexity <em>past</em> the overfitting regime, test error sometimes starts <em>dropping again</em>. Belkin, Hsu, Ma, and Mandal (2018) gave this phenomenon a name — <strong>double descent</strong> — and a theoretical explanation rooted in the interaction between model capacity and the optimization procedure.</p>
+  <p>The double descent curve has two minima separated by a peak. The first minimum is the classical U-curve sweet spot. The peak (called the "interpolation threshold") is where the model has just enough capacity to memorize the training set — zero training error, maximum variance. Past the peak, the model is over-parameterized; many solutions achieve zero training error, and gradient descent happens to find one that generalizes well, often <em>better</em> than the classical sweet spot. This is why modern neural networks are routinely trained with billions of parameters and still generalize.</p>
+  <p>For scikit-learn models on tabular data, double descent is rarely the dominant story. You will see it occasionally with very high-degree polynomial feature expansions or with random forests at extreme tree counts, but the classical U-curve is still the right mental model for day-to-day tuning. Just be aware that "more complexity always overfits" is a heuristic, not a theorem, and the heuristic breaks down precisely in the regime where modern deep learning lives.</p>
+  <div class="callout important"><div class="callout-icon">🔥</div><div class="callout-body"><div class="callout-title">Double descent does NOT mean &quot;skip regularization&quot;</div><p>Double descent says <em>if</em> you are going to over-parameterize, you can keep going past the interpolation threshold and recover. It does <strong>not</strong> say "regularization is unnecessary in deep learning." In practice, modern deep models still benefit from weight decay, dropout, and data augmentation. Double descent explains why over-parameterized models are not automatically doomed; it does not eliminate the need to tune regularization.</p></div></div>
+</section>
+
+<section id="section-7">
+  <h2>7. The Bias-Variance Decomposition in Code</h2>
+  <p>For squared-error regression we can estimate bias and variance directly using bootstrap resampling. The recipe is: draw $B$ bootstrap samples from the training set, fit the model on each, predict on a fixed test set, then decompose the average squared error into bias², variance, and (if you know the true function) irreducible noise.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── bias_variance_decomposition.py ─────────────────────────────────────────────
+# Numerically estimate bias² and variance for a regression model using
+# bootstrap resampling on a synthetic dataset where we know f(x).
+
+import numpy as np
+from sklearn.tree import DecisionTreeRegressor
+
+# ─── True function: f(x) = sin(2πx) on [0,1] ──────────────────────────────────
+def true_f(x): return np.sin(2 * np.pi * x)
+
+rng = np.random.default_rng(42)
+n_train, n_test, B = 50, 200, 200
+sigma = 0.3  # irreducible noise std dev
+
+# Fixed test grid (no noise here — we evaluate bias/var against true f)
+X_test = np.linspace(0, 1, n_test).reshape(-1, 1)
+f_test = true_f(X_test.ravel())
+
+for depth in [1, 4, 20]:
+    preds = np.zeros((B, n_test))
+    for b in range(B):
+        X_tr = rng.uniform(0, 1, n_train).reshape(-1, 1)
+        y_tr = true_f(X_tr.ravel()) + rng.normal(0, sigma, n_train)
+        m = DecisionTreeRegressor(max_depth=depth, random_state=b)
+        m.fit(X_tr, y_tr)
+        preds[b] = m.predict(X_test)
+
+    mean_pred = preds.mean(axis=0)
+    bias_sq = np.mean((mean_pred - f_test) ** 2)
+    variance = np.mean(preds.var(axis=0))
+    total = bias_sq + variance + sigma ** 2
+
+    print(f&quot;max_depth={depth:2d}  bias²={bias_sq:.4f}  variance={variance:.4f}  &quot;
+          f&quot;noise={sigma**2:.4f}  total={total:.4f}&quot;)
+</pre></div>
+  <p>You should see something like: depth 1 has high bias² and low variance (it can only produce a single split — way too rigid for $\sin(2\pi x)$); depth 4 has low bias² and modest variance (the sweet spot); depth 20 has near-zero bias² but large variance (it memorizes each bootstrap sample, including the noise). The total error tracks the U-curve exactly, which is the empirical confirmation of equation 1.</p>
+  <div class="quiz-box">
+  <div class="quiz-label">🧠 Quick Check</div>
+  <p class="quiz-question">If you observe train accuracy 0.99 and validation accuracy 0.72 for a Random Forest, which term in the bias-variance decomposition is the dominant cause of the gap?</p>
+  <details class="quiz-answer">
+    <summary>Show Answer</summary>
+    <p>Variance. A train-CV gap of 0.27 means the model&#x27;s predictions swing wildly between training and validation sets — the textbook signature of overfitting. The model has effectively memorized the training data. Possible fixes: reduce max_depth, increase min_samples_leaf, add more n_estimators (which reduces variance without affecting bias), or get more training data.</p>
+  </details>
+</div>
+</section>
+
+<div class="summary-box"><h3>🎯 Key Takeaways</h3><ul><li><strong>Bias</strong> = systematic error from being too simple; <strong>variance</strong> = sensitivity to the particular training set; both are properties of the training procedure, not a single fit.</li><li><strong>For squared error</strong>, $\text{MSE} = \text{Bias}^2 + \text{Variance} + \sigma^2$ — an exact identity, not an approximation.</li><li><strong>Every regularization hyperparameter</strong> moves you along the U-curve: more flexibility → lower bias, higher variance.</li><li><strong>The sweet spot</strong> is where total error is minimized, not where train accuracy is highest — train-CV gap is your variance gauge.</li><li><strong>Double descent</strong> is real but does not obsolete regularization; it explains why over-parameterized models can still generalize.</li></ul></div>
+
+<section id="resources"><h2>Useful Resources</h2><ul class="resource-list"><li><a href="https://www.pnas.org/doi/10.1073/pnas.1903070116">Belkin, Hsu, Ma, Mandal (2018) — Reconciling modern machine-learning practice and the bias-variance trade-off</a></li><li><a href="https://link.springer.com/article/10.1007/BF00175447">Geman, Bienenstock, Doursat (1992) — Neural Networks and the Bias/Variance Dilemma</a></li><li><a href="https://scikit-learn.org/stable/auto_examples/model_selection/plot_underfitting_overfitting.html">Pedregosa et al. — Scikit-learn: Machine Learning in Python (section on underfitting vs overfitting)</a></li><li><a href="https://www.deeplearningbook.org/contents/ml.html">Goodfellow, Bengio, Courville — Deep Learning book, chapter 5.2 (Bias-Variance Decomposition)</a></li><li><a href="https://www.youtube.com/watch?v=EuBBz3bI-aA">StatQuest — Bias-Variance Tradeoff in 8 minutes (video)</a></li><li><a href="https://hastie.su.domains/ElemStatLearn/">Elements of Statistical Learning — Hastie, Tibshirani, Friedman (chapter 2.9, chapter 7)</a></li></ul></section>
+
+  </article>
+</div>
+<div class="page-nav"><a href="part1_params_vs_hyperparams.html" class="page-nav-btn prev"><span class="nav-dir">← Previous</span><span class="nav-title">Parameters vs Hyperparameters</span></a><a href="part3_cross_validation.html" class="page-nav-btn next"><span class="nav-dir">Next →</span><span class="nav-title">Cross-Validation</span></a></div>
+<footer>
+  <div class="container">
+    <div style="font-size:1.5rem;font-weight:800;font-family:var(--display);color:var(--accent);margin-bottom:0.5rem">HyperTune</div>
+    <p style="color:var(--muted2);font-size:0.85rem;max-width:500px;margin:0 auto">The complete hyperparameter tuning reference for ML &amp; DL engineers. Covers scikit-learn, XGBoost, LightGBM, PyTorch, Optuna, Ray Tune, and beyond — from first principles to production.</p>
+    <div style="margin-top:2rem;font-size:0.78rem;color:var(--muted2)">Built for learning · Python 3.10+ · scikit-learn 1.4+ · Optuna 3.0+</div>
+  </div>
+</footer>
+<script>
+(function() {
+  const links = Array.from(document.querySelectorAll('.toc-link'));
+  const sections = links
+    .map(l => document.querySelector(l.getAttribute('href')))
+    .filter(Boolean);
+  if (!('IntersectionObserver' in window) || sections.length === 0) return;
+  const setActive = id => {
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+  };
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  sections.forEach(s => observer.observe(s));
+})();
+</script>
+</body>
+</html>

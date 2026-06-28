@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assignment 09 Solution — HyperTune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<style>
+
+:root {
+  --bg: #070b14; --bg2: #0c1220; --bg3: #111827;
+  --card: #131d2e; --card2: #1a2640;
+  --border: rgba(99,179,237,0.12); --border2: rgba(99,179,237,0.22);
+  --accent: #38bdf8; --accent2: #818cf8; --accent3: #34d399;
+  --accent4: #f59e0b; --accent5: #f472b6;
+  --text: #f0f6fc; --muted: #8899aa; --muted2: #64748b;
+  --code-bg: #0d1117;
+  --ff: 'Inter', sans-serif; --mono: 'JetBrains Mono', monospace;
+  --display: 'Sora', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,11,20,0.85);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:var(--display);font-weight:800;font-size:1.25rem;color:var(--accent);letter-spacing:-0.03em;text-decoration:none}
+.logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#000;padding:7px 18px;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85}
+
+/* LAYOUT */
+.page-layout { display: grid; grid-template-columns: 280px 1fr; gap: 3rem; max-width: 1200px; margin: 0 auto; padding: 5rem 2rem 5rem; padding-top: 80px; }
+@media(max-width: 900px) { .page-layout { grid-template-columns: 1fr; } .toc-sidebar { display: none; } }
+
+/* TOC SIDEBAR */
+.toc-sidebar { position: sticky; top: 80px; height: fit-content; max-height: calc(100vh - 100px); overflow-y: auto; }
+.toc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.75rem; }
+.toc-nav { display: flex; flex-direction: column; gap: 2px; }
+.toc-link { color: var(--muted); font-size: 0.82rem; text-decoration: none; padding: 4px 10px; border-left: 2px solid transparent; transition: all 0.15s; border-radius: 0 4px 4px 0; }
+.toc-link:hover, .toc-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(56,189,248,0.05); }
+.toc-link.toc-sub { font-size: 0.78rem; padding-left: 22px; }
+
+/* ARTICLE BODY */
+.article-body { min-width: 0; }
+.breadcrumb { font-size: 0.78rem; color: var(--muted2); margin-bottom: 1.5rem; }
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--accent); }
+.module-badge { display: inline-block; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: var(--accent); padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 1rem; }
+.article-title { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
+.article-meta { font-size: 0.83rem; color: var(--muted); margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+
+/* OUTLINE BOX */
+.outline-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 3rem; }
+.outline-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.75rem; color: var(--text); }
+.outline-list { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.85rem; }
+.outline-list a { color: var(--accent); text-decoration: none; }
+.outline-list a:hover { text-decoration: underline; }
+.outline-list li { margin: 4px 0; }
+.outline-list ul { margin: 4px 0; padding-left: 1rem; }
+
+/* ARTICLE PROSE */
+.article-body h2 { font-family: var(--display); font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; margin: 3rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); scroll-margin-top: 80px; }
+.article-body h3 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 80px; }
+.article-body h4 { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.article-body p { margin-bottom: 1.25rem; color: var(--muted); font-size: 0.97rem; line-height: 1.85; }
+.article-body strong { color: var(--text); font-weight: 600; }
+.article-body em { color: var(--accent3); font-style: italic; }
+.article-body ul, .article-body ol { margin: 0 0 1.25rem 1.5rem; color: var(--muted); font-size: 0.95rem; }
+.article-body li { margin-bottom: 6px; line-height: 1.75; }
+.article-body code { font-family: var(--mono); font-size: 0.82em; background: rgba(56,189,248,0.08); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
+.article-body a { color: var(--accent2); text-decoration: none; }
+.article-body a:hover { text-decoration: underline; }
+
+/* CODE BLOCKS */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+.code-block-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot.r { background: #ff5f57; } .code-dot.y { background: #ffbd2e; } .code-dot.g { background: #28c840; }
+.code-filename { font-family: var(--mono); font-size: 0.73rem; color: var(--muted2); margin-left: 8px; }
+.code-block pre { padding: 1.5rem; overflow-x: auto; margin: 0; font-family: var(--mono); font-size: 0.82rem; line-height: 1.8; color: #e2e8f0; }
+/* Syntax colors */
+.kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; }
+.num { color: #f78c6c; } .cm { color: #546e7a; font-style: italic; }
+.cls { color: #ffcb6b; } .imp { color: #89ddff; } .op { color: #89ddff; }
+
+/* CALLOUT BOXES */
+.callout { display: flex; gap: 1rem; border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; border-width: 1px; border-style: solid; }
+.callout-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+.callout-body { font-size: 0.88rem; line-height: 1.75; }
+.callout-body strong { font-weight: 600; }
+.callout-title { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+.callout.note { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.22); color: var(--muted); }
+.callout.note .callout-title, .callout.note strong { color: var(--accent); }
+.callout.warning { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.22); color: var(--muted); }
+.callout.warning .callout-title, .callout.warning strong { color: var(--accent4); }
+.callout.tip { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); color: var(--muted); }
+.callout.tip .callout-title, .callout.tip strong { color: var(--accent3); }
+.callout.important { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.22); color: var(--muted); }
+.callout.important .callout-title, .callout.important strong { color: var(--accent5); }
+
+/* MATH DISPLAY */
+.math-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.75rem; margin: 1.25rem 0; overflow-x: auto; font-size: 1.05rem; text-align: center; }
+.math-label { font-size: 0.72rem; color: var(--muted2); font-family: var(--mono); margin-top: 0.5rem; text-align: right; }
+
+/* INLINE FIGURE / DIAGRAM */
+.figure { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; margin: 2rem 0; text-align: center; }
+.figure-caption { font-size: 0.8rem; color: var(--muted2); margin-top: 1rem; font-style: italic; }
+
+/* DATA TABLE */
+.data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.85rem; }
+.data-table th { padding: 10px 14px; background: var(--card2); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); text-align: left; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(99,179,237,0.03); }
+
+/* SUMMARY BOX */
+.summary-box { background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(129,140,248,0.07)); border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 1.75rem 2rem; margin: 3rem 0 2rem; }
+.summary-box h3 { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+.summary-box ul { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.88rem; }
+.summary-box li { margin-bottom: 6px; line-height: 1.7; }
+
+/* RESOURCE LIST */
+.resource-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.resource-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.resource-list li::before { content: '\2192'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.resource-list a { color: var(--accent2); }
+
+/* PREV/NEXT NAV */
+.page-nav { display: flex; justify-content: space-between; gap: 1rem; padding: 2rem; max-width: 1200px; margin: 0 auto; border-top: 1px solid var(--border); }
+.page-nav-btn { display: flex; flex-direction: column; gap: 4px; padding: 1rem 1.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; transition: all 0.2s; max-width: 45%; }
+.page-nav-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.page-nav-btn .nav-dir { font-size: 0.72rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; }
+.page-nav-btn .nav-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.page-nav-btn.next { text-align: right; margin-left: auto; }
+
+/* QUIZ/EXERCISE BOX */
+.exercise-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin: 2rem 0; }
+.exercise-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent4); margin-bottom: 0.5rem; }
+.exercise-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; }
+.exercise-body { font-size: 0.88rem; color: var(--muted); line-height: 1.75; }
+
+/* QUIZ BOX */
+.quiz-box { background: rgba(129,140,248,0.06); border: 1px solid rgba(129,140,248,0.22); border-radius: 14px; padding: 1.5rem; margin: 1.5rem 0; }
+.quiz-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.5rem; }
+.quiz-question { font-size: 0.93rem; color: var(--text); margin-bottom: 0.75rem; font-weight: 500; }
+.quiz-answer { margin-top: 0.5rem; }
+.quiz-answer summary { cursor: pointer; font-size: 0.82rem; color: var(--accent2); font-weight: 600; }
+.quiz-answer p { margin-top: 0.5rem; font-size: 0.86rem; color: var(--muted); }
+
+/* CELL (for assignment files - jupyter style) */
+.jupyter-cell { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin: 1.5rem 0; overflow: hidden; }
+.cell-header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted2); font-family: var(--mono); }
+.cell-input-label { color: var(--accent4); font-weight: 600; }
+.cell-body { padding: 1rem 1.25rem; }
+.jupyter-cell pre { padding: 1rem 1.25rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; background: var(--code-bg); margin: 0; }
+.cell-prompt { color: var(--accent3); font-weight: 700; }
+
+/* GRADING RUBRIC */
+.rubric-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+.rubric-table th { background: var(--card2); padding: 10px 14px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); }
+.rubric-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+
+/* DETAILS (collapsible hints) */
+details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; }
+details summary { cursor: pointer; font-size: 0.85rem; color: var(--accent2); font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
+
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">Hyper<span>Tune</span></a>
+    <ul class="nav-links">
+
+    </ul>
+    <a href="../index.html#curriculum" class="nav-cta">Start Learning</a>
+  </div>
+</nav>
+<div class="page-layout">
+  <aside class="toc-sidebar">
+    <div class="toc-label">On this page</div>
+    <nav class="toc-nav">
+<a href="#intro" class="toc-link">Solution Walkthrough</a>
+<a href="#sol-task1" class="toc-link">Task 1 — FLAML Solution</a>
+<a href="#sol-task2" class="toc-link">Task 2 — Optuna Solution</a>
+<a href="#sol-task3" class="toc-link">Task 3 — FLAML Inspection</a>
+<a href="#sol-task4" class="toc-link">Task 4 — auto-sklearn Solution</a>
+<a href="#sol-comparison" class="toc-link">Side-by-Side Comparison</a>
+<a href="#resources" class="toc-link">Resources</a>
+    </nav>
+  </aside>
+  <article class="article-body">
+    <div class="breadcrumb"><a href="../index.html">HyperTune</a> › <a href="intro.html">Module 09</a> › Assignment 09 Solution</div>
+    <div class="article-header">
+      <div class="module-badge">Module 09 · Assignment Solution</div>
+      <h1 class="article-title">Assignment 09 — Solution Walkthrough</h1>
+      <div class="article-meta">Solution · Difficulty: ★★★☆☆ · Run time: ~12 minutes total (300s FLAML + 300s Optuna + 600s auto-sklearn)</div>
+    </div>
+    <div class="outline-box">
+      <div class="outline-title">📋 Article Outline</div>
+      <ol class="outline-list">
+
+<li><a href="#intro">Solution Walkthrough</a></li>
+<li><a href="#sol-task1">Task 1 — FLAML 300-Second Run</a></li>
+<li><a href="#sol-task2">Task 2 — Optuna XGBoost-Only</a></li>
+<li><a href="#sol-task3">Task 3 — Inspect FLAML's Pipeline</a></li>
+<li><a href="#sol-task4">Task 4 (Bonus) — auto-sklearn</a></li>
+<li><a href="#sol-comparison">Side-by-Side Comparison</a></li>
+<li><a href="#resources">Useful Resources</a></li>
+      </ol>
+    </div>
+
+<section id="intro">
+  <h2>Solution Walkthrough</h2>
+  <p>Below are reference solutions for every task in Assignment 09. The solutions assume a Linux machine with <code>flaml[automl]</code>, <code>optuna</code>, <code>xgboost</code>, and (for the bonus) <code>auto-sklearn</code> installed in a clean conda env. On a different OS, install via Docker or WSL2; the code itself is OS-agnostic.</p>
+  <div class="callout warning"><div class="callout-icon">⚠️</div><div class="callout-body"><div class="callout-title">Use the solution ethically</div><p>If you are taking this course for credit, do not submit this solution as your own work. Use it to unstick yourself when blocked, or to compare your approach after you have attempted the task. AutoML is a skill — you only build intuition by running the systems yourself, watching their trial logs, and seeing what they actually choose.</p></div></div>
+</section>
+
+<section id="sol-task1">
+  <h2>Task 1 — FLAML 300-Second Run</h2>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── sol_task1_flaml.py ───────────────────────────────────────────────────────
+import time
+from flaml import AutoML
+from sklearn.datasets import fetch_openml
+from sklearn.model_selection import train_test_split
+
+X, y = fetch_openml(name=&quot;credit-g&quot;, version=1, as_frame=True, return_X_y=True)
+X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2,
+                                          random_state=42, stratify=y)
+
+automl = AutoML()
+t0 = time.time()
+automl.fit(
+    X_train=X_tr, y_train=y_tr,
+    task=&quot;classification&quot;,
+    metric=&quot;accuracy&quot;,
+    time_budget=300,
+    seed=42,
+    verbose=0,
+)
+elapsed = time.time() - t0
+
+test_acc = automl.score(X_te, y_te)
+print(f&quot;Best estimator: {automl.best_estimator}&quot;)
+print(f&quot;Best loss:      {automl.best_loss:.4f}  (acc = {1 - automl.best_loss:.4f})&quot;)
+print(f&quot;Best config:    {automl.best_config}&quot;)
+print(f&quot;Test accuracy:  {test_acc:.4f}&quot;)
+print(f&quot;Actual elapsed: {elapsed:.1f}s  (budget was 300s)&quot;)
+</pre></div>
+  <p>Typical output: best estimator is <code>lgbm</code> (LightGBM), test accuracy ~0.76–0.78, actual elapsed time within 1–5 seconds of the 300-second budget. The best config will be something like <code>learning_rate=0.1, n_estimators=200, max_depth=6, num_leaves=31</code> — a sensible LightGBM default that FLAML converged on after exploring cheaper alternatives.</p>
+</section>
+
+<section id="sol-task2">
+  <h2>Task 2 — Optuna XGBoost-Only, Same Budget</h2>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── sol_task2_optuna_xgb.py ──────────────────────────────────────────────────
+import time
+import numpy as np
+import optuna
+import xgboost as xgb
+from sklearn.datasets import fetch_openml
+from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
+
+X, y = fetch_openml(name=&quot;credit-g&quot;, version=1, as_frame=True, return_X_y=True)
+# XGBoost requires integer labels
+y = y.astype(&quot;category&quot;).cat.codes
+X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2,
+                                          random_state=42, stratify=y)
+
+# One-hot encode categoricals (XGBoost 2.x can handle them natively but
+# this keeps the comparison apples-to-apples with FLAML&#x27;s preprocessing).
+X_tr_enc = pd.get_dummies(X_tr, drop_first=True)
+X_te_enc = pd.get_dummies(X_te, drop_first=True)
+X_te_enc = X_te_enc.reindex(columns=X_tr_enc.columns, fill_value=0)
+
+def objective(trial):
+    params = {
+        &quot;max_depth&quot;:         trial.suggest_int(&quot;max_depth&quot;, 3, 10),
+        &quot;learning_rate&quot;:     trial.suggest_float(&quot;learning_rate&quot;, 1e-3, 0.3, log=True),
+        &quot;n_estimators&quot;:      trial.suggest_int(&quot;n_estimators&quot;, 50, 500),
+        &quot;min_child_weight&quot;:  trial.suggest_int(&quot;min_child_weight&quot;, 1, 10),
+        &quot;subsample&quot;:         trial.suggest_float(&quot;subsample&quot;, 0.5, 1.0),
+        &quot;colsample_bytree&quot;:  trial.suggest_float(&quot;colsample_bytree&quot;, 0.5, 1.0),
+        &quot;reg_lambda&quot;:        trial.suggest_float(&quot;reg_lambda&quot;, 1e-3, 10.0, log=True),
+    }
+    clf = xgb.XGBClassifier(**params, random_state=42, n_jobs=-1,
+                            eval_metric=&quot;logloss&quot;)
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    scores = cross_val_score(clf, X_tr_enc, y_tr, cv=cv, scoring=&quot;accuracy&quot;)
+    return float(scores.mean())
+
+study = optuna.create_study(direction=&quot;maximize&quot;,
+                            sampler=optuna.samplers.TPESampler(seed=42))
+t0 = time.time()
+study.optimize(objective, timeout=300)
+elapsed = time.time() - t0
+
+print(f&quot;Trials completed:  {len(study.trials)}&quot;)
+print(f&quot;Best CV accuracy:  {study.best_value:.4f}&quot;)
+print(f&quot;Best params:       {study.best_params}&quot;)
+print(f&quot;Actual elapsed:    {elapsed:.1f}s&quot;)
+
+# Refit on full training data and score on the test set
+best_clf = xgb.XGBClassifier(**study.best_params, random_state=42, n_jobs=-1,
+                             eval_metric=&quot;logloss&quot;)
+best_clf.fit(X_tr_enc, y_tr)
+test_acc = best_clf.score(X_te_enc, y_te)
+print(f&quot;Test accuracy:     {test_acc:.4f}&quot;)
+</pre></div>
+  <p>Typical output: 60–120 trials completed in 300 seconds (XGBoost is fast on 1000 rows), best CV accuracy ~0.76–0.77, test accuracy ~0.75–0.78. Note that Optuna's CV accuracy is a <em>5-fold CV mean</em>, while FLAML's <code>best_loss</code> is computed using FLAML's internal re-sampling — they are not directly comparable, which is why we also report held-out test accuracy for both.</p>
+</section>
+
+<section id="sol-task3">
+  <h2>Task 3 — Inspect FLAML's Pipeline</h2>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── sol_task3_inspect_flaml.py ───────────────────────────────────────────────
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# ─── Inspect the chosen model ────────────────────────────────────────────────
+print(&quot;Chosen model type:&quot;, type(automl.model).__name__)
+print(&quot;\nChosen model&#x27;s hyperparameters:&quot;)
+for k, v in automl.model.get_params().items():
+    print(f&quot;  {k:25s} = {v}&quot;)
+
+# ─── Trial history: estimator name, sampled config, and loss ────────────────
+history = pd.DataFrame(automl.config_history).T
+history[&quot;Elapsed_s&quot;] = history[&quot;trial_time&quot;] if &quot;trial_time&quot; in history else np.nan
+print(f&quot;\nTotal trials: {len(history)}&quot;)
+print(f&quot;\nTrials per estimator:&quot;)
+print(history[&quot;learner&quot;].value_counts())
+
+# ─── Plot: trials per estimator (bar chart) ──────────────────────────────────
+fig, ax = plt.subplots(figsize=(8, 4.5), constrained_layout=True)
+counts = history[&quot;learner&quot;].value_counts()
+ax.bar(range(len(counts)), counts.values, color=&quot;#38bdf8&quot;)
+ax.set_xticks(range(len(counts)))
+ax.set_xticklabels(counts.index, rotation=30, ha=&quot;right&quot;)
+ax.set_ylabel(&quot;# trials&quot;)
+ax.set_title(&quot;FLAML trial allocation by estimator (cost-aware escalation)&quot;)
+plt.savefig(&quot;assignment09_task3.png&quot;, dpi=120)
+plt.show()
+
+# ─── Order trials by start time to see escalation ────────────────────────────
+print(&quot;\nFirst 15 trials in order:&quot;)
+print(history.sort_values(&quot;wall_clock_time&quot;)[[&quot;learner&quot;, &quot;val_loss&quot;]].head(15))
+</pre></div>
+  <h3>Interpretation</h3>
+  <p>The trial history should show FLAML starting with the cheap linear models (<code>lrl1</code>, <code>lrl2</code>) in the first 10–20 seconds, then transitioning to random forests and ExtraTrees, then settling on LightGBM / XGBoost for the majority of its budget once those are clearly better. This matches the cost-aware escalation described in the article: FLAML tries cheap models first to rule them out cheaply, then spends most of its time on the expensive models that actually win. If your trial history shows LightGBM tried first, you probably constrained the <code>estimator_list</code> — re-run without it to see the default escalation behavior.</p>
+</section>
+
+<section id="sol-task4">
+  <h2>Task 4 (Bonus) — auto-sklearn on the Same Problem</h2>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── sol_task4_autosklearn.py ─────────────────────────────────────────────────
+# Requires: pip install auto-sklearn==0.14.7  (Linux only)
+import time
+from sklearn.datasets import fetch_openml
+from sklearn.model_selection import train_test_split
+import autosklearn.classification as asc
+
+X, y = fetch_openml(name=&quot;credit-g&quot;, version=1, as_frame=True, return_X_y=True)
+X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2,
+                                          random_state=42, stratify=y)
+
+automl = asc.AutoSklearnClassifier(
+    time_left_for_this_task=600,   # 10 minutes total
+    per_run_time_limit=30,
+    ensemble_size=10,
+    ensemble_nbest=50,
+    metric=&quot;accuracy&quot;,
+    memory_limit=4096,
+    n_jobs=-1,
+    seed=42,
+)
+t0 = time.time()
+automl.fit(X_tr, y_tr)
+elapsed = time.time() - t0
+
+print(f&quot;Test accuracy: {automl.score(X_te, y_te):.4f}&quot;)
+print(f&quot;Actual elapsed: {elapsed:.1f}s  (budget was 600s)&quot;)
+
+# ─── Inspect the ensemble ────────────────────────────────────────────────────
+models_with_weights = automl.get_models_with_weights()
+print(f&quot;\nEnsemble size: {len(models_with_weights)}&quot;)
+for w, m in models_with_weights:
+    print(f&quot;  weight={w:.3f}  model={type(m).__name__}&quot;)
+
+# ─── Show the search statistics ──────────────────────────────────────────────
+print(f&quot;\nSprint statistics:\n{automl.sprint_statistics()}&quot;)
+</pre></div>
+  <p>Typical output on credit-g: test accuracy ~0.76–0.78 (comparable to FLAML), ensemble of 5–10 models dominated by gradient boosting / random forest / extra-trees configurations, total runtime close to 600s. auto-sklearn usually finds a slightly better-tuned configuration than FLAML on small datasets because its SMAC optimizer explores more thoroughly — but the gap is typically 0.5–1.0 accuracy points, which is rarely worth the 2× runtime. For larger datasets where each trial takes minutes, FLAML's cost-aware approach wins more decisively.</p>
+</section>
+
+<section id="sol-comparison">
+  <h2>Side-by-Side Comparison</h2>
+  <table class="data-table">
+    <thead><tr><th>Tool</th><th>Test accuracy</th><th>Wall-clock</th></tr></thead>
+    <tbody>
+      <tr><td>FLAML (default)</td><td>~0.77</td><td>~300s</td></tr>
+      <tr><td>Optuna + XGBoost (manual)</td><td>~0.76</td><td>~300s</td></tr>
+      <tr><td>auto-sklearn (bonus)</td><td>~0.77</td><td>~600s</td></tr>
+    </tbody>
+  </table>
+  <p>The takeaway: on a small tabular dataset like credit-g, all three tools converge to roughly the same accuracy because XGBoost / LightGBM is the right answer and all three find it. The differences show up on larger or trickier datasets: FLAML wins on speed-to-first-result, auto-sklearn wins on thoroughness, Optuna wins on flexibility. Pick the tool whose strength matches your project's constraint.</p>
+</section>
+
+<div class="summary-box"><h3>What This Assignment Teaches</h3><ul><li><strong>FLAML</strong> reaches a good baseline faster than manual Optuna tuning because it shares information across model families and tries cheap ones first.</li><li><strong>Optuna + a single strong model</strong> (XGBoost) reaches roughly the same accuracy, but requires you to know in advance that XGBoost is the right model family — which is exactly the prior knowledge AutoML removes.</li><li><strong>FLAML's cost-aware escalation</strong> is visible in its trial history: linear models first, then random forests, then gradient boosting.</li><li><strong>auto-sklearn</strong> finds slightly better-tuned configs than FLAML on small datasets, but takes 2× longer — the right trade-off depends on your project timeline.</li><li><strong>The accuracy gap between AutoML tools is small</strong> on small tabular benchmarks; the differences show up on larger / noisier / mixed-type data where the search strategy matters more.</li></ul></div>
+
+<section id="resources"><h2>Useful Resources</h2><ul class="resource-list"><li><a href="https://microsoft.github.io/FLAML/docs/examples/automl-example">FLAML AutoML examples gallery</a></li><li><a href="https://optuna.readthedocs.io/en/stable/tutorial/10_key_features/003_efficient_optimization_algorithms.html">Optuna pruning tutorial</a></li><li><a href="https://automl.github.io/auto-sklearn/master/examples/">auto-sklearn examples gallery</a></li><li><a href="https://www.openml.org/d/31">OpenML credit-g benchmark results</a></li><li><a href="https://arxiv.org/abs/1911.04706">Wang et al. (2021) FLAML paper</a></li></ul></section>
+
+  </article>
+</div>
+<div class="page-nav"><a href="assignment_task.html" class="page-nav-btn prev"><span class="nav-dir">← Previous</span><span class="nav-title">Assignment 09</span></a><a href="../module10/intro.html" class="page-nav-btn next"><span class="nav-dir">Next →</span><span class="nav-title">Module 10 — Pipeline Integration</span></a></div>
+<footer>
+  <div class="container">
+    <div style="font-size:1.5rem;font-weight:800;font-family:var(--display);color:var(--accent);margin-bottom:0.5rem">HyperTune</div>
+    <p style="color:var(--muted2);font-size:0.85rem;max-width:500px;margin:0 auto">The complete hyperparameter tuning reference for ML &amp; DL engineers. Covers scikit-learn, XGBoost, LightGBM, PyTorch, Optuna, Ray Tune, and beyond — from first principles to production.</p>
+    <div style="margin-top:2rem;font-size:0.78rem;color:var(--muted2)">Built for learning · Python 3.10+ · scikit-learn 1.4+ · Optuna 3.0+</div>
+  </div>
+</footer>
+<script>
+(function() {
+  const links = Array.from(document.querySelectorAll('.toc-link'));
+  const sections = links
+    .map(l => document.querySelector(l.getAttribute('href')))
+    .filter(Boolean);
+  if (!('IntersectionObserver' in window) || sections.length === 0) return;
+  const setActive = id => {
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+  };
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  sections.forEach(s => observer.observe(s));
+})();
+</script>
+</body>
+</html>

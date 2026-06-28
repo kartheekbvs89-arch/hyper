@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hyperband: Multi-Fidelity Optimization — HyperTune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<style>
+
+:root {
+  --bg: #070b14; --bg2: #0c1220; --bg3: #111827;
+  --card: #131d2e; --card2: #1a2640;
+  --border: rgba(99,179,237,0.12); --border2: rgba(99,179,237,0.22);
+  --accent: #38bdf8; --accent2: #818cf8; --accent3: #34d399;
+  --accent4: #f59e0b; --accent5: #f472b6;
+  --text: #f0f6fc; --muted: #8899aa; --muted2: #64748b;
+  --code-bg: #0d1117;
+  --ff: 'Inter', sans-serif; --mono: 'JetBrains Mono', monospace;
+  --display: 'Sora', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,11,20,0.85);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:var(--display);font-weight:800;font-size:1.25rem;color:var(--accent);letter-spacing:-0.03em;text-decoration:none}
+.logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#000;padding:7px 18px;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85}
+
+/* LAYOUT */
+.page-layout { display: grid; grid-template-columns: 280px 1fr; gap: 3rem; max-width: 1200px; margin: 0 auto; padding: 5rem 2rem 5rem; padding-top: 80px; }
+@media(max-width: 900px) { .page-layout { grid-template-columns: 1fr; } .toc-sidebar { display: none; } }
+
+/* TOC SIDEBAR */
+.toc-sidebar { position: sticky; top: 80px; height: fit-content; max-height: calc(100vh - 100px); overflow-y: auto; }
+.toc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.75rem; }
+.toc-nav { display: flex; flex-direction: column; gap: 2px; }
+.toc-link { color: var(--muted); font-size: 0.82rem; text-decoration: none; padding: 4px 10px; border-left: 2px solid transparent; transition: all 0.15s; border-radius: 0 4px 4px 0; }
+.toc-link:hover, .toc-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(56,189,248,0.05); }
+.toc-link.toc-sub { font-size: 0.78rem; padding-left: 22px; }
+
+/* ARTICLE BODY */
+.article-body { min-width: 0; }
+.breadcrumb { font-size: 0.78rem; color: var(--muted2); margin-bottom: 1.5rem; }
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--accent); }
+.module-badge { display: inline-block; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: var(--accent); padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 1rem; }
+.article-title { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
+.article-meta { font-size: 0.83rem; color: var(--muted); margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+
+/* OUTLINE BOX */
+.outline-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 3rem; }
+.outline-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.75rem; color: var(--text); }
+.outline-list { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.85rem; }
+.outline-list a { color: var(--accent); text-decoration: none; }
+.outline-list a:hover { text-decoration: underline; }
+.outline-list li { margin: 4px 0; }
+.outline-list ul { margin: 4px 0; padding-left: 1rem; }
+
+/* ARTICLE PROSE */
+.article-body h2 { font-family: var(--display); font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; margin: 3rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); scroll-margin-top: 80px; }
+.article-body h3 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 80px; }
+.article-body h4 { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.article-body p { margin-bottom: 1.25rem; color: var(--muted); font-size: 0.97rem; line-height: 1.85; }
+.article-body strong { color: var(--text); font-weight: 600; }
+.article-body em { color: var(--accent3); font-style: italic; }
+.article-body ul, .article-body ol { margin: 0 0 1.25rem 1.5rem; color: var(--muted); font-size: 0.95rem; }
+.article-body li { margin-bottom: 6px; line-height: 1.75; }
+.article-body code { font-family: var(--mono); font-size: 0.82em; background: rgba(56,189,248,0.08); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
+.article-body a { color: var(--accent2); text-decoration: none; }
+.article-body a:hover { text-decoration: underline; }
+
+/* CODE BLOCKS */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+.code-block-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot.r { background: #ff5f57; } .code-dot.y { background: #ffbd2e; } .code-dot.g { background: #28c840; }
+.code-filename { font-family: var(--mono); font-size: 0.73rem; color: var(--muted2); margin-left: 8px; }
+.code-block pre { padding: 1.5rem; overflow-x: auto; margin: 0; font-family: var(--mono); font-size: 0.82rem; line-height: 1.8; color: #e2e8f0; }
+/* Syntax colors */
+.kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; }
+.num { color: #f78c6c; } .cm { color: #546e7a; font-style: italic; }
+.cls { color: #ffcb6b; } .imp { color: #89ddff; } .op { color: #89ddff; }
+
+/* CALLOUT BOXES */
+.callout { display: flex; gap: 1rem; border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; border-width: 1px; border-style: solid; }
+.callout-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+.callout-body { font-size: 0.88rem; line-height: 1.75; }
+.callout-body strong { font-weight: 600; }
+.callout-title { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+.callout.note { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.22); color: var(--muted); }
+.callout.note .callout-title, .callout.note strong { color: var(--accent); }
+.callout.warning { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.22); color: var(--muted); }
+.callout.warning .callout-title, .callout.warning strong { color: var(--accent4); }
+.callout.tip { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); color: var(--muted); }
+.callout.tip .callout-title, .callout.tip strong { color: var(--accent3); }
+.callout.important { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.22); color: var(--muted); }
+.callout.important .callout-title, .callout.important strong { color: var(--accent5); }
+
+/* MATH DISPLAY */
+.math-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.75rem; margin: 1.25rem 0; overflow-x: auto; font-size: 1.05rem; text-align: center; }
+.math-label { font-size: 0.72rem; color: var(--muted2); font-family: var(--mono); margin-top: 0.5rem; text-align: right; }
+
+/* INLINE FIGURE / DIAGRAM */
+.figure { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; margin: 2rem 0; text-align: center; }
+.figure-caption { font-size: 0.8rem; color: var(--muted2); margin-top: 1rem; font-style: italic; }
+
+/* DATA TABLE */
+.data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.85rem; }
+.data-table th { padding: 10px 14px; background: var(--card2); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); text-align: left; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(99,179,237,0.03); }
+
+/* SUMMARY BOX */
+.summary-box { background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(129,140,248,0.07)); border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 1.75rem 2rem; margin: 3rem 0 2rem; }
+.summary-box h3 { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+.summary-box ul { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.88rem; }
+.summary-box li { margin-bottom: 6px; line-height: 1.7; }
+
+/* RESOURCE LIST */
+.resource-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.resource-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.resource-list li::before { content: '\2192'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.resource-list a { color: var(--accent2); }
+
+/* PREV/NEXT NAV */
+.page-nav { display: flex; justify-content: space-between; gap: 1rem; padding: 2rem; max-width: 1200px; margin: 0 auto; border-top: 1px solid var(--border); }
+.page-nav-btn { display: flex; flex-direction: column; gap: 4px; padding: 1rem 1.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; transition: all 0.2s; max-width: 45%; }
+.page-nav-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.page-nav-btn .nav-dir { font-size: 0.72rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; }
+.page-nav-btn .nav-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.page-nav-btn.next { text-align: right; margin-left: auto; }
+
+/* QUIZ/EXERCISE BOX */
+.exercise-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin: 2rem 0; }
+.exercise-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent4); margin-bottom: 0.5rem; }
+.exercise-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; }
+.exercise-body { font-size: 0.88rem; color: var(--muted); line-height: 1.75; }
+
+/* QUIZ BOX */
+.quiz-box { background: rgba(129,140,248,0.06); border: 1px solid rgba(129,140,248,0.22); border-radius: 14px; padding: 1.5rem; margin: 1.5rem 0; }
+.quiz-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.5rem; }
+.quiz-question { font-size: 0.93rem; color: var(--text); margin-bottom: 0.75rem; font-weight: 500; }
+.quiz-answer { margin-top: 0.5rem; }
+.quiz-answer summary { cursor: pointer; font-size: 0.82rem; color: var(--accent2); font-weight: 600; }
+.quiz-answer p { margin-top: 0.5rem; font-size: 0.86rem; color: var(--muted); }
+
+/* CELL (for assignment files - jupyter style) */
+.jupyter-cell { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin: 1.5rem 0; overflow: hidden; }
+.cell-header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted2); font-family: var(--mono); }
+.cell-input-label { color: var(--accent4); font-weight: 600; }
+.cell-body { padding: 1rem 1.25rem; }
+.jupyter-cell pre { padding: 1rem 1.25rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; background: var(--code-bg); margin: 0; }
+.cell-prompt { color: var(--accent3); font-weight: 700; }
+
+/* GRADING RUBRIC */
+.rubric-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+.rubric-table th { background: var(--card2); padding: 10px 14px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); }
+.rubric-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+
+/* DETAILS (collapsible hints) */
+details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; }
+details summary { cursor: pointer; font-size: 0.85rem; color: var(--accent2); font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
+
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">Hyper<span>Tune</span></a>
+    <ul class="nav-links">
+
+    </ul>
+    <a href="../index.html#curriculum" class="nav-cta">Start Learning</a>
+  </div>
+</nav>
+<div class="page-layout">
+  <aside class="toc-sidebar">
+    <div class="toc-label">On this page</div>
+    <nav class="toc-nav">
+<a href="#section-1" class="toc-link">1. The Multi-Fidelity Insight</a>
+<a href="#section-2" class="toc-link">2. Successive Halving (SHA)</a>
+<a href="#section-3" class="toc-link">3. The Problem With Plain SHA</a>
+<a href="#section-4" class="toc-link">4. Hyperband: Multiple Brackets</a>
+<a href="#section-5" class="toc-link">5. BOHB: BO + Hyperband</a>
+<a href="#section-6" class="toc-link">6. sklearn Halving*SearchCV</a>
+<a href="#section-7" class="toc-link">7. Ray Tune: Hyperband for DL</a>
+<a href="#section-8" class="toc-link">8. When to Use Hyperband</a>
+<a href="#resources" class="toc-link">Useful Resources</a>
+    </nav>
+  </aside>
+  <article class="article-body">
+    <div class="breadcrumb"><a href="../index.html">HyperTune</a> › <a href="intro.html">Module 07</a> › Hyperband</div>
+    <div class="article-header">
+      <div class="module-badge">Module 07 · Advanced</div>
+      <h1 class="article-title">Hyperband: Multi-Fidelity Optimization for Deep Learning</h1>
+      <div class="article-meta">Part of the <strong>HyperTune</strong> open course · Estimated read time: 18 min · Python 3.10+ · scikit-learn 1.3+</div>
+    </div>
+    <div class="outline-box">
+      <div class="outline-title">📋 Article Outline</div>
+      <ol class="outline-list">
+
+<li><a href="#section-1">1. The Multi-Fidelity Insight</a></li>
+<li><a href="#section-2">2. Successive Halving (SHA): The Building Block</a></li>
+<li><a href="#section-3">3. The Problem With Plain SHA</a></li>
+<li><a href="#section-4">4. Hyperband: Multiple Brackets, No Tuning Knob</a></li>
+<li><a href="#section-5">5. BOHB: Bayesian Optimization + Hyperband</a></li>
+<li><a href="#section-6">6. scikit-learn: HalvingRandomSearchCV &amp; HalvingGridSearchCV</a></li>
+<li><a href="#section-7">7. Ray Tune: Hyperband for Deep Learning</a></li>
+<li><a href="#section-8">8. When to Use Hyperband (and When Not To)</a></li>
+<li><a href="#resources">Useful Resources</a></li>
+      </ol>
+    </div>
+
+<section id="section-1">
+  <h2>1. The Multi-Fidelity Insight</h2>
+  <p>Every search method you have seen so far — <code>GridSearchCV</code>, <code>RandomizedSearchCV</code>, Bayesian optimization, TPE, CMA-ES — shares the same hidden assumption: each candidate configuration is trained to completion, evaluated once, and then either kept or discarded. The evaluation cost is the same for every configuration, regardless of whether it ends up being the best or the worst. This is the <strong>single-fidelity regime</strong>, and on cheap models (logistic regression, small random forests) it is fine. On deep models — where one configuration can take hours or days to train — it is ruinous.</p>
+  <p>The empirical observation that breaks the single-fidelity assumption is this: <em>most bad configurations reveal themselves early.</em> A learning rate of <code>1.0</code> will diverge within the first few hundred steps; an over-regularized model will already be underfitting after one epoch; a terrible architecture will not suddenly become good at epoch 90. If you are willing to look at partial-training signals, you can identify and discard the obviously-bad candidates when they have used only a tiny fraction of the full budget, and redirect that saved compute toward configurations that still have a chance of being the best.</p>
+  <p>This is the multi-fidelity idea. Instead of treating each configuration's score as a single number, you treat it as a <strong>curve of scores against training budget</strong>. The search algorithm queries the curve at small budgets for many candidates, then progressively concentrates compute on the survivors. The total compute spent is bounded, but the <em>effective</em> number of fully-trained models you get to compare is much larger — because you never fully train the ones that were already losing at the small-budget checkpoints. Hyperband (Li, Jamieson, Rostamizadeh, Talwalkar 2017) is the cleanest and most influential formalization of this idea, and it is the algorithm we will spend most of this article on.</p>
+  <div class="callout note"><div class="callout-icon">📌</div><div class="callout-body"><div class="callout-title">Multi-fidelity is older than Hyperband</div><p>The multi-fidelity idea appears in many forms: the racing algorithms of Maron &amp; Moore (1997), the bandit-based model selection of Jamieson &amp; Talwalkar (2016), and the optimization-on-a-budget framework of Swersky et al. (2014). Hyperband's contribution was to (a) prove a non-trivial theoretical guarantee, (b) propose a hyperparameter-free schedule that matches the best possible one up to a log factor, and (c) provide an extremely simple implementation. The combination is what made it the standard tool it is today.</p></div></div>
+</section>
+
+<section id="section-2">
+  <h2>2. Successive Halving (SHA): The Building Block</h2>
+  <p>Hyperband is built on a simpler algorithm called <strong>Successive Halving</strong> (SHA). The recipe is exactly what the name suggests. You start with <code>n</code> candidate configurations, each trained for a small budget of <code>r = R/n</code> resources (where <code>R</code> is the per-candidate budget you would have spent in single-fidelity mode). You score them all, throw away the bottom <code>1 - 1/η</code> fraction, and give each survivor <code>η × </code> more budget. Repeat until only one candidate is left, which has consumed the full budget <code>R</code>.</p>
+  <p>The parameter <code>η</code> (eta) controls the trade-off between exploration and exploitation inside a single SHA run. <code>η = 3</code> is the default and is almost always the right choice: each round keeps the top third and triples the budget, so a configuration has to be in the top third at every checkpoint to survive to the end. Smaller <code>η</code> (like 2) keeps more candidates per round — more exploration, slower convergence. Larger <code>η</code> (like 6) is more aggressive — fewer survivors, faster convergence, but more risk of throwing out a config that would have caught up with more budget.</p>
+  <div class="figure">
+<svg viewBox="0 0 620 360" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:Inter;">
+  <text x="310" y="22" text-anchor="middle" fill="#f0f6fc" font-size="14" font-weight="700">Successive Halving (eta = 3)</text>
+  <text x="310" y="40" text-anchor="middle" fill="#8899aa" font-size="11">Each round: keep top 1/eta of candidates, give each survivor eta x more budget</text>
+
+  <!-- Round labels and budget annotations -->
+  <text x="40" y="80" fill="#8899aa" font-size="11" text-anchor="end">Round 0</text>
+  <text x="40" y="95" fill="#64748b" font-size="10" text-anchor="end">r = R/9</text>
+  <text x="40" y="170" fill="#8899aa" font-size="11" text-anchor="end">Round 1</text>
+  <text x="40" y="185" fill="#64748b" font-size="10" text-anchor="end">r = R/3</text>
+  <text x="40" y="260" fill="#8899aa" font-size="11" text-anchor="end">Round 2</text>
+  <text x="40" y="275" fill="#64748b" font-size="10" text-anchor="end">r = R</text>
+
+  <!-- Round 0: 9 candidates -->
+  <g transform="translate(60, 70)">
+    <rect x="0"   y="0" width="22" height="32" fill="#38bdf8" opacity="0.85" rx="3"/>
+    <rect x="28"  y="0" width="22" height="32" fill="#38bdf8" opacity="0.85" rx="3"/>
+    <rect x="56"  y="0" width="22" height="32" fill="#38bdf8" opacity="0.85" rx="3"/>
+    <rect x="84"  y="0" width="22" height="32" fill="#38bdf8" opacity="0.85" rx="3"/>
+    <rect x="112" y="0" width="22" height="32" fill="#38bdf8" opacity="0.85" rx="3"/>
+    <rect x="140" y="0" width="22" height="32" fill="#38bdf8" opacity="0.85" rx="3"/>
+    <rect x="168" y="0" width="22" height="32" fill="#38bdf8" opacity="0.85" rx="3"/>
+    <rect x="196" y="0" width="22" height="32" fill="#38bdf8" opacity="0.85" rx="3"/>
+    <rect x="224" y="0" width="22" height="32" fill="#38bdf8" opacity="0.85" rx="3"/>
+    <text x="280" y="20" fill="#8899aa" font-size="11">n = 9 candidates trained for r = R/9 each</text>
+  </g>
+
+  <!-- Elimination arrows: 9 -> 3 -->
+  <g transform="translate(60, 110)">
+    <line x1="11" y1="0" x2="80" y2="30" stroke="#f472b6" stroke-width="1" stroke-dasharray="2 2"/>
+    <line x1="95" y1="0" x2="115" y2="30" stroke="#34d399" stroke-width="1.5"/>
+    <line x1="179" y1="0" x2="160" y2="30" stroke="#34d399" stroke-width="1.5"/>
+    <text x="430" y="20" fill="#f472b6" font-size="11">kill 6 (bottom 2/3)</text>
+    <text x="430" y="35" fill="#34d399" font-size="11">promote 3 (top 1/3)</text>
+  </g>
+
+  <!-- Round 1: 3 candidates (wider bars to indicate more budget) -->
+  <g transform="translate(60, 160)">
+    <rect x="40"  y="0" width="56" height="32" fill="#34d399" opacity="0.85" rx="3"/>
+    <rect x="104" y="0" width="56" height="32" fill="#34d399" opacity="0.85" rx="3"/>
+    <rect x="168" y="0" width="56" height="32" fill="#34d399" opacity="0.85" rx="3"/>
+    <text x="280" y="20" fill="#8899aa" font-size="11">3 candidates, each gets 3x more budget (r = R/3)</text>
+  </g>
+
+  <!-- Elimination arrows: 3 -> 1 -->
+  <g transform="translate(60, 200)">
+    <line x1="68" y1="0" x2="100" y2="30" stroke="#f472b6" stroke-width="1" stroke-dasharray="2 2"/>
+    <line x1="132" y1="0" x2="100" y2="30" stroke="#f472b6" stroke-width="1" stroke-dasharray="2 2"/>
+    <line x1="196" y1="0" x2="100" y2="30" stroke="#34d399" stroke-width="1.5"/>
+    <text x="280" y="20" fill="#f472b6" font-size="11">kill 2</text>
+    <text x="280" y="35" fill="#34d399" font-size="11">promote 1 (the winner)</text>
+  </g>
+
+  <!-- Round 2: 1 candidate with the full budget R -->
+  <g transform="translate(60, 250)">
+    <rect x="100" y="0" width="124" height="32" fill="#f59e0b" opacity="0.95" rx="3"/>
+    <text x="280" y="20" fill="#8899aa" font-size="11">1 candidate trained to completion (r = R)</text>
+  </g>
+
+  <!-- Bottom annotation: total compute -->
+  <g transform="translate(60, 310)">
+    <text x="0" y="0" fill="#8899aa" font-size="11" font-weight="600">Total budget used:</text>
+    <text x="120" y="0" fill="#f0f6fc" font-size="11">9 * R/9 + 3 * R/3 + 1 * R = R + R + R = 3R</text>
+    <text x="0" y="18" fill="#64748b" font-size="10">vs naive: 9 candidates * R each = 9R. SHA saves 6R = 67% of compute.</text>
+  </g>
+</svg>
+<div class="figure-caption">Figure 1 — One Successive Halving bracket with η=3, n=9, R=1 unit of budget. Each round eliminates the bottom 2/3 of candidates and gives each survivor 3× more compute. The total compute used is 3R, vs 9R for naive single-fidelity search over 9 candidates — a 67% saving.</div></div>
+  <p>The total compute consumed by one SHA run is a geometric series: <code>n · (R/n) + (n/η) · (ηR/n) + (n/η²) · (η²R/n) + ...</code> — at each round you spend the same total budget <code>R</code>, and there are <code>log_η(n)</code> rounds. So the total is <code>R · log_η(n) + R</code>, a logarithmic overhead compared to single-fidelity search's <code>nR</code>. That is the source of Hyperband's "5-10x speedup" reputation: it is mathematically the difference between linear and logarithmic scaling with the number of candidates.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">successive_halving_from_scratch.py</span></div><pre># ─── successive_halving_from_scratch.py ─────────────────────────────────────────
+# A minimal, dependency-free reimplementation of Successive Halving so the
+# algorithm&#x27;s structure is crystal clear. Compare this to the production
+# implementation inside sklearn.experimental.enable_successive_halving_search.
+
+import numpy as np
+from sklearn.datasets import load_digits
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import StratifiedKFold, cross_val_score
+
+def sample_config(rng):
+    return {
+        &quot;n_estimators&quot;:     int(rng.choice([50, 100, 200, 400])),
+        &quot;max_depth&quot;:        int(rng.choice([4, 8, 12, 16, None])),
+        &quot;max_features&quot;:     rng.choice([&quot;sqrt&quot;, &quot;log2&quot;, 0.5]),
+        &quot;min_samples_leaf&quot;: int(rng.choice([1, 2, 4, 8])),
+    }
+
+def evaluate(config, X, y, budget):
+    &quot;&quot;&quot;`budget` = n_estimators actually trained. Lower = cheaper, noisier signal.&quot;&quot;&quot;
+    cfg = dict(config)
+    cfg[&quot;n_estimators&quot;] = max(5, int(budget))
+    clf = RandomForestClassifier(random_state=0, n_jobs=-1, **cfg)
+    cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=0)
+    return cross_val_score(clf, X, y, cv=cv, scoring=&quot;accuracy&quot;).mean()
+
+def successive_halving(n, R, eta, X, y, seed=0):
+    rng = np.random.default_rng(seed)
+    configs = [sample_config(rng) for _ in range(n)]
+    r = R / n                                       # initial per-candidate budget
+    s = int(np.floor(np.log(n) / np.log(eta)))      # number of halvings
+    print(f&quot;SHA: n={n}, R={R}, eta={eta}, halvings={s}, initial r={r:.1f}&quot;)
+    for round_idx in range(s + 1):
+        scores = [evaluate(c, X, y, r) for c in configs]
+        order = np.argsort(scores)[::-1]
+        keep = max(1, int(np.floor(len(configs) / eta)))
+        print(f&quot;  Round {round_idx}: {len(configs)} candidates, &quot;
+              f&quot;budget r={r:.1f}, best score={scores[order[0]]:.4f}, &quot;
+              f&quot;keeping top {keep}&quot;)
+        configs = [configs[i] for i in order[:keep]]
+        r = r * eta
+    return configs[0], scores[order[0]]
+
+if __name__ == &quot;__main__&quot;:
+    X, y = load_digits(return_X_y=True)
+    best_cfg, best_score = successive_halving(n=27, R=400, eta=3, X=X, y=y)
+    print(f&quot;\nBest config: {best_cfg}\nBest score:  {best_score:.4f}&quot;)
+</pre></div>
+  <p>Run this on the digits dataset and you will see exactly the elimination pattern from Figure 1: round 0 evaluates 27 cheap configs at <code>R/27 ≈ 15</code> trees each, round 1 keeps the best 9 at <code>45</code> trees, round 2 keeps the best 3 at <code>135</code> trees, and the final round trains the winner to <code>400</code> trees. The whole loop runs in a fraction of the time that 27 independent full-budget evaluations would have taken.</p>
+</section>
+
+<section id="section-3">
+  <h2>3. The Problem With Plain SHA</h2>
+  <p>Successive Halving has one uncomfortable parameter: the initial number of candidates <code>n</code>. Pick <code>n</code> too large and you spend almost all your compute on the first round, with very little left to distinguish the survivors — this is pure exploration, and the final winner may not be much better than the early-round top candidate. Pick <code>n</code> too small and you spend most of your compute on a tiny set of candidates that you could have just fully trained anyway — this is pure exploitation, and you may never even sample a good configuration.</p>
+  <p>This is a classic exploration-vs-exploitation dilemma, and SHA forces you to commit to one point on the trade-off curve before you have any data. The fix is to <strong>not</strong> commit — run multiple SHA brackets with different values of <code>n</code>, and let them collectively cover the trade-off. This is Hyperband.</p>
+  <div class="callout tip"><div class="callout-icon">💡</div><div class="callout-body"><div class="callout-title">Read SHA as a &quot;ladder&quot;</div><p>Think of one SHA run as a ladder: at the bottom you have many short ladders (lots of candidates, each with a small budget), and at the top you have one tall ladder (one candidate with the full budget). The question Hyperband asks is: how many ladders, and at what heights, should I place to best cover the range of possible best-config-budget trade-offs? The answer is: place ladders at every feasible height, with budgets allocated so the total is exactly <code>R · s_max</code>.</p></div></div>
+</section>
+
+<section id="section-4">
+  <h2>4. Hyperband: Multiple Brackets, No Tuning Knob</h2>
+  <p>Hyperband runs <code>s_max + 1</code> SHA brackets, where <code>s_max</code> is determined by the total budget <code>B</code> and the maximum per-candidate budget <code>R</code>. Bracket <code>s</code> uses initial resources <code>r = R · η^(-s)</code> and starts with <code>n = ⌈(B/R) · η^s / (s+1)⌉</code> candidates. The total compute used by bracket <code>s</code> is exactly <code>B</code>, independent of <code>s</code> — so all brackets contribute equally to the total compute, and the algorithm spends the same amount of money on exploration-heavy brackets (large <code>s</code>) as on exploitation-heavy brackets (small <code>s</code>).</p>
+  <div class="math-block">$$ s_{max} = \left\lfloor \log_\eta\!\left(\frac{B}{R}\right) \right\rfloor, \quad n_s = \left\lceil \frac{B}{R} \cdot \frac{\eta^s}{s+1} \right\rceil, \quad r_s = R \cdot \eta^{-s} $$ <div class="math-label">Eq. 1 — Hyperband bracket schedule. s_max brackets total; bracket s starts with n_s candidates at r_s resources each.</div></div>
+  <p>Read each symbol carefully. <strong>$s_<built-in function max>$</strong> is the number of brackets minus one — it is determined by the ratio of total budget <code>B</code> to per-candidate budget <code>R</code> and by <code>η</code>. <strong>$n_s$</strong> is the number of candidates you start bracket <code>s</code> with; it grows exponentially with <code>s</code> because the <code>η^s</code> factor dominates. <strong>$r_s$</strong> is the per-candidate budget at round 0 of bracket <code>s</code>; it <em>shrinks</em> exponentially with <code>s</code> as <code>η^(-s)</code>. The product <code>n_s · r_s</code> stays roughly constant at <code>B/(s+1)</code>, which is what makes each bracket's total compute equal.</p>
+  <p>The intuition for why this works: bracket <code>s=0</code> starts with very few candidates each at the full budget <code>R</code> — pure exploitation, equivalent to plain random search over a small set. Bracket <code>s=s_max</code> starts with many candidates each at the smallest budget <code>R/η^s_max</code> — pure exploration, lots of cheap looks, no time to distinguish between survivors. By running both and every bracket in between, Hyperband hedges against whichever regime the problem happens to favor. There is no <code>n</code> to tune — the schedule is fully determined by <code>B</code>, <code>R</code>, and <code>η</code>.</p>
+  <div class="callout important"><div class="callout-icon">🔥</div><div class="callout-body"><div class="callout-title">The theoretical guarantee</div><p>Li et al. prove that Hyperband finds a configuration within a factor of <code>O(log n)</code> of the best possible, using total compute that is <code>O(n log n)</code> — versus the <code>O(n^2)</code> that naive search would need to find the same configuration. That log-factor is the formal version of the '5-10x speedup' practitioners observe. The guarantee is with respect to the infinite-data best configuration in the candidate pool, not the true Bayes-optimal model, so it does not say anything about model family choice — but it does say that <em>given a pool of candidates</em>, Hyperband is essentially the best you can do.</p></div></div>
+</section>
+
+<section id="section-5">
+  <h2>5. BOHB: Bayesian Optimization + Hyperband</h2>
+  <p>Hyperband samples its initial candidates uniformly at random. That is the same first step as <code>RandomizedSearchCV</code>, and it has the same drawback: a substantial fraction of the budget is wasted on configurations in obviously-bad regions of the space before any of them have been trained enough to identify the good region. Bayesian optimization methods like TPE and Gaussian Processes address this by learning from completed trials — but they assume each trial is fully trained, which defeats the multi-fidelity speedup.</p>
+  <p>BOHB (Falkner, Klein, Hutter 2018) combines the two. Inside each Hyperband bracket, instead of sampling the initial candidates uniformly, it uses TPE (or any Bayesian optimization method) to propose them, conditioned on the results of all previous brackets. Configurations that did well in earlier brackets inform the proposals for later brackets, so the search concentrates on the promising region of the space while still using the multi-fidelity budget schedule to avoid wasting compute on bad candidates. Empirically, BOHB finds better configurations than vanilla Hyperband in the same compute budget, especially when the search space is high-dimensional and only a small fraction of it is any good.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">bohb_with_optuna.py</span></div><pre># ─── bohb_with_optuna.py ───────────────────────────────────────────────────────
+# A simplified, instructive BOHB-style loop: TPE (Optuna) proposes configs,
+# and a Hyperband-style schedule decides which configs to keep / kill.
+# For the real production BOHB implementation, see github.com/automl/HpBandster.
+
+import optuna
+import numpy as np
+from sklearn.datasets import load_digits
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import StratifiedKFold, cross_val_score
+
+def objective(trial):
+    cfg = {
+        &quot;n_estimators&quot;:     trial.suggest_categorical(&quot;n_estimators&quot;, [50, 100, 200, 400]),
+        &quot;max_depth&quot;:        trial.suggest_categorical(&quot;max_depth&quot;, [4, 8, 12, 16, 32]),
+        &quot;max_features&quot;:     trial.suggest_categorical(&quot;max_features&quot;, [&quot;sqrt&quot;, &quot;log2&quot;, 0.5]),
+        &quot;min_samples_leaf&quot;: trial.suggest_int(&quot;min_samples_leaf&quot;, 1, 8, log=True),
+    }
+    # The Hyperband schedule is encoded in trial.user_attrs via a custom sampler
+    # / pruning callback (not shown here). For each trial, Optuna reports
+    # intermediate scores at budgets [R/eta^s, R/eta^(s-1), ..., R]; the
+    # SuccessiveHalvingPruner kills trials whose intermediate score falls
+    # below the median of all trials at the same budget.
+    X, y = load_digits(return_X_y=True)
+    cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=0)
+    for budget in [10, 30, 90, 270]:   # SHA-like budget ramp, eta = 3
+        clf = RandomForestClassifier(
+            n_estimators=budget, n_jobs=-1, random_state=0, **{k: v for k, v in cfg.items() if k != &quot;n_estimators&quot;}
+        )
+        score = cross_val_score(clf, X, y, cv=cv, scoring=&quot;accuracy&quot;).mean()
+        trial.report(score, step=budget)
+        if trial.should_prune():
+            raise optuna.TrialPruned()
+    return score
+
+study = optuna.create_study(
+    direction=&quot;maximize&quot;,
+    pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=10, reduction_factor=3),
+    sampler=optuna.samplers.TPESampler(seed=0),
+)
+study.optimize(objective, n_trials=60, show_progress_bar=False)
+print(f&quot;Best score: {study.best_value:.4f}&quot;)
+print(f&quot;Best params: {study.best_params}&quot;)
+print(f&quot;Trials pruned: {sum(1 for t in study.trials if t.state == optuna.trial.TrialState.PRUNED)}/60&quot;)
+</pre></div>
+  <p>The Optuna snippet above is not literally BOHB — it uses TPE for proposal and <code>SuccessiveHalvingPruner</code> for the budget schedule, which is the same architectural combination. The original BOHB implementation in <code>HpBandSter</code> uses the same idea with a slightly different bookkeeping. Both achieve the same empirical benefit: roughly the speed of Hyperband plus the sample efficiency of Bayesian optimization.</p>
+</section>
+
+<section id="section-6">
+  <h2>6. scikit-learn: HalvingRandomSearchCV &amp; HalvingGridSearchCV</h2>
+  <p>Since scikit-learn 1.0, Hyperband-style search is available out of the box via <code>HalvingRandomSearchCV</code> and <code>HalvingGridSearchCV</code> in the <code>sklearn.experimental</code> module. The API mirrors the regular <code>RandomizedSearchCV</code> / <code>GridSearchCV</code> almost exactly — the only new parameters are <code>factor</code> (η), <code>resource</code> (which hyperparameter is the budget axis), <code>max_resources</code>, <code>min_resources</code>, and <code>aggressive_elimination</code>.</p>
+  <p>The default resource is <code>'n_estimators'</code>, which is exactly right for tree ensembles: <code>RandomForestClassifier</code> and <code>GradientBoostingClassifier</code> both expose <code>n_estimators</code>, and reducing it gives a strictly cheaper, slightly noisier version of the same model. For deep learning you would not use sklearn's Halving classes directly (you would use Ray Tune or Optuna); for tabular ML they are the right tool.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">sklearn_halving_search.py</span></div><pre># ─── sklearn_halving_search.py ─────────────────────────────────────────────────
+# HalvingRandomSearchCV and HalvingGridSearchCV shipped in scikit-learn 1.0
+# under the experimental module. Enable them with this one import line:
+
+from sklearn.experimental import enable_successive_halving_search  # noqa: F401
+from sklearn.model_selection import HalvingRandomSearchCV, HalvingGridSearchCV
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.datasets import load_digits
+import numpy as np
+import time
+
+X, y = load_digits(return_X_y=True)
+
+# ─── 1. Define the search space ───────────────────────────────────────────────
+param_distributions = {
+    &quot;n_estimators&quot;:     [50, 100, 200, 400],
+    &quot;max_depth&quot;:        [4, 8, 12, 16, None],
+    &quot;max_features&quot;:     [&quot;sqrt&quot;, &quot;log2&quot;, 0.5],
+    &quot;min_samples_leaf&quot;: [1, 2, 4, 8],
+}
+
+# ─── 2. HalvingRandomSearchCV ─────────────────────────────────────────────────
+#  factor=3 means eta=3: each round keeps top 1/3 and triples the budget.
+#  resource=&#x27;n_estimators&#x27; means n_estimators is the budget axis (default).
+#  min_resources=20 means smallest budget = 20 trees in round 0.
+#  aggressive_elimination=False keeps the standard SHA schedule.
+base = RandomForestClassifier(random_state=42, n_jobs=-1)
+halving = HalvingRandomSearchCV(
+    estimator=base,
+    param_distributions=param_distributions,
+    factor=3,                       # eta
+    resource=&quot;n_estimators&quot;,
+    max_resources=400,
+    min_resources=20,
+    cv=3,
+    scoring=&quot;accuracy&quot;,
+    n_candidates=&quot;exhaust&quot;,        # use as many candidates as the budget allows
+    random_state=42,
+    n_jobs=1,                       # the CV loop itself is sequential
+    verbose=1,
+)
+
+t0 = time.perf_counter()
+halving.fit(X, y)
+t1 = time.perf_counter()
+print(f&quot;\nHalvingRandomSearchCV wall-clock: {t1 - t0:.1f}s&quot;)
+print(f&quot;Best score: {halving.best_score_:.4f}&quot;)
+print(f&quot;Best params: {halving.best_params_}&quot;)
+
+# ─── 3. Inspect the bracket-by-bracket results ────────────────────────────────
+# cv_results_ has one row per (candidate, round) pair. Use this to plot the
+# elimination sequence.
+import pandas as pd
+results = pd.DataFrame(halving.cv_results_)
+print(&quot;\nRound-by-round summary (mean_fit_time and mean_test_score):&quot;)
+summary = (results.groupby(&quot;iter&quot;)
+                  .agg(n_candidates=(&quot;candidate_id&quot;, &quot;nunique&quot;),
+                       mean_fit_time=(&quot;mean_fit_time&quot;, &quot;sum&quot;),
+                       best_score=(&quot;mean_test_score&quot;, &quot;max&quot;))
+                  .reset_index()
+                  .rename(columns={&quot;iter&quot;: &quot;round&quot;}))
+print(summary.to_string(index=False))
+</pre></div>
+  <p>The <code>cv_results_</code> DataFrame has one row per (candidate, round) pair, which means you can inspect exactly which configurations were eliminated in which round and at what score. This is the data you need for the bracket-by-bracket elimination plot that the assignment asks for. The <code>iter</code> column tells you the round number; <code>mean_test_score</code> is the per-round score; grouping by <code>iter</code> and counting unique <code>candidate_id</code> values gives the bracket shape.</p>
+  <div class="callout warning"><div class="callout-icon">⚠️</div><div class="callout-body"><div class="callout-title">Halving*SearchCV is still experimental</div><p>As of scikit-learn 1.3, the Halving classes live in <code>sklearn.experimental</code> and require the <code>from sklearn.experimental import enable_successive_halving_search</code> import line to be activated. The API is stable but the maintainers reserve the right to make breaking changes before promoting the classes out of experimental. For production code, pin your scikit-learn version. For tutorial code, just include the import line.</p></div></div>
+</section>
+
+<section id="section-7">
+  <h2>7. Ray Tune: Hyperband for Deep Learning</h2>
+  <p>scikit-learn's Halving classes assume a single-machine, scikit-learn-style estimator. For deep learning, where the budget axis is "epochs" or "steps" and training is naturally distributed, Ray Tune is the dominant framework. It ships <code>ASHAScheduler</code> (Async Successive Halving — the distributed variant where candidates are evaluated concurrently and slow ones are killed the moment their partial score falls below the median, without waiting for the whole bracket to finish) and <code>HyperbandScheduler</code> (the synchronous multi-bracket version closer to the paper).</p>
+  <p>For most practical work, ASHA is preferred over synchronous Hyperband: it has the same theoretical guarantees but much better cluster utilization, because workers never sit idle waiting for slower peers to finish their current round. Pair ASHA with a TPE-based search algorithm (<code>HyperOptSearch</code> or <code>OptunaSearch</code>) and you have a BOHB-equivalent setup with one or two function calls.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">ray_tune_hyperband.py</span></div><pre># ─── ray_tune_hyperband.py ─────────────────────────────────────────────────────
+# Ray Tune ships first-class Hyperband and ASHA (Async Successive Halving)
+# schedulers. ASHA is the distributed variant: candidates are evaluated
+# concurrently, and slow ones are killed the moment their partial score
+# is below the median, without waiting for the whole bracket to finish.
+
+import torch
+import torch.nn as nn
+from ray import tune
+from ray.tune.schedulers import ASHAScheduler
+from ray.tune.search.hyperopt import HyperOptSearch
+
+# ─── 1. Define a trainable: a small CNN on Fashion-MNIST ──────────────────────
+def train_fn(config):
+    # config has: lr, batch_size, conv1_channels, conv2_channels, dropout
+    model = nn.Sequential(
+        nn.Conv2d(1, config[&quot;conv1_channels&quot;], 3, padding=1),
+        nn.ReLU(), nn.MaxPool2d(2),
+        nn.Conv2d(config[&quot;conv1_channels&quot;], config[&quot;conv2_channels&quot;], 3, padding=1),
+        nn.ReLU(), nn.MaxPool2d(2),
+        nn.Flatten(),
+        nn.Linear(config[&quot;conv2_channels&quot;] * 7 * 7, 64), nn.ReLU(),
+        nn.Dropout(config[&quot;dropout&quot;]),
+        nn.Linear(64, 10),
+    )
+    opt = torch.optim.Adam(model.parameters(), lr=config[&quot;lr&quot;])
+    loss_fn = nn.CrossEntropyLoss()
+    # ... data loading and training loop omitted for brevity ...
+    for epoch in range(config[&quot;max_epochs&quot;]):
+        # train one epoch ...
+        val_acc = 0.0  # placeholder: compute on validation set
+        # Send the *intermediate* score to Ray Tune every epoch.
+        # The ASHA scheduler uses these to decide whether to kill this trial.
+        tune.report(mean_accuracy=val_acc)
+
+# ─── 2. Configure the ASHA scheduler ──────────────────────────────────────────
+asha = ASHAScheduler(
+    time_attr=&quot;training_iteration&quot;,   # one unit = one epoch
+    max_t=50,                         # max epochs (R)
+    grace_period=2,                   # don&#x27;t kill before epoch 2
+    reduction_factor=3,               # eta = 3
+    brackets=3,                       # number of Hyperband brackets (s_max + 1)
+)
+
+# ─── 3. Use HyperOpt (TPE) as the search algorithm → that&#x27;s BOHB-style ────────
+search = HyperOptSearch(metric=&quot;mean_accuracy&quot;, mode=&quot;max&quot;, n_initial_points=10)
+
+# ─── 4. Run the search ────────────────────────────────────────────────────────
+analysis = tune.run(
+    train_fn,
+    config={
+        &quot;lr&quot;:              tune.loguniform(1e-4, 1e-1),
+        &quot;batch_size&quot;:      tune.choice([32, 64, 128, 256]),
+        &quot;conv1_channels&quot;:  tune.choice([16, 32, 64]),
+        &quot;conv2_channels&quot;:  tune.choice([32, 64, 128]),
+        &quot;dropout&quot;:         tune.uniform(0.0, 0.5),
+        &quot;max_epochs&quot;:      50,
+    },
+    num_samples=64,            # how many configs to sample overall
+    scheduler=asha,
+    search_alg=search,
+    metric=&quot;mean_accuracy&quot;,
+    mode=&quot;max&quot;,
+    resources_per_trial={&quot;cpu&quot;: 4, &quot;gpu&quot;: 0.5},
+    name=&quot;asha_cnn_fashionmnist&quot;,
+)
+
+print(&quot;Best trial config:&quot;, analysis.best_config)
+print(&quot;Best trial final accuracy:&quot;, analysis.best_result[&quot;mean_accuracy&quot;])
+</pre></div>
+  <p>The two things to notice in this snippet: first, <code>tune.report(...)</code> is called every epoch, which is what the scheduler uses to make its kill decisions — without intermediate reports, ASHA cannot prune and degenerates to plain random search. Second, <code>grace_period</code> controls how many epochs you train before any pruning is allowed — setting this too low is dangerous because early epochs are noisy and you can kill configs that would have caught up. <code>grace_period=2</code> or <code>5</code> is typical for image classification; for NLP fine-tuning with very long schedules, <code>grace_period</code> of 10+ is common.</p>
+</section>
+
+<section id="section-8">
+  <h2>8. When to Use Hyperband (and When Not To)</h2>
+  <p>Hyperband shines when three conditions hold simultaneously. First, you have a meaningful budget axis — a hyperparameter (or a training duration) that you can vary to trade compute for evaluation quality. <code>n_estimators</code> for tree ensembles, <code>epochs</code> for neural networks, <code>n_iter</code> for SGD-based linear models, even <code>subsample</code> for stochastic gradient boosting all qualify. Second, the budget-quality relationship is monotone-or-near-monotone: more budget never makes a configuration dramatically worse, so partial-budget scores are a useful proxy for full-budget scores. Third, the candidates you are searching over have substantial variance in quality — if all candidates are nearly equally good, the elimination step provides no signal and you have paid Hyperband's overhead for nothing.</p>
+  <p>When these conditions hold, Hyperband typically delivers 3-10x speedup over single-fidelity search at the same final-model quality. When they do not — for example, when your "budget" axis is a discrete switch with no natural ordering, or when all candidates are within 1% of each other on the metric — Hyperband adds complexity without benefit, and plain <code>RandomizedSearchCV</code> or <code>GridSearchCV</code> is simpler and equally fast.</p>
+  <p>There is one important caveat about the monotonicity assumption. Hyperband assumes that early-budget scores are a <em>noisy but unbiased</em> estimator of late-budget scores. If your model has a long warmup phase (learning rate warmup, transfer-learning feature extraction, etc.), early scores may be systematically misleading — a configuration that looks bad at epoch 2 may be the best at epoch 50. The fix is the <code>grace_period</code> parameter (in Ray Tune) or <code>min_resources</code> (in sklearn): make the smallest budget large enough that the warmup is over before any pruning happens.</p>
+  <div class="quiz-box">
+  <div class="quiz-label">🧠 Quick Check</div>
+  <p class="quiz-question">You are tuning an XGBoost model on a 5M-row tabular dataset. n_estimators=2000 takes about 4 minutes per fit. Your search space has 6 hyperparameters and you want to try roughly 500 candidates. Estimate the wall-clock time of (a) RandomizedSearchCV with 3-fold CV, and (b) HalvingRandomSearchCV with the same total compute budget and η=3.</p>
+  <details class="quiz-answer">
+    <summary>Show Answer</summary>
+    <p>(a) RandomizedSearchCV: 500 candidates × 3 folds × 4 min = 6000 min = 100 hours. (b) HalvingRandomSearchCV spends the same total budget B = 100 hours, but distributes it across brackets: most candidates are evaluated at small n_estimators (e.g. 50-100 trees, ~15-30 seconds per fit), and only the survivors make it to 2000 trees. In practice Halving finishes in 10-25 hours — a 4-10x speedup. The exact factor depends on how many bad candidates exist; the more variance in candidate quality, the bigger the Hyperband win.</p>
+  </details>
+</div>
+</section>
+
+<div class="summary-box"><h3>🎯 Key Takeaways</h3><ul><li><strong>Multi-fidelity</strong> means treating each candidate's score as a curve against training budget, not a single number — most bad configs reveal themselves early.</li><li><strong>Successive Halving</strong> keeps top 1/η of candidates each round and gives each survivor η× more budget; total compute scales as R · log_η(n) instead of n · R.</li><li><strong>Hyperband</strong> runs s_max + 1 SHA brackets with different n values, sidestepping the exploration-exploitation trade-off that plain SHA forces you to commit to.</li><li><strong>BOHB</strong> replaces Hyperband's random sampling with TPE/BO proposals, combining multi-fidelity speed with Bayesian sample efficiency.</li><li><strong>scikit-learn</strong>: <code>HalvingRandomSearchCV</code> and <code>HalvingGridSearchCV</code> (since 1.0, experimental) for tree ensembles where <code>n_estimators</code> is the budget.</li><li><strong>Ray Tune</strong>: <code>ASHAScheduler</code> is the production-grade distributed variant for deep learning; pair with <code>HyperOptSearch</code> for BOHB-style behavior.</li><li><strong>Use Hyperband</strong> when you have a monotone budget axis, candidates vary substantially in quality, and per-candidate full training is expensive; otherwise plain random search is simpler.</li></ul></div>
+
+<section id="resources"><h2>Useful Resources</h2><ul class="resource-list"><li><a href="https://arxiv.org/abs/1603.06560">Li, Jamieson, Rostamizadeh, Talwalkar (2017) — Hyperband: A Novel Bandit-Based Approach to Hyperparameter Optimization</a></li><li><a href="https://arxiv.org/abs/1807.01774">Falkner, Klein, Hutter (2018) — BOHB: Robust and Efficient Hyperparameter Optimization at Scale</a></li><li><a href="https://arxiv.org/abs/1502.07943">Jamieson &amp; Talwalkar (2016) — Non-stochastic Best Arm Identification and Hyperparameter Optimization</a></li><li><a href="https://scikit-learn.org/stable/modules/grid_search.html#searching-for-optimal-parameters-with-successive-halving">scikit-learn User Guide — Successive Halving iterative search</a></li><li><a href="https://docs.ray.io/en/latest/tune/api/doc/ray.tune.schedulers.ASHAScheduler.html">Ray Tune Documentation — ASHAScheduler</a></li><li><a href="https://github.com/automl/HpBandSter">HpBandSter — the original BOHB implementation (Python)</a></li><li><a href="https://optuna.readthedocs.io/en/stable/reference/generated/optuna.pruners.SuccessiveHalvingPruner.html">Optuna Documentation — SuccessiveHalvingPruner</a></li></ul></section>
+
+  </article>
+</div>
+<div class="page-nav"><a href="intro.html" class="page-nav-btn prev"><span class="nav-dir">← Previous</span><span class="nav-title">Module 07</span></a><a href="assignment_task.html" class="page-nav-btn next"><span class="nav-dir">Next →</span><span class="nav-title">Assignment 07</span></a></div>
+<footer>
+  <div class="container">
+    <div style="font-size:1.5rem;font-weight:800;font-family:var(--display);color:var(--accent);margin-bottom:0.5rem">HyperTune</div>
+    <p style="color:var(--muted2);font-size:0.85rem;max-width:500px;margin:0 auto">The complete hyperparameter tuning reference for ML &amp; DL engineers. Covers scikit-learn, XGBoost, LightGBM, PyTorch, Optuna, Ray Tune, and beyond — from first principles to production.</p>
+    <div style="margin-top:2rem;font-size:0.78rem;color:var(--muted2)">Built for learning · Python 3.10+ · scikit-learn 1.4+ · Optuna 3.0+</div>
+  </div>
+</footer>
+<script>
+(function() {
+  const links = Array.from(document.querySelectorAll('.toc-link'));
+  const sections = links
+    .map(l => document.querySelector(l.getAttribute('href')))
+    .filter(Boolean);
+  if (!('IntersectionObserver' in window) || sections.length === 0) return;
+  const setActive = id => {
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+  };
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  sections.forEach(s => observer.observe(s));
+})();
+</script>
+</body>
+</html>

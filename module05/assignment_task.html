@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assignment 05 — Optuna Sweep over a PyTorch CNN on CIFAR-10 — HyperTune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<style>
+
+:root {
+  --bg: #070b14; --bg2: #0c1220; --bg3: #111827;
+  --card: #131d2e; --card2: #1a2640;
+  --border: rgba(99,179,237,0.12); --border2: rgba(99,179,237,0.22);
+  --accent: #38bdf8; --accent2: #818cf8; --accent3: #34d399;
+  --accent4: #f59e0b; --accent5: #f472b6;
+  --text: #f0f6fc; --muted: #8899aa; --muted2: #64748b;
+  --code-bg: #0d1117;
+  --ff: 'Inter', sans-serif; --mono: 'JetBrains Mono', monospace;
+  --display: 'Sora', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,11,20,0.85);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:var(--display);font-weight:800;font-size:1.25rem;color:var(--accent);letter-spacing:-0.03em;text-decoration:none}
+.logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#000;padding:7px 18px;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85}
+
+/* LAYOUT */
+.page-layout { display: grid; grid-template-columns: 280px 1fr; gap: 3rem; max-width: 1200px; margin: 0 auto; padding: 5rem 2rem 5rem; padding-top: 80px; }
+@media(max-width: 900px) { .page-layout { grid-template-columns: 1fr; } .toc-sidebar { display: none; } }
+
+/* TOC SIDEBAR */
+.toc-sidebar { position: sticky; top: 80px; height: fit-content; max-height: calc(100vh - 100px); overflow-y: auto; }
+.toc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.75rem; }
+.toc-nav { display: flex; flex-direction: column; gap: 2px; }
+.toc-link { color: var(--muted); font-size: 0.82rem; text-decoration: none; padding: 4px 10px; border-left: 2px solid transparent; transition: all 0.15s; border-radius: 0 4px 4px 0; }
+.toc-link:hover, .toc-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(56,189,248,0.05); }
+.toc-link.toc-sub { font-size: 0.78rem; padding-left: 22px; }
+
+/* ARTICLE BODY */
+.article-body { min-width: 0; }
+.breadcrumb { font-size: 0.78rem; color: var(--muted2); margin-bottom: 1.5rem; }
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--accent); }
+.module-badge { display: inline-block; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: var(--accent); padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 1rem; }
+.article-title { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
+.article-meta { font-size: 0.83rem; color: var(--muted); margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+
+/* OUTLINE BOX */
+.outline-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 3rem; }
+.outline-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.75rem; color: var(--text); }
+.outline-list { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.85rem; }
+.outline-list a { color: var(--accent); text-decoration: none; }
+.outline-list a:hover { text-decoration: underline; }
+.outline-list li { margin: 4px 0; }
+.outline-list ul { margin: 4px 0; padding-left: 1rem; }
+
+/* ARTICLE PROSE */
+.article-body h2 { font-family: var(--display); font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; margin: 3rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); scroll-margin-top: 80px; }
+.article-body h3 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 80px; }
+.article-body h4 { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.article-body p { margin-bottom: 1.25rem; color: var(--muted); font-size: 0.97rem; line-height: 1.85; }
+.article-body strong { color: var(--text); font-weight: 600; }
+.article-body em { color: var(--accent3); font-style: italic; }
+.article-body ul, .article-body ol { margin: 0 0 1.25rem 1.5rem; color: var(--muted); font-size: 0.95rem; }
+.article-body li { margin-bottom: 6px; line-height: 1.75; }
+.article-body code { font-family: var(--mono); font-size: 0.82em; background: rgba(56,189,248,0.08); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
+.article-body a { color: var(--accent2); text-decoration: none; }
+.article-body a:hover { text-decoration: underline; }
+
+/* CODE BLOCKS */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+.code-block-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot.r { background: #ff5f57; } .code-dot.y { background: #ffbd2e; } .code-dot.g { background: #28c840; }
+.code-filename { font-family: var(--mono); font-size: 0.73rem; color: var(--muted2); margin-left: 8px; }
+.code-block pre { padding: 1.5rem; overflow-x: auto; margin: 0; font-family: var(--mono); font-size: 0.82rem; line-height: 1.8; color: #e2e8f0; }
+/* Syntax colors */
+.kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; }
+.num { color: #f78c6c; } .cm { color: #546e7a; font-style: italic; }
+.cls { color: #ffcb6b; } .imp { color: #89ddff; } .op { color: #89ddff; }
+
+/* CALLOUT BOXES */
+.callout { display: flex; gap: 1rem; border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; border-width: 1px; border-style: solid; }
+.callout-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+.callout-body { font-size: 0.88rem; line-height: 1.75; }
+.callout-body strong { font-weight: 600; }
+.callout-title { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+.callout.note { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.22); color: var(--muted); }
+.callout.note .callout-title, .callout.note strong { color: var(--accent); }
+.callout.warning { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.22); color: var(--muted); }
+.callout.warning .callout-title, .callout.warning strong { color: var(--accent4); }
+.callout.tip { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); color: var(--muted); }
+.callout.tip .callout-title, .callout.tip strong { color: var(--accent3); }
+.callout.important { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.22); color: var(--muted); }
+.callout.important .callout-title, .callout.important strong { color: var(--accent5); }
+
+/* MATH DISPLAY */
+.math-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.75rem; margin: 1.25rem 0; overflow-x: auto; font-size: 1.05rem; text-align: center; }
+.math-label { font-size: 0.72rem; color: var(--muted2); font-family: var(--mono); margin-top: 0.5rem; text-align: right; }
+
+/* INLINE FIGURE / DIAGRAM */
+.figure { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; margin: 2rem 0; text-align: center; }
+.figure-caption { font-size: 0.8rem; color: var(--muted2); margin-top: 1rem; font-style: italic; }
+
+/* DATA TABLE */
+.data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.85rem; }
+.data-table th { padding: 10px 14px; background: var(--card2); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); text-align: left; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(99,179,237,0.03); }
+
+/* SUMMARY BOX */
+.summary-box { background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(129,140,248,0.07)); border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 1.75rem 2rem; margin: 3rem 0 2rem; }
+.summary-box h3 { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+.summary-box ul { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.88rem; }
+.summary-box li { margin-bottom: 6px; line-height: 1.7; }
+
+/* RESOURCE LIST */
+.resource-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.resource-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.resource-list li::before { content: '\2192'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.resource-list a { color: var(--accent2); }
+
+/* PREV/NEXT NAV */
+.page-nav { display: flex; justify-content: space-between; gap: 1rem; padding: 2rem; max-width: 1200px; margin: 0 auto; border-top: 1px solid var(--border); }
+.page-nav-btn { display: flex; flex-direction: column; gap: 4px; padding: 1rem 1.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; transition: all 0.2s; max-width: 45%; }
+.page-nav-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.page-nav-btn .nav-dir { font-size: 0.72rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; }
+.page-nav-btn .nav-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.page-nav-btn.next { text-align: right; margin-left: auto; }
+
+/* QUIZ/EXERCISE BOX */
+.exercise-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin: 2rem 0; }
+.exercise-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent4); margin-bottom: 0.5rem; }
+.exercise-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; }
+.exercise-body { font-size: 0.88rem; color: var(--muted); line-height: 1.75; }
+
+/* QUIZ BOX */
+.quiz-box { background: rgba(129,140,248,0.06); border: 1px solid rgba(129,140,248,0.22); border-radius: 14px; padding: 1.5rem; margin: 1.5rem 0; }
+.quiz-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.5rem; }
+.quiz-question { font-size: 0.93rem; color: var(--text); margin-bottom: 0.75rem; font-weight: 500; }
+.quiz-answer { margin-top: 0.5rem; }
+.quiz-answer summary { cursor: pointer; font-size: 0.82rem; color: var(--accent2); font-weight: 600; }
+.quiz-answer p { margin-top: 0.5rem; font-size: 0.86rem; color: var(--muted); }
+
+/* CELL (for assignment files - jupyter style) */
+.jupyter-cell { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin: 1.5rem 0; overflow: hidden; }
+.cell-header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted2); font-family: var(--mono); }
+.cell-input-label { color: var(--accent4); font-weight: 600; }
+.cell-body { padding: 1rem 1.25rem; }
+.jupyter-cell pre { padding: 1rem 1.25rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; background: var(--code-bg); margin: 0; }
+.cell-prompt { color: var(--accent3); font-weight: 700; }
+
+/* GRADING RUBRIC */
+.rubric-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+.rubric-table th { background: var(--card2); padding: 10px 14px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); }
+.rubric-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+
+/* DETAILS (collapsible hints) */
+details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; }
+details summary { cursor: pointer; font-size: 0.85rem; color: var(--accent2); font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
+
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">Hyper<span>Tune</span></a>
+    <ul class="nav-links">
+
+    </ul>
+    <a href="../index.html#curriculum" class="nav-cta">Start Learning</a>
+  </div>
+</nav>
+<div class="page-layout">
+  <aside class="toc-sidebar">
+    <div class="toc-label">On this page</div>
+    <nav class="toc-nav">
+<a href="#overview" class="toc-link">Overview</a>
+<a href="#dataset" class="toc-link">Dataset — CIFAR-10</a>
+<a href="#task1" class="toc-link">Task 1 — Build SmallCNN</a>
+<a href="#task2" class="toc-link">Task 2 — Optuna Objective</a>
+<a href="#task3" class="toc-link">Task 3 — 50-Trial Study</a>
+<a href="#task4" class="toc-link">Task 4 — Visualizations</a>
+<a href="#task5" class="toc-link">Task 5 — Retrain Best Config</a>
+<a href="#task6" class="toc-link">Task 6 (Bonus) — Warmup+Cosine</a>
+<a href="#rubric" class="toc-link">Grading Rubric</a>
+<a href="#submit" class="toc-link">Submission</a>
+<a href="#resources" class="toc-link">Resources</a>
+    </nav>
+  </aside>
+  <article class="article-body">
+    <div class="breadcrumb"><a href="../index.html">HyperTune</a> › <a href="intro.html">Module 05</a> › Assignment 05</div>
+    <div class="article-header">
+      <div class="module-badge">Module 05 · Assignment</div>
+      <h1 class="article-title">Assignment 05 — Optuna Sweep over a PyTorch CNN on CIFAR-10</h1>
+      <div class="article-meta">Difficulty: ★★★★☆ · Est. time: 4–5 hours · Dataset: CIFAR-10</div>
+    </div>
+    <div class="outline-box">
+      <div class="outline-title">📋 Article Outline</div>
+      <ol class="outline-list">
+
+<li><a href="#overview">Assignment Overview</a></li>
+<li><a href="#dataset">Dataset — CIFAR-10</a></li>
+<li><a href="#task1">Task 1 — Build a Simple PyTorch CNN</a></li>
+<li><a href="#task2">Task 2 — Write the Optuna Objective</a></li>
+<li><a href="#task3">Task 3 — Run 50 Trials with MedianPruner</a></li>
+<li><a href="#task4">Task 4 — Visualize the Study</a></li>
+<li><a href="#task5">Task 5 — Retrain Best Config (30 epochs, cosine)</a></li>
+<li><a href="#task6">Task 6 (Bonus) — Linear Warmup + Cosine Decay</a></li>
+<li><a href="#rubric">Grading Rubric</a></li>
+<li><a href="#submit">Submission Instructions</a></li>
+<li><a href="#resources">Resources</a></li>
+      </ol>
+    </div>
+
+<section id="overview">
+  <h2>Assignment Overview</h2>
+  <p>This assignment brings together every concept from Module 05. You will build a PyTorch CNN for CIFAR-10, write an Optuna objective that searches over learning rate, batch size, dropout, number of filters, weight decay, and optimizer choice, run a 50-trial study with the MedianPruner, visualize the results four different ways, retrain the best configuration for 30 epochs with cosine annealing, and (bonus) implement linear warmup + cosine decay and compare against plain cosine.</p>
+  <p>By the end you will have built a small but complete deep-learning tuning pipeline — the same skeleton you will reuse on real projects. Expect to spend 4–5 hours total: about 30 minutes on each of the six tasks, plus debugging time.</p>
+  <div class="callout note"><div class="callout-icon">📌</div><div class="callout-body"><div class="callout-title">Hardware requirements</div><p>A GPU is strongly recommended but not required. Each 5-epoch trial takes ~3 minutes on a single modern GPU (RTX 3060 or better) and ~10–15 minutes on CPU. The full 50-trial study with MedianPruner typically takes 1–2 hours on GPU. If you only have CPU, reduce <code>n_trials</code> to 20 and <code>epochs_per_trial</code> to 3.</p></div></div>
+</section>
+
+<section id="dataset">
+  <h2>Dataset — CIFAR-10</h2>
+  <p>CIFAR-10 is 60,000 32×32 RGB images in 10 classes (airplane, automobile, bird, cat, deer, dog, frog, horse, ship, truck). 50,000 are training, 10,000 are test. It is small enough to train in minutes per trial but hard enough that architecture and regularization choices matter — a badly-tuned CNN gets ~60% test accuracy, a well-tuned one gets 90%+.</p>
+  <p>Use <code>torchvision.datasets.CIFAR10</code> with the standard normalization. Hold out 5,000 images from the training set as validation for the Optuna objective; keep the test set untouched until the final retraining in Task 5.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">cifar10_setup.py</span></div><pre># ─── cifar10_setup.py ──────────────────────────────────────────────────────────
+import torch
+from torch.utils.data import DataLoader, random_split
+from torchvision import datasets, transforms
+
+# Standard CIFAR-10 normalization (per-channel mean/std).
+tfm_train = transforms.Compose([
+    transforms.RandomHorizontalFlip(),
+    transforms.RandomCrop(32, padding=4),
+    transforms.ToTensor(),
+    transforms.Normalize((0.4914, 0.4822, 0.4465),
+                         (0.2470, 0.2435, 0.2616)),
+])
+tfm_eval = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize((0.4914, 0.4822, 0.4465),
+                         (0.2470, 0.2435, 0.2616)),
+])
+
+full_train = datasets.CIFAR10(&quot;./data&quot;, train=True, download=True, transform=tfm_train)
+test_set   = datasets.CIFAR10(&quot;./data&quot;, train=False, download=True, transform=tfm_eval)
+
+# 45k train / 5k val split (fixed seed for reproducibility).
+train_ds, val_ds = random_split(
+    full_train, [45000, 5000],
+    generator=torch.Generator().manual_seed(42),
+)
+
+print(f&quot;train: {len(train_ds)}, val: {len(val_ds)}, test: {len(test_set)}&quot;)
+</pre></div>
+</section>
+
+<section id="task1">
+  <h2>Task 1 — Build a Simple PyTorch CNN</h2>
+  <p>Build a CNN with <strong>two convolutional blocks</strong> followed by <strong>two fully-connected layers</strong>. A "conv block" is <code>Conv2d → BatchNorm2d → ReLU → MaxPool2d</code>. Use 32 filters in the first block and 64 in the second, with 3×3 kernels and padding=1. The classifier should be <code>Flatten → Linear(64*8*8, 128) → ReLU → Dropout → Linear(128, 10)</code>. Make the number of filters and the dropout rate configurable via constructor arguments so Task 2 can vary them.</p>
+  <div class="jupyter-cell">
+  <div class="cell-header"><span class="cell-input-label">In [1]:</span> <span style="color:var(--muted2)">python</span></div>
+  <pre><span class="cell-prompt">&gt;&gt;&gt;</span> # YOUR CODE HERE
+# Implement a SmallCNN(n_filters=32, dropout=0.0) class with:
+#   conv_block_1: Conv2d(3, n_filters, 3, padding=1) → BN → ReLU → MaxPool2d(2)
+#   conv_block_2: Conv2d(n_filters, 2*n_filters, 3, padding=1) → BN → ReLU → MaxPool2d(2)
+#   classifier:   Flatten → Linear(2*n_filters*8*8, 128) → ReLU → Dropout(p) → Linear(128, 10)
+# Then sanity-check: model = SmallCNN(); out = model(torch.randn(2, 3, 32, 32))
+# assert out.shape == (2, 10)
+
+import torch
+import torch.nn as nn
+
+class SmallCNN(nn.Module):
+    def __init__(self, n_filters=32, dropout=0.0):
+        super().__init__()
+        # YOUR CODE HERE
+        pass
+
+    def forward(self, x):
+        # YOUR CODE HERE
+        pass
+
+# Sanity check
+model = SmallCNN(n_filters=32, dropout=0.1)
+x = torch.randn(2, 3, 32, 32)
+out = model(x)
+assert out.shape == (2, 10), f&quot;Expected (2, 10), got {out.shape}&quot;
+print(f&quot;OK — output shape {out.shape}, params {sum(p.numel() for p in model.parameters()):,}&quot;)</pre>
+</div>
+  <p><strong>Expected output:</strong> A model with ~500k parameters (when <code>n_filters=32</code>) that takes a <code>(B, 3, 32, 32)</code> input and returns <code>(B, 10)</code> logits. Verify the parameter count — if it is much larger or smaller, check your flattening.</p>
+</section>
+
+<section id="task2">
+  <h2>Task 2 — Write the Optuna Objective</h2>
+  <p>Write an Optuna objective function <code>objective(trial)</code> that suggests <strong>six hyperparameters</strong>, builds the model and optimizer from them, trains for <strong>5 epochs</strong>, and returns the validation accuracy. The hyperparameters:</p>
+  <ul>
+    <li><code>learning_rate</code> — log-uniform in <code>[1e-5, 1e-1]</code></li>
+    <li><code>batch_size</code> — categorical <code>[32, 64, 128, 256]</code></li>
+    <li><code>dropout</code> — uniform <code>[0.0, 0.5]</code></li>
+    <li><code>n_filters</code> — int <code>[32, 128]</code> step 16</li>
+    <li><code>weight_decay</code> — log-uniform <code>[1e-6, 1e-2]</code></li>
+    <li><code>optimizer</code> — categorical <code>["adam", "sgd_momentum", "adamw"]</code></li>
+  </ul>
+  <p>Use <code>trial.report(val_acc, epoch)</code> and <code>trial.should_prune()</code> so the MedianPruner can kill bad trials early. Apply weight decay to <strong>weights only</strong>, not biases or BatchNorm parameters — split the parameter groups as in Part 2.</p>
+  <div class="jupyter-cell">
+  <div class="cell-header"><span class="cell-input-label">In [2]:</span> <span style="color:var(--muted2)">python</span></div>
+  <pre><span class="cell-prompt">&gt;&gt;&gt;</span> # YOUR CODE HERE
+# Implement objective(trial) that:
+# 1. Suggests all 6 hyperparameters.
+# 2. Builds SmallCNN(n_filters, dropout).
+# 3. Builds the chosen optimizer with the chosen LR + weight_decay (weights only).
+# 4. Trains for 5 epochs on the 45k train set.
+# 5. After each epoch: computes val_acc, reports to trial, checks should_prune().
+# 6. Returns final val_acc.
+
+import optuna
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader
+
+def objective(trial):
+    # YOUR CODE HERE
+    # Suggest hyperparameters
+    lr          = trial.suggest_float(&quot;lr&quot;, 1e-5, 1e-1, log=True)
+    batch_size  = trial.suggest_categorical(&quot;batch_size&quot;, [32, 64, 128, 256])
+    dropout     = trial.suggest_float(&quot;dropout&quot;, 0.0, 0.5)
+    n_filters   = trial.suggest_int(&quot;n_filters&quot;, 32, 128, step=16)
+    weight_decay = trial.suggest_float(&quot;weight_decay&quot;, 1e-6, 1e-2, log=True)
+    opt_name    = trial.suggest_categorical(&quot;optimizer&quot;,
+                                             [&quot;adam&quot;, &quot;sgd_momentum&quot;, &quot;adamw&quot;])
+
+    # Build model, optimizer, dataloaders
+    # Train for 5 epochs, report val_acc each epoch, check should_prune()
+    # Return final val_acc
+    pass</pre>
+</div>
+</section>
+
+<section id="task3">
+  <h2>Task 3 — Run 50 Trials with MedianPruner</h2>
+  <p>Create an <code>optuna.create_study(direction="maximize", pruner=optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=1))</code> and run <code>study.optimize(objective, n_trials=50)</code>. Time the run. Print <code>study.best_value</code> and <code>study.best_params</code> at the end.</p>
+  <p>After the study completes, also report <code>len([t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE])</code> and <code>len([t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED])</code> to see how aggressive the pruner was.</p>
+  <div class="jupyter-cell">
+  <div class="cell-header"><span class="cell-input-label">In [3]:</span> <span style="color:var(--muted2)">python</span></div>
+  <pre><span class="cell-prompt">&gt;&gt;&gt;</span> # YOUR CODE HERE
+import time
+import optuna
+
+study = optuna.create_study(
+    direction=&quot;maximize&quot;,
+    pruner=optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=1),
+)
+
+t0 = time.time()
+study.optimize(objective, n_trials=50)
+elapsed = time.time() - t0
+
+print(f&quot;Best val acc: {study.best_value:.4f}&quot;)
+print(f&quot;Best params: {study.best_params}&quot;)
+print(f&quot;Elapsed: {elapsed/60:.1f} min&quot;)
+
+# Count trial states
+from collections import Counter
+states = Counter(t.state for t in study.trials)
+print(f&quot;Trial states: {dict(states)}&quot;)</pre>
+</div>
+  <p><strong>Expected output:</strong> Best val accuracy around 0.80–0.85 (5 epochs is short for CIFAR-10). Roughly 30–40 of the 50 trials should complete; the rest pruned. Total runtime ~1 hour on GPU.</p>
+</section>
+
+<section id="task4">
+  <h2>Task 4 — Visualize the Study</h2>
+  <p>Generate all four standard Optuna visualizations and save them as PNGs:</p>
+  <ul>
+    <li><strong>Optimization history</strong> — val accuracy vs trial number, with the best-so-far line overlaid.</li>
+    <li><strong>Parallel coordinates</strong> — one line per trial, showing how each hyperparameter value maps to val accuracy.</li>
+    <li><strong>Param importances</strong> — hyperparameters ranked by their effect on val accuracy (using a fANNOVA-based estimator).</li>
+    <li><strong>Slice plot</strong> — val accuracy vs each hyperparameter individually.</li>
+  </ul>
+  <div class="jupyter-cell">
+  <div class="cell-header"><span class="cell-input-label">In [4]:</span> <span style="color:var(--muted2)">python</span></div>
+  <pre><span class="cell-prompt">&gt;&gt;&gt;</span> # YOUR CODE HERE
+import optuna.visualization as ov
+import plotly.io as pio
+
+# 1. Optimization history
+fig1 = ov.plot_optimization_history(study)
+pio.write_image(fig1, &quot;opt_history.png&quot;)
+
+# 2. Parallel coordinates
+fig2 = ov.plot_parallel_coordinate(study)
+pio.write_image(fig2, &quot;parallel.png&quot;)
+
+# 3. Param importances
+fig3 = ov.plot_param_importances(study)
+pio.write_image(fig3, &quot;importances.png&quot;)
+
+# 4. Slice plot
+fig4 = ov.plot_slice(study)
+pio.write_image(fig4, &quot;slice.png&quot;)
+
+# Print the top-3 most important hyperparameters.
+importances = optuna.importance.get_param_importances(study)
+for name, imp in list(importances.items())[:3]:
+    print(f&quot;  {name}: {imp:.3f}&quot;)</pre>
+</div>
+  <p><strong>Expected output:</strong> Four PNG files. The param importances plot will typically show <code>learning_rate</code> and <code>optimizer</code> as the top 2 most important hyperparameters, with <code>n_filters</code>, <code>weight_decay</code>, and <code>batch_size</code> in the middle, and <code>dropout</code> usually last. This is the standard empirical finding for short-training CIFAR-10 studies.</p>
+  <details><summary>Hint: plotly image export requires kaleido</summary>
+    <p>Install with <code>pip install kaleido</code>. If kaleido fails on your platform, use <code>fig.show()</code> to view in a browser, then screenshot, or use <code>matplotlib</code> via <code>optuna.visualization.matplotlib</code> instead.</p>
+  </details>
+</section>
+
+<section id="task5">
+  <h2>Task 5 — Retrain Best Config for 30 Epochs with Cosine Annealing</h2>
+  <p>Take <code>study.best_params</code>, build a fresh model and optimizer with those exact hyperparameters, and train for <strong>30 epochs</strong> on the full 50k training set (no validation split — use the test set for final evaluation). Use <code>CosineAnnealingLR(T_max=30, eta_min=0)</code> as the scheduler. Also train a <strong>baseline</strong> with the same architecture but default hyperparameters (LR=1e-3, Adam, no dropout, n_filters=32, weight_decay=0) for 30 epochs. Compare final test accuracies.</p>
+  <div class="jupyter-cell">
+  <div class="cell-header"><span class="cell-input-label">In [5]:</span> <span style="color:var(--muted2)">python</span></div>
+  <pre><span class="cell-prompt">&gt;&gt;&gt;</span> # YOUR CODE HERE
+# 1. Train the best config on full 50k train set for 30 epochs with cosine annealing.
+# 2. Train a baseline (LR=1e-3, Adam, no dropout, n_filters=32, wd=0) for 30 epochs.
+# 3. Evaluate both on the 10k test set.
+# 4. Print: best_val_acc_from_study, test_acc_best, test_acc_baseline, improvement.
+
+import torch
+import torch.optim as optim
+from torch.optim.lr_scheduler import CosineAnnealingLR
+
+def train_full(best_params, n_epochs=30):
+    # YOUR CODE HERE
+    # Build model, optimizer, scheduler, train, return test accuracy.
+    pass
+
+# Baseline: default hyperparameters
+baseline_params = {&quot;lr&quot;: 1e-3, &quot;batch_size&quot;: 128, &quot;dropout&quot;: 0.0,
+                   &quot;n_filters&quot;: 32, &quot;weight_decay&quot;: 0.0, &quot;optimizer&quot;: &quot;adam&quot;}
+
+test_acc_best = train_full(study.best_params, n_epochs=30)
+test_acc_baseline = train_full(baseline_params, n_epochs=30)
+
+print(f&quot;Study best val acc (5 epochs): {study.best_value:.4f}&quot;)
+print(f&quot;Test acc (best, 30 epochs):    {test_acc_best:.4f}&quot;)
+print(f&quot;Test acc (baseline, 30 epochs): {test_acc_baseline:.4f}&quot;)
+print(f&quot;Improvement from tuning:       {test_acc_best - test_acc_baseline:+.4f}&quot;)</pre>
+</div>
+  <p><strong>Expected output:</strong> The tuned model should reach ~88–91% test accuracy; the baseline should be around 80–84%. The improvement is typically 5–8 percentage points, which is large for CIFAR-10.</p>
+</section>
+
+<section id="task6">
+  <h2>Task 6 (Bonus) — Linear Warmup + Cosine Decay vs Plain Cosine</h2>
+  <p>Implement a <code>LambdaLR</code> schedule that does <strong>linear warmup for 3 epochs</strong> followed by <strong>cosine annealing for the remaining 27 epochs</strong>. Retrain the best config from Task 5 with this schedule and compare test accuracy against plain cosine. Which schedule wins, and by how much?</p>
+  <div class="jupyter-cell">
+  <div class="cell-header"><span class="cell-input-label">In [6]:</span> <span style="color:var(--muted2)">python</span></div>
+  <pre><span class="cell-prompt">&gt;&gt;&gt;</span> # YOUR CODE HERE
+# Implement warmup_cosine_scheduler(optimizer, n_warmup=3, n_total=30)
+# that returns a LambdaLR whose lr_lambda is:
+#   step / n_warmup              if step &lt; n_warmup
+#   0.5 * (1 + cos(pi * (step - n_warmup) / (n_total - n_warmup)))  otherwise
+
+import numpy as np
+from torch.optim.lr_scheduler import LambdaLR
+
+def warmup_cosine_scheduler(optimizer, n_warmup=3, n_total=30):
+    def lr_lambda(step):
+        # YOUR CODE HERE
+        pass
+    return LambdaLR(optimizer, lr_lambda)
+
+# Retrain best config with this scheduler. Compare to plain cosine from Task 5.
+# HINT: step is the epoch number (0-indexed) if you call sched.step() per epoch.</pre>
+</div>
+  <p><strong>Expected output:</strong> Warmup+cosine usually wins by 0.3–1.0 percentage points on CIFAR-10 with the SmallCNN. The win is small here because the model is small and the LR is moderate, but the pattern is sharper on larger models and higher peak LRs.</p>
+</section>
+
+<section id="rubric">
+  <h2>Grading Rubric</h2>
+  <table class="rubric-table">
+    <thead><tr><th>Task</th><th>Points</th><th>Criteria</th></tr></thead>
+    <tbody>
+      <tr><td>Task 1 — SmallCNN</td><td>10</td><td>Model builds, forward pass returns <code>(B, 10)</code>, parameter count is in the expected range (300k–2M depending on n_filters).</td></tr>
+      <tr><td>Task 2 — Objective</td><td>20</td><td>All 6 hyperparameters suggested correctly (log-uniform for LR and weight_decay; correct categorical choices). Weight decay applied to weights only. <code>trial.report</code> and <code>should_prune</code> called per epoch.</td></tr>
+      <tr><td>Task 3 — 50-trial study</td><td>15</td><td>Study completes without errors. Best val acc ≥ 0.75. Trial state counts reported. Runtime reasonable.</td></tr>
+      <tr><td>Task 4 — Visualizations</td><td>20</td><td>All four plots generated and saved. Param importances printed; LR or optimizer is in the top 2.</td></tr>
+      <tr><td>Task 5 — Retrain best config</td><td>25</td><td>Both models trained for 30 epochs with cosine annealing. Test accuracies reported. Improvement from tuning ≥ 3 percentage points.</td></tr>
+      <tr><td>Task 6 (Bonus) — Warmup + cosine</td><td>10</td><td>Scheduler implemented correctly (verify the LR curve). Comparison reported. Sensible discussion of which wins and why.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="submit">
+  <h2>Submission Instructions</h2>
+  <p>Submit a Jupyter notebook <code>assignment_05_[your_name].ipynb</code> with all six tasks in order. Include the four visualization PNGs from Task 4 (or embed them in the notebook). The notebook must run end-to-end in a fresh kernel on a machine with PyTorch 2.0+, Optuna 3.0+, torchvision, plotly, and kaleido installed. If you used a GPU, note it in a markdown cell at the top.</p>
+  <div class="callout tip"><div class="callout-icon">💡</div><div class="callout-body"><div class="callout-title">Stuck? Re-read the relevant article sections.</div><p>Task 1 stuck? Re-read Part 2 section 5 on BatchNorm. Task 2 stuck on parameter groups? Re-read Part 2 section 9 (the Optuna example shows the exact pattern). Task 6 stuck on the scheduler? Re-read Part 1 section 8 (the <code>warmup_cosine</code> lambda is implemented there).</p></div></div>
+</section>
+
+<section id="resources"><h2>Useful Resources</h2><ul class="resource-list"><li><a href="https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html">PyTorch CIFAR-10 tutorial</a></li><li><a href="https://optuna.readthedocs.io/en/stable/tutorial/10_key_features/001_first.html">Optuna — First Optimization tutorial</a></li><li><a href="https://optuna.readthedocs.io/en/stable/tutorial/10_key_features/003_efficient_optimization_algorithms.html">Optuna — Pruning tutorial (MedianPruner)</a></li><li><a href="https://optuna.readthedocs.io/en/stable/tutorial/10_key_features/005_visualization.html">Optuna — Visualization tutorial</a></li><li><a href="https://pytorch.org/vision/stable/generated/torchvision.datasets.CIFAR10.html">torchvision.datasets.CIFAR10 documentation</a></li><li><a href="https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.CosineAnnealingLR.html">CosineAnnealingLR documentation</a></li></ul></section>
+
+  </article>
+</div>
+<div class="page-nav"><a href="part2_architecture_regularization.html" class="page-nav-btn prev"><span class="nav-dir">← Previous</span><span class="nav-title">Architecture Hyperparameters</span></a><a href="assignment_solution.html" class="page-nav-btn next"><span class="nav-dir">Next →</span><span class="nav-title">Assignment 05 Solution</span></a></div>
+<footer>
+  <div class="container">
+    <div style="font-size:1.5rem;font-weight:800;font-family:var(--display);color:var(--accent);margin-bottom:0.5rem">HyperTune</div>
+    <p style="color:var(--muted2);font-size:0.85rem;max-width:500px;margin:0 auto">The complete hyperparameter tuning reference for ML &amp; DL engineers. Covers scikit-learn, XGBoost, LightGBM, PyTorch, Optuna, Ray Tune, and beyond — from first principles to production.</p>
+    <div style="margin-top:2rem;font-size:0.78rem;color:var(--muted2)">Built for learning · Python 3.10+ · scikit-learn 1.4+ · Optuna 3.0+</div>
+  </div>
+</footer>
+<script>
+(function() {
+  const links = Array.from(document.querySelectorAll('.toc-link'));
+  const sections = links
+    .map(l => document.querySelector(l.getAttribute('href')))
+    .filter(Boolean);
+  if (!('IntersectionObserver' in window) || sections.length === 0) return;
+  const setActive = id => {
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+  };
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  sections.forEach(s => observer.observe(s));
+})();
+</script>
+</body>
+</html>

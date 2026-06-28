@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analyzing Hyperparameter Tuning Results — HyperTune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<style>
+
+:root {
+  --bg: #070b14; --bg2: #0c1220; --bg3: #111827;
+  --card: #131d2e; --card2: #1a2640;
+  --border: rgba(99,179,237,0.12); --border2: rgba(99,179,237,0.22);
+  --accent: #38bdf8; --accent2: #818cf8; --accent3: #34d399;
+  --accent4: #f59e0b; --accent5: #f472b6;
+  --text: #f0f6fc; --muted: #8899aa; --muted2: #64748b;
+  --code-bg: #0d1117;
+  --ff: 'Inter', sans-serif; --mono: 'JetBrains Mono', monospace;
+  --display: 'Sora', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,11,20,0.85);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:var(--display);font-weight:800;font-size:1.25rem;color:var(--accent);letter-spacing:-0.03em;text-decoration:none}
+.logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#000;padding:7px 18px;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85}
+
+/* LAYOUT */
+.page-layout { display: grid; grid-template-columns: 280px 1fr; gap: 3rem; max-width: 1200px; margin: 0 auto; padding: 5rem 2rem 5rem; padding-top: 80px; }
+@media(max-width: 900px) { .page-layout { grid-template-columns: 1fr; } .toc-sidebar { display: none; } }
+
+/* TOC SIDEBAR */
+.toc-sidebar { position: sticky; top: 80px; height: fit-content; max-height: calc(100vh - 100px); overflow-y: auto; }
+.toc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.75rem; }
+.toc-nav { display: flex; flex-direction: column; gap: 2px; }
+.toc-link { color: var(--muted); font-size: 0.82rem; text-decoration: none; padding: 4px 10px; border-left: 2px solid transparent; transition: all 0.15s; border-radius: 0 4px 4px 0; }
+.toc-link:hover, .toc-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(56,189,248,0.05); }
+.toc-link.toc-sub { font-size: 0.78rem; padding-left: 22px; }
+
+/* ARTICLE BODY */
+.article-body { min-width: 0; }
+.breadcrumb { font-size: 0.78rem; color: var(--muted2); margin-bottom: 1.5rem; }
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--accent); }
+.module-badge { display: inline-block; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: var(--accent); padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 1rem; }
+.article-title { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
+.article-meta { font-size: 0.83rem; color: var(--muted); margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+
+/* OUTLINE BOX */
+.outline-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 3rem; }
+.outline-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.75rem; color: var(--text); }
+.outline-list { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.85rem; }
+.outline-list a { color: var(--accent); text-decoration: none; }
+.outline-list a:hover { text-decoration: underline; }
+.outline-list li { margin: 4px 0; }
+.outline-list ul { margin: 4px 0; padding-left: 1rem; }
+
+/* ARTICLE PROSE */
+.article-body h2 { font-family: var(--display); font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; margin: 3rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); scroll-margin-top: 80px; }
+.article-body h3 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 80px; }
+.article-body h4 { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.article-body p { margin-bottom: 1.25rem; color: var(--muted); font-size: 0.97rem; line-height: 1.85; }
+.article-body strong { color: var(--text); font-weight: 600; }
+.article-body em { color: var(--accent3); font-style: italic; }
+.article-body ul, .article-body ol { margin: 0 0 1.25rem 1.5rem; color: var(--muted); font-size: 0.95rem; }
+.article-body li { margin-bottom: 6px; line-height: 1.75; }
+.article-body code { font-family: var(--mono); font-size: 0.82em; background: rgba(56,189,248,0.08); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
+.article-body a { color: var(--accent2); text-decoration: none; }
+.article-body a:hover { text-decoration: underline; }
+
+/* CODE BLOCKS */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+.code-block-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot.r { background: #ff5f57; } .code-dot.y { background: #ffbd2e; } .code-dot.g { background: #28c840; }
+.code-filename { font-family: var(--mono); font-size: 0.73rem; color: var(--muted2); margin-left: 8px; }
+.code-block pre { padding: 1.5rem; overflow-x: auto; margin: 0; font-family: var(--mono); font-size: 0.82rem; line-height: 1.8; color: #e2e8f0; }
+/* Syntax colors */
+.kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; }
+.num { color: #f78c6c; } .cm { color: #546e7a; font-style: italic; }
+.cls { color: #ffcb6b; } .imp { color: #89ddff; } .op { color: #89ddff; }
+
+/* CALLOUT BOXES */
+.callout { display: flex; gap: 1rem; border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; border-width: 1px; border-style: solid; }
+.callout-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+.callout-body { font-size: 0.88rem; line-height: 1.75; }
+.callout-body strong { font-weight: 600; }
+.callout-title { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+.callout.note { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.22); color: var(--muted); }
+.callout.note .callout-title, .callout.note strong { color: var(--accent); }
+.callout.warning { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.22); color: var(--muted); }
+.callout.warning .callout-title, .callout.warning strong { color: var(--accent4); }
+.callout.tip { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); color: var(--muted); }
+.callout.tip .callout-title, .callout.tip strong { color: var(--accent3); }
+.callout.important { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.22); color: var(--muted); }
+.callout.important .callout-title, .callout.important strong { color: var(--accent5); }
+
+/* MATH DISPLAY */
+.math-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.75rem; margin: 1.25rem 0; overflow-x: auto; font-size: 1.05rem; text-align: center; }
+.math-label { font-size: 0.72rem; color: var(--muted2); font-family: var(--mono); margin-top: 0.5rem; text-align: right; }
+
+/* INLINE FIGURE / DIAGRAM */
+.figure { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; margin: 2rem 0; text-align: center; }
+.figure-caption { font-size: 0.8rem; color: var(--muted2); margin-top: 1rem; font-style: italic; }
+
+/* DATA TABLE */
+.data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.85rem; }
+.data-table th { padding: 10px 14px; background: var(--card2); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); text-align: left; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(99,179,237,0.03); }
+
+/* SUMMARY BOX */
+.summary-box { background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(129,140,248,0.07)); border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 1.75rem 2rem; margin: 3rem 0 2rem; }
+.summary-box h3 { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+.summary-box ul { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.88rem; }
+.summary-box li { margin-bottom: 6px; line-height: 1.7; }
+
+/* RESOURCE LIST */
+.resource-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.resource-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.resource-list li::before { content: '\2192'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.resource-list a { color: var(--accent2); }
+
+/* PREV/NEXT NAV */
+.page-nav { display: flex; justify-content: space-between; gap: 1rem; padding: 2rem; max-width: 1200px; margin: 0 auto; border-top: 1px solid var(--border); }
+.page-nav-btn { display: flex; flex-direction: column; gap: 4px; padding: 1rem 1.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; transition: all 0.2s; max-width: 45%; }
+.page-nav-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.page-nav-btn .nav-dir { font-size: 0.72rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; }
+.page-nav-btn .nav-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.page-nav-btn.next { text-align: right; margin-left: auto; }
+
+/* QUIZ/EXERCISE BOX */
+.exercise-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin: 2rem 0; }
+.exercise-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent4); margin-bottom: 0.5rem; }
+.exercise-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; }
+.exercise-body { font-size: 0.88rem; color: var(--muted); line-height: 1.75; }
+
+/* QUIZ BOX */
+.quiz-box { background: rgba(129,140,248,0.06); border: 1px solid rgba(129,140,248,0.22); border-radius: 14px; padding: 1.5rem; margin: 1.5rem 0; }
+.quiz-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.5rem; }
+.quiz-question { font-size: 0.93rem; color: var(--text); margin-bottom: 0.75rem; font-weight: 500; }
+.quiz-answer { margin-top: 0.5rem; }
+.quiz-answer summary { cursor: pointer; font-size: 0.82rem; color: var(--accent2); font-weight: 600; }
+.quiz-answer p { margin-top: 0.5rem; font-size: 0.86rem; color: var(--muted); }
+
+/* CELL (for assignment files - jupyter style) */
+.jupyter-cell { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin: 1.5rem 0; overflow: hidden; }
+.cell-header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted2); font-family: var(--mono); }
+.cell-input-label { color: var(--accent4); font-weight: 600; }
+.cell-body { padding: 1rem 1.25rem; }
+.jupyter-cell pre { padding: 1rem 1.25rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; background: var(--code-bg); margin: 0; }
+.cell-prompt { color: var(--accent3); font-weight: 700; }
+
+/* GRADING RUBRIC */
+.rubric-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+.rubric-table th { background: var(--card2); padding: 10px 14px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); }
+.rubric-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+
+/* DETAILS (collapsible hints) */
+details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; }
+details summary { cursor: pointer; font-size: 0.85rem; color: var(--accent2); font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
+
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">Hyper<span>Tune</span></a>
+    <ul class="nav-links">
+
+    </ul>
+    <a href="../index.html#curriculum" class="nav-cta">Start Learning</a>
+  </div>
+</nav>
+<div class="page-layout">
+  <aside class="toc-sidebar">
+    <div class="toc-label">On this page</div>
+    <nav class="toc-nav">
+<a href="#section-1" class="toc-link">1. Why Analysis Is Half the Work</a>
+<a href="#section-2" class="toc-link">2. Convergence Plots</a>
+<a href="#section-3" class="toc-link">3. Parallel Coordinates</a>
+<a href="#section-4" class="toc-link">4. Hyperparameter Importance (fANOVA)</a>
+<a href="#section-5" class="toc-link">5. Contour Plots</a>
+<a href="#section-6" class="toc-link">6. Slice Plots</a>
+<a href="#section-7" class="toc-link">7. Deep Analysis of cv_results_</a>
+<a href="#section-8" class="toc-link">8. Train-vs-Validation Overfitting Check</a>
+<a href="#section-9" class="toc-link">9. Full Analysis Pipeline</a>
+<a href="#resources" class="toc-link">Useful Resources</a>
+    </nav>
+  </aside>
+  <article class="article-body">
+    <div class="breadcrumb"><a href="../index.html">HyperTune</a> › <a href="intro.html">Module 11</a> › Analysis &amp; Visualization</div>
+    <div class="article-header">
+      <div class="module-badge">Module 11 · Advanced</div>
+      <h1 class="article-title">Analyzing Hyperparameter Tuning Results: What Worked and Why</h1>
+      <div class="article-meta">Part of the <strong>HyperTune</strong> open course · Estimated read time: 18 min · Python 3.10+ · Optuna 3.0+ / plotly</div>
+    </div>
+    <div class="outline-box">
+      <div class="outline-title">📋 Article Outline</div>
+      <ol class="outline-list">
+
+<li><a href="#section-1">1. Why Analysis Is Half the Work</a></li>
+<li><a href="#section-2">2. Convergence Plots: When to Stop</a></li>
+<li><a href="#section-3">3. Parallel Coordinates: The Bird's-Eye View</a></li>
+<li><a href="#section-4">4. Hyperparameter Importance: fANOVA</a></li>
+<li><a href="#section-5">5. Contour Plots: Pairwise Interactions</a></li>
+<li><a href="#section-6">6. Slice Plots: 1D Sweet Spots</a></li>
+<li><a href="#section-7">7. Deep Analysis of cv_results_</a></li>
+<li><a href="#section-8">8. Train-vs-Validation Overfitting Check</a></li>
+<li><a href="#section-9">9. Full Analysis Pipeline</a></li>
+<li><a href="#resources">Useful Resources</a></li>
+      </ol>
+    </div>
+
+<section id="section-1">
+  <h2>1. Why Analysis Is Half the Work</h2>
+  <p>Running a hyperparameter search is the easy part. Modern tools like Optuna, Ray Tune, and Hyperopt will happily spend hours of GPU time exploring a search space and hand you back a "best trial" at the end. But the best trial is just one row of a much richer dataset: every trial you ran is a sample of the function $f(\lambda) = \text{validation score}(\lambda)$, and that function contains everything you could want to know — which hyperparameters matter, where the sweet spots live, which combinations are quietly destroying your model, and whether your search has converged or is still finding new regions. Throwing those samples away and keeping only the argmax is like running a clinical trial and reporting only the mean.</p>
+  <p>This article is the analytical companion to Module 10 (where we covered the search algorithms themselves). We assume you already have an Optuna <code>study</code> object in memory, or a scikit-learn <code>cv_results_</code> dictionary from a <code>GridSearchCV</code> or <code>RandomizedSearchCV</code> run. From those two starting points we will build a complete analysis pipeline: convergence plots, parallel coordinates, hyperparameter importance via fANOVA, contour and slice plots, distributional analysis of <code>cv_results_</code>, and a train-vs-validation overfitting check. By the end you should be able to look at a finished study and tell, in five minutes, what worked, what didn't, and what to try next.</p>
+  <p>The unifying principle behind every plot in this article is the same: <strong>a tuning study is a dataset, and the same exploratory-data-analysis toolkit you would apply to any dataset applies here too.</strong> The "rows" are trials, the "columns" are hyperparameters plus the score, and the relationships between columns are exactly what we want to visualize. The only wrinkle is that the columns are heterogeneous — some are continuous, some are categorical, some are log-scale — and the visualizations need to respect that.</p>
+</section>
+
+<section id="section-2">
+  <h2>2. Convergence Plots: When to Stop Spending Compute</h2>
+  <p>The single most practically important plot is the convergence plot: best-so-far validation score versus trial number. It answers the question every ML engineer asks during a long search: <em>is this still worth running?</em> The shape of the curve tells you.</p>
+  <p>If the curve is still climbing at the right edge of the plot — meaning the best score has improved in the last 5–10 trials — your search is still finding useful new regions and you should let it run longer. If the curve has flattened into a long horizontal asymptote — meaning the best score has not improved in the last 30+ trials — your search has converged and additional trials are unlikely to beat the incumbent. Bayesian optimizers like TPE and CMA-ES converge in a characteristic way: rapid improvement in the first 10–20 trials as the surrogate model is built, then a long tail of small improvements. Random search converges more slowly and more linearly. Grid search doesn't really "converge" — it just stops when the grid is exhausted.</p>
+  <p>Generating this plot from an Optuna study is a one-liner via the built-in visualization module:</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── convergence_plot.py ──────────────────────────────────────────────────────
+# Generate the best-score-vs-trial-number curve from an Optuna study.
+# This is the single most important diagnostic for &quot;should I keep running?&quot;
+
+import optuna
+import matplotlib.pyplot as plt
+
+study = optuna.load_study(study_name=&quot;xgb_breast_cancer&quot;, storage=&quot;sqlite:///xgb.db&quot;)
+
+# Built-in plotly version (interactive):
+fig = optuna.visualization.plot_optimization_history(study)
+fig.write_html(&quot;optimization_history.html&quot;)
+fig.write_image(&quot;optimization_history.png&quot;, width=900, height=500)
+
+# Manual matplotlib version (for static reports):
+trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
+values = [t.value for t in trials]                       # per-trial score
+best_so_far = []
+running_best = float(&quot;-inf&quot;)
+for v in values:
+    running_best = max(running_best, v)
+    best_so_far.append(running_best)
+
+fig, ax = plt.subplots(figsize=(9, 4.5), constrained_layout=True)
+ax.plot(range(1, len(values) + 1), values, &quot;o&quot;, color=&quot;#8899aa&quot;,
+        alpha=0.4, markersize=4, label=&quot;per-trial score&quot;)
+ax.plot(range(1, len(values) + 1), best_so_far, &quot;-&quot;, color=&quot;#38bdf8&quot;,
+        linewidth=2.5, label=&quot;best so far&quot;)
+ax.set_xlabel(&quot;Trial number&quot;)
+ax.set_ylabel(&quot;Validation accuracy&quot;)
+ax.set_title(&quot;Optimization history&quot;)
+ax.legend(loc=&quot;lower right&quot;)
+plt.savefig(&quot;convergence_manual.png&quot;, dpi=120)
+plt.show()
+
+# Quantitative convergence check: how many trials since last improvement?
+import numpy as np
+idx_best = int(np.argmax(values))
+trials_since_improvement = len(values) - 1 - idx_best
+print(f&quot;Best score = {max(values):.4f} at trial {idx_best + 1}&quot;)
+print(f&quot;Trials since last improvement: {trials_since_improvement}&quot;)
+print(f&quot;Converged? {&#x27;yes&#x27; if trials_since_improvement &gt; 30 else &#x27;maybe keep running&#x27;}&quot;)
+</pre></div>
+  <p>Note the quantitative convergence check at the bottom. Eyeballing the curve is fine for a quick look, but if you are automating search budgets (e.g. "stop when converged"), you want a number. A common rule of thumb: if the best score has not improved in the last <code>max(30, 10% × n_trials)</code> trials, declare the search converged. This is also what Optuna's <code>TrialPruner</code> uses internally for early stopping of unpromising trials.</p>
+  <div class="callout warning"><div class="callout-icon">⚠️</div><div class="callout-body"><div class="callout-title">Convergence != optimality</div><p>A flat convergence curve means the <em>search algorithm</em> has stopped finding improvements — it does <strong>not</strong> mean you have found the global optimum. The true optimum might live in a region the sampler never explored. If your convergence plot is flat but the score is still unsatisfying, try a different sampler (switch TPE → CMA-ES, or restart TPE with a fresh seed) or expand the search space before declaring defeat.</p></div></div>
+</section>
+
+<section id="section-3">
+  <h2>3. Parallel Coordinates: The Bird's-Eye View</h2>
+  <p>The parallel coordinates plot is the most information-dense visualization in the hyperparameter analyst's toolkit. Each vertical axis represents one hyperparameter (with its values min-max normalized onto [0, 1] for display), and each line connecting the axes represents one trial, colored by its score. The result is a tangle of lines that, when you squint, reveals <em>where in the joint space the good trials cluster</em>.</p>
+  <div class="figure">
+<svg viewBox="0 0 640 360" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;">
+  <defs>
+    <linearGradient id="goodGrad" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#34d399" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#34d399" stop-opacity="0.1"/>
+    </linearGradient>
+  </defs>
+  <!-- Axes background -->
+  <rect x="40" y="40" width="560" height="260" fill="rgba(99,179,237,0.03)" rx="6"/>
+  <!-- Vertical axes -->
+  <line x1="100" y1="60" x2="100" y2="300" stroke="#8899aa" stroke-width="1.5"/>
+  <line x1="220" y1="60" x2="220" y2="300" stroke="#8899aa" stroke-width="1.5"/>
+  <line x1="340" y1="60" x2="340" y2="300" stroke="#8899aa" stroke-width="1.5"/>
+  <line x1="460" y1="60" x2="460" y2="300" stroke="#8899aa" stroke-width="1.5"/>
+  <line x1="560" y1="60" x2="560" y2="300" stroke="#8899aa" stroke-width="1.5"/>
+  <!-- Axis labels -->
+  <text x="100" y="325" fill="#8899aa" font-size="12" text-anchor="middle" font-family="Inter">learning_rate</text>
+  <text x="220" y="325" fill="#8899aa" font-size="12" text-anchor="middle" font-family="Inter">max_depth</text>
+  <text x="340" y="325" fill="#8899aa" font-size="12" text-anchor="middle" font-family="Inter">n_estimators</text>
+  <text x="460" y="325" fill="#8899aa" font-size="12" text-anchor="middle" font-family="Inter">subsample</text>
+  <text x="560" y="325" fill="#8899aa" font-size="12" text-anchor="middle" font-family="Inter">colsample_bytree</text>
+  <text x="20" y="50" fill="#8899aa" font-size="11" font-family="Inter">high</text>
+  <text x="20" y="305" fill="#8899aa" font-size="11" font-family="Inter">low</text>
+  <!-- Color legend for score (y-axis on right) -->
+  <linearGradient id="scoreGrad" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#34d399"/>
+    <stop offset="50%" stop-color="#f59e0b"/>
+    <stop offset="100%" stop-color="#f472b6"/>
+  </linearGradient>
+  <rect x="610" y="60" width="14" height="240" fill="url(#scoreGrad)" rx="2"/>
+  <text x="625" y="55" fill="#34d399" font-size="10" font-family="Inter">best</text>
+  <text x="625" y="310" fill="#f472b6" font-size="10" font-family="Inter">worst</text>
+  <!-- Top-performing trials (green, cluster around mid-low LR, high depth) -->
+  <polyline points="100,230 220,120 340,110 460,150 560,160" stroke="#34d399" stroke-width="2" fill="none" opacity="0.9"/>
+  <polyline points="100,250 220,140 340,130 460,170 560,180" stroke="#34d399" stroke-width="2" fill="none" opacity="0.85"/>
+  <polyline points="100,240 220,130 340,120 460,160 560,170" stroke="#34d399" stroke-width="2" fill="none" opacity="0.85"/>
+  <polyline points="100,260 220,150 340,140 460,180 560,190" stroke="#34d399" stroke-width="2" fill="none" opacity="0.8"/>
+  <!-- Mid trials (amber) -->
+  <polyline points="100,180 220,200 340,180 460,210 560,220" stroke="#f59e0b" stroke-width="2" fill="none" opacity="0.7"/>
+  <polyline points="100,200 220,220 340,200 460,230 560,240" stroke="#f59e0b" stroke-width="2" fill="none" opacity="0.65"/>
+  <polyline points="100,160 220,180 340,170 460,200 560,210" stroke="#f59e0b" stroke-width="2" fill="none" opacity="0.7"/>
+  <!-- Worst trials (pink) — all over the place, often hitting extreme values -->
+  <polyline points="100,80 220,280 340,260 460,90 560,280" stroke="#f472b6" stroke-width="2" fill="none" opacity="0.6"/>
+  <polyline points="100,90 220,290 340,270 460,100 560,290" stroke="#f472b6" stroke-width="2" fill="none" opacity="0.6"/>
+  <polyline points="100,100 220,90 340,280 460,280 560,100" stroke="#f472b6" stroke-width="2" fill="none" opacity="0.55"/>
+  <!-- Highlight the "good region" with shaded band on learning_rate axis -->
+  <rect x="100" y="220" width="2" height="60" fill="#34d399" opacity="0.25"/>
+  <text x="115" y="345" fill="#34d399" font-size="10" font-family="Inter" font-style="italic">good LR region</text>
+  <text x="180" y="355" fill="#8899aa" font-size="11" text-anchor="middle" font-family="Inter">Each line = one trial · color encodes validation score</text>
+</svg><div class="figure-caption">Conceptual parallel coordinates plot. Each line is one trial; line color encodes the validation score (green=best, pink=worst). The green trials cluster in a tight region across all five axes — that is the sweet spot.</div></div>
+  <p>The plot above is a schematic with hand-drawn lines, but the real thing — generated by <code>optuna.visualization.plot_parallel_coordinate(study)</code> — looks essentially the same. The diagnostic value is in the patterns: if the green (best) lines all pass through a narrow band on the <code>learning_rate</code> axis, that band is your sweet spot for <code>learning_rate</code>. If the green lines are scattered across the entire <code>subsample</code> axis, <code>subsample</code> barely matters and you can stop tuning it.</p>
+  <p>The single most common finding from a parallel coordinates plot is an <strong>interaction</strong>: two hyperparameters that look unimportant in isolation but jointly determine success. The classic example is <code>learning_rate</code> and <code>n_estimators</code> in gradient boosting — either alone looks like noise, but together they form a tight diagonal band of good trials (low LR + many trees, or higher LR + fewer trees). Parallel coordinates makes this band jump off the page.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── parallel_coords.py ───────────────────────────────────────────────────────
+# Generate parallel coordinates plot from an Optuna study.
+
+import optuna
+
+study = optuna.load_study(study_name=&quot;xgb_breast_cancer&quot;, storage=&quot;sqlite:///xgb.db&quot;)
+
+# Plotly version (interactive, hover to see exact values):
+fig = optuna.visualization.plot_parallel_coordinate(
+    study,
+    params=[&quot;learning_rate&quot;, &quot;max_depth&quot;, &quot;n_estimators&quot;,
+            &quot;subsample&quot;, &quot;colsample_bytree&quot;, &quot;min_child_weight&quot;],
+)
+fig.write_html(&quot;parallel_coords.html&quot;)
+fig.show()
+
+# To restrict to the top-10% trials only (cleaner visualization):
+import numpy as np
+trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
+values = [t.value for t in trials]
+threshold = np.quantile(values, 0.90)
+top_trials = [t for t in trials if t.value &gt;= threshold]
+print(f&quot;Plotting {len(top_trials)} top trials out of {len(trials)} total&quot;)
+
+# Optuna 3.x lets you filter by passing a sub-study:
+top_study = optuna.create_study()
+for t in top_trials:
+    top_study.add_trial(t)
+fig_top = optuna.visualization.plot_parallel_coordinate(top_study)
+fig_top.write_html(&quot;parallel_coords_top10pct.html&quot;)
+</pre></div>
+  <p>The two-pass trick at the bottom — generate the plot once with all trials, then again with only the top 10% — is the most useful practical tip in this article. The full plot is overwhelming on studies with more than 100 trials; the top-10% plot shows you exactly which slice of each axis the best trials live in, with no noise.</p>
+</section>
+
+<section id="section-4">
+  <h2>4. Hyperparameter Importance: fANOVA and What Actually Matters</h2>
+  <p>Not every hyperparameter is worth tuning. For most model families, two or three hyperparameters explain 80–95% of the variance in validation score, and the rest are noise. Knowing which is which lets you focus your next search budget on what actually matters, and lets you fix the noise hyperparameters to reasonable defaults.</p>
+  <p>The standard tool for quantifying this is <strong>fANOVA</strong> — functional ANOVA — originally introduced by Hutter et al. (2014) for analyzing AutoML competitions. The idea: treat the validation score as a function of all hyperparameters, decompose its variance into a sum of per-hyperparameter (and per-interaction) contributions, and report the fraction of variance each one explains. The decomposition is exact for additive functions and approximate (via a random-forest surrogate) for real validation surfaces. The output is a single bar chart: one bar per hyperparameter, height = fraction of variance explained.</p>
+  <div class="math-block">$$ \text{{Var}}[f(\lambda)] = \sum_i V_i + \sum_{{i < j}} V_{{ij}} + \cdots \quad \text{{where}} \quad V_i = \text{{Var}}_{{\lambda_i}}\bigl[\mathbb{{E}}_{{\lambda_{{-i}}}}[f]\bigr] $$ <div class="math-label">Eq. 1 — fANOVA decomposition. $V_i$ is the marginal variance explained by $\lambda_i$ alone; $V_{ij}$ is the variance explained by the $\lambda_i \times \lambda_j$ interaction.</div></div>
+  <p>Optuna wraps this in a single function call:</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── param_importances.py ─────────────────────────────────────────────────────
+# Compute and plot hyperparameter importances via fANOVA.
+
+import optuna
+from optuna.importance import get_param_importances, FanovaImportanceEvaluator
+
+study = optuna.load_study(study_name=&quot;xgb_breast_cancer&quot;, storage=&quot;sqlite:///xgb.db&quot;)
+
+# Quick &amp; dirty: built-in plot
+fig = optuna.visualization.plot_param_importances(study)
+fig.write_html(&quot;param_importances.html&quot;)
+fig.show()
+
+# Programmatic access (returns an ordered dict):
+importances = get_param_importances(study, evaluator=FanovaImportanceEvaluator(seed=42))
+print(&quot;Hyperparameter importance (fraction of variance explained):&quot;)
+for name, imp in importances.items():
+    print(f&quot;  {name:25s} {imp:.3f}&quot;)
+
+# Typical output on XGBoost + breast_cancer with 100 trials:
+#   learning_rate            0.512
+#   max_depth                0.238
+#   n_estimators             0.108
+#   subsample                0.062
+#   colsample_bytree         0.041
+#   min_child_weight         0.018
+#   reg_lambda               0.013
+#   reg_alpha                0.008
+</pre></div>
+  <p>The typical output above is a real pattern, not a contrived example. For XGBoost on a tabular classification task, <code>learning_rate</code> usually explains 40–60% of the variance, <code>max_depth</code> another 20–30%, and the remaining six or seven hyperparameters split the leftover 15%. This is exactly why modules 5 and 6 spent so much time on those two: they are not just "important," they are <em>where the action is</em>.</p>
+  <p>A subtle but critical caveat: importances are <strong>conditional on the search space you ran</strong>. If you set <code>learning_rate</code> to a fixed value, fANOVA will report it as unimportant — not because it doesn't matter, but because there's no variance in it to explain. Always read importances alongside the search space configuration.</p>
+  <div class="callout tip"><div class="callout-icon">💡</div><div class="callout-body"><div class="callout-title">Compute importances on the second half of trials only</div><p>Bayesian samplers concentrate their queries in the good region after the first ~30% of trials. If you compute importances on the full study, the "good region" looks artificially over-represented and the importance estimates are biased. For more honest estimates, restrict to the last 50% of trials: <code>get_param_importances(study, n_recent_trials=len(study.trials)//2)</code>.</p></div></div>
+</section>
+
+<section id="section-5">
+  <h2>5. Contour Plots: Spotting Pairwise Interactions</h2>
+  <p>fANOVA tells you which hyperparameters matter individually; the contour plot tells you which pairs of hyperparameters interact. A contour plot is a 2D heatmap of the validation score as a function of two hyperparameters, with all other hyperparameters marginalized out. The shape of the contours reveals the interaction structure.</p>
+  <p>Round, concentric contours mean the two hyperparameters are <strong>independent</strong>: you can tune each one separately, in any order. Elongated diagonal contours mean they interact: the best value of one depends on the value of the other. A "ridge" pattern — a narrow good region running diagonally across the plot — means the interaction is strong and you cannot tune either hyperparameter without simultaneously considering the other.</p>
+  <p>The canonical interaction in gradient boosting is <code>learning_rate × n_estimators</code>: low LR with many trees is good, high LR with few trees is also good, but high LR with many trees overfits dramatically. A contour plot of those two parameters shows a diagonal ridge of good scores, with a hot red region in the "high LR + many trees" corner where every trial overfit. Seeing that ridge tells you to co-tune them — for example, fix <code>n_estimators = 500</code> and tune <code>learning_rate</code> on a log scale.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── contour_plot.py ──────────────────────────────────────────────────────────
+# Generate contour plots for the top hyperparameter pairs.
+
+import optuna
+import itertools
+
+study = optuna.load_study(study_name=&quot;xgb_breast_cancer&quot;, storage=&quot;sqlite:///xgb.db&quot;)
+
+# Built-in: single pair
+fig = optuna.visualization.plot_contour(
+    study,
+    params=[&quot;learning_rate&quot;, &quot;max_depth&quot;],
+)
+fig.write_html(&quot;contour_lr_depth.html&quot;)
+
+# Built-in: full pairwise grid (every pair gets its own subplot)
+fig_all = optuna.visualization.plot_contour(study)
+fig_all.write_html(&quot;contour_all_pairs.html&quot;)
+
+# Pick the top 3 most important params, then plot just those 3 pairs:
+from optuna.importance import get_param_importances
+imps = list(get_param_importances(study).keys())[:3]
+for a, b in itertools.combinations(imps, 2):
+    fig = optuna.visualization.plot_contour(study, params=[a, b])
+    fig.write_html(f&quot;contour_{a}_{b}.html&quot;)
+
+# Manual matplotlib version (for a static report):
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.interpolate import griddata
+
+trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
+lr = np.array([t.params[&quot;learning_rate&quot;] for t in trials])
+md = np.array([t.params[&quot;max_depth&quot;] for t in trials], dtype=float)
+val = np.array([t.value for t in trials])
+
+grid_x, grid_y = np.meshgrid(
+    np.linspace(lr.min(), lr.max(), 60),
+    np.linspace(md.min(), md.max(), 60),
+)
+grid_z = griddata(np.column_stack([lr, md]), val, (grid_x, grid_y), method=&quot;cubic&quot;)
+
+fig, ax = plt.subplots(figsize=(7, 5), constrained_layout=True)
+cs = ax.contourf(grid_x, grid_y, grid_z, levels=20, cmap=&quot;viridis&quot;)
+ax.scatter(lr, md, c=val, edgecolors=&quot;white&quot;, linewidth=0.5, s=30, cmap=&quot;viridis&quot;)
+fig.colorbar(cs, label=&quot;Validation accuracy&quot;)
+ax.set_xlabel(&quot;learning_rate&quot;)
+ax.set_ylabel(&quot;max_depth&quot;)
+ax.set_title(&quot;Contour: learning_rate × max_depth&quot;)
+plt.savefig(&quot;contour_lr_depth_manual.png&quot;, dpi=120)
+plt.show()
+</pre></div>
+  <p>The matplotlib version uses <code>scipy.interpolate.griddata</code> to fit a smooth surface through the trial points. This is a quick-and-dirty surrogate; for a more principled surface use a Gaussian-process fit (Optuna does this internally for its GP-based samplers). Either way, the goal is the same: see the shape of the surface, not just the discrete trial points.</p>
+</section>
+
+<section id="section-6">
+  <h2>6. Slice Plots: 1D Sweet Spots, Marginalized</h2>
+  <p>The slice plot is the natural reduction of a contour plot to one dimension: it shows validation score versus a single hyperparameter, with all other hyperparameters marginalized out (i.e., every trial plotted as a point, with no constraint on the other axes). It is the fastest way to answer "what's the right value for <em>X</em>?" for each hyperparameter in turn.</p>
+  <p>A good slice plot looks like a U-shape or a clear monotonic trend. A flat slice plot means the hyperparameter doesn't matter much (and fANOVA will agree). A slice plot with a clear valley — say, scores peaking at <code>max_depth=6–9</code> and dropping on either side — tells you the sweet spot directly.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── slice_plot.py ─────────────────────────────────────────────────────────────
+# 1D marginal plots: validation score vs each hyperparameter individually.
+
+import optuna
+
+study = optuna.load_study(study_name=&quot;xgb_breast_cancer&quot;, storage=&quot;sqlite:///xgb.db&quot;)
+
+# Built-in: all params at once (one subplot per hyperparameter)
+fig = optuna.visualization.plot_slice(study)
+fig.write_html(&quot;slice_all.html&quot;)
+
+# Built-in: restrict to specific params and color by another param
+fig = optuna.visualization.plot_slice(
+    study,
+    params=[&quot;learning_rate&quot;, &quot;max_depth&quot;, &quot;n_estimators&quot;],
+)
+fig.write_html(&quot;slice_top3.html&quot;)
+</pre></div>
+  <p>Slice plots complement contour plots: contour plots show <em>interactions</em>, slice plots show <em>marginal effects</em>. If a slice plot is flat but the corresponding hyperparameter shows up as important in fANOVA, that is a tell-tale sign of a strong interaction — the hyperparameter matters only in combination with something else, and you need the contour plot to find it.</p>
+</section>
+
+<section id="section-7">
+  <h2>7. Deep Analysis of <code>cv_results_</code></h2>
+  <p>If you ran a <code>GridSearchCV</code> or <code>RandomizedSearchCV</code> instead of Optuna, your starting point is the <code>cv_results_</code> dictionary on the fitted search object. It contains, for every parameter combination evaluated, the per-fold test scores, the mean and std of those scores, the fit time, and the parameter values themselves. It is essentially a tidy DataFrame of your entire search.</p>
+  <p>Two analyses are particularly useful on <code>cv_results_</code>:</p>
+  <ul>
+    <li><strong>Box plots of score per categorical hyperparameter value.</strong> For each level of a categorical hyperparameter (e.g., <code>kernel='rbf'</code> vs <code>kernel='poly'</code>), collect all the per-fold scores across all other hyperparameter settings, and draw a box plot. If one level's box is consistently above the others, that level is robustly better — independent of the other knobs.</li>
+    <li><strong>Score heatmaps for grid searches.</strong> If you ran a 2D grid over two hyperparameters, you can pivot <code>cv_results_</code> into a 2D matrix and display it as a heatmap. This is exactly the contour plot, but for discrete grid points.</li>
+  </ul>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── cv_results_analysis.py ───────────────────────────────────────────────────
+# Analyze GridSearchCV / RandomizedSearchCV cv_results_ with pandas + seaborn.
+
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.datasets import load_breast_cancer
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
+
+X, y = load_breast_cancer(return_X_y=True)
+
+# A small 2D grid: learning_rate × max_depth
+grid = {
+    &quot;learning_rate&quot;: [0.01, 0.05, 0.1, 0.3, 1.0],
+    &quot;max_depth&quot;:     [2, 3, 5, 7, 9],
+}
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+search = GridSearchCV(
+    GradientBoostingClassifier(n_estimators=200, random_state=42),
+    grid, cv=cv, scoring=&quot;accuracy&quot;, n_jobs=-1, return_train_score=True,
+)
+search.fit(X, y)
+
+# Convert cv_results_ to a tidy DataFrame
+df = pd.DataFrame(search.cv_results_)
+print(df.columns.tolist()[:10])   # peek at available columns
+
+# ─── 1. Box plot of CV accuracy by learning_rate level ──────────────────────
+plt.figure(figsize=(9, 5))
+sns.boxplot(data=df, x=&quot;param_learning_rate&quot;, y=&quot;mean_test_score&quot;,
+            palette=&quot;viridis&quot;)
+plt.xlabel(&quot;learning_rate&quot;)
+plt.ylabel(&quot;Mean CV accuracy&quot;)
+plt.title(&quot;CV accuracy distribution per learning_rate level&quot;)
+plt.tight_layout()
+plt.savefig(&quot;cv_box_lr.png&quot;, dpi=120)
+plt.show()
+
+# ─── 2. 2D heatmap of mean_test_score over (learning_rate, max_depth) ───────
+pivot = df.pivot_table(
+    index=&quot;param_learning_rate&quot;,
+    columns=&quot;param_max_depth&quot;,
+    values=&quot;mean_test_score&quot;,
+)
+plt.figure(figsize=(7, 5))
+sns.heatmap(pivot, annot=True, fmt=&quot;.3f&quot;, cmap=&quot;viridis&quot;, square=True)
+plt.title(&quot;Grid search heatmap: mean CV accuracy&quot;)
+plt.tight_layout()
+plt.savefig(&quot;cv_heatmap.png&quot;, dpi=120)
+plt.show()
+
+# ─── 3. Statistical check: does any level beat the others consistently? ─────
+print(&quot;\nPer-level mean CV accuracy (sorted):&quot;)
+print(df.groupby(&quot;param_learning_rate&quot;)[&quot;mean_test_score&quot;]
+        .agg([&quot;mean&quot;, &quot;std&quot;, &quot;count&quot;])
+        .sort_values(&quot;mean&quot;, ascending=False))
+</pre></div>
+  <p>The heatmap is essentially a discrete contour plot — it shows the same interaction structure, just without interpolation. The box plot is more useful when one of your hyperparameters is genuinely categorical (kernel choice, loss function), because the contour/slice machinery in Optuna assumes continuous parameters.</p>
+</section>
+
+<section id="section-8">
+  <h2>8. The Train-vs-Validation Overfitting Check</h2>
+  <p>Every visualization so far has used validation score as the y-axis. But validation score alone can mislead you in one specific way: <strong>you can overfit to the validation set itself</strong>. If you run enough trials, eventually one of them will, by chance, have a high validation score that does not generalize to a truly held-out test set. The signal is in the train-vs-validation gap.</p>
+  <p>For each trial, plot train score (accuracy on the training folds) and validation score (accuracy on the held-out fold) against each other, colored by trial number or by validation score. The diagnostic pattern: if the best-validation trials have a train score that is much higher than their validation score — say, train = 1.000 and val = 0.975 — and the gap <em>grows</em> as you move to higher-validation-score trials, you are overfitting to the validation set. The cure is either more data (so the validation estimate is less noisy) or nested cross-validation (so the validation set you are tuning on is itself held out from a final evaluation).</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── train_vs_val.py ───────────────────────────────────────────────────────────
+# Check whether the search is overfitting to the validation set.
+
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import load_breast_cancer
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
+
+X, y = load_breast_cancer(return_X_y=True)
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+# Note: return_train_score=True is required to get train scores per trial.
+search = GridSearchCV(
+    GradientBoostingClassifier(n_estimators=200, random_state=42),
+    {
+        &quot;learning_rate&quot;: [0.01, 0.05, 0.1, 0.2, 0.5, 1.0],
+        &quot;max_depth&quot;:     [2, 3, 5, 7, 9, 12],
+    },
+    cv=cv, scoring=&quot;accuracy&quot;, n_jobs=-1, return_train_score=True,
+)
+search.fit(X, y)
+
+import pandas as pd
+df = pd.DataFrame(search.cv_results_)
+
+# Scatter: train score (x) vs val score (y), colored by trial index
+plt.figure(figsize=(7.5, 6))
+sc = plt.scatter(
+    df[&quot;mean_train_score&quot;], df[&quot;mean_test_score&quot;],
+    c=df[&quot;mean_test_score&quot;], cmap=&quot;viridis&quot;, s=50, edgecolors=&quot;white&quot;,
+)
+plt.plot([0.9, 1.0], [0.9, 1.0], &quot;--&quot;, color=&quot;#8899aa&quot;, label=&quot;train = val (no overfit)&quot;)
+plt.colorbar(sc, label=&quot;Validation accuracy&quot;)
+plt.xlabel(&quot;Mean train accuracy (5-fold)&quot;)
+plt.ylabel(&quot;Mean validation accuracy (5-fold)&quot;)
+plt.title(&quot;Train vs validation: are top-val trials overfit?&quot;)
+plt.legend(loc=&quot;lower right&quot;)
+plt.tight_layout()
+plt.savefig(&quot;train_vs_val.png&quot;, dpi=120)
+plt.show()
+
+# Quantitative check: gap = train - val, sorted by val score descending
+df[&quot;gap&quot;] = df[&quot;mean_train_score&quot;] - df[&quot;mean_test_score&quot;]
+top10 = df.nlargest(10, &quot;mean_test_score&quot;)[
+    [&quot;mean_train_score&quot;, &quot;mean_test_score&quot;, &quot;gap&quot;,
+     &quot;param_learning_rate&quot;, &quot;param_max_depth&quot;]
+]
+print(&quot;\nTop 10 trials by validation score:&quot;)
+print(top10.to_string(index=False))
+
+mean_gap = top10[&quot;gap&quot;].mean()
+overall_gap = df[&quot;gap&quot;].mean()
+print(f&quot;\nMean train-val gap (top 10):   {mean_gap:.4f}&quot;)
+print(f&quot;Mean train-val gap (all trials): {overall_gap:.4f}&quot;)
+if mean_gap &gt; 1.5 * overall_gap:
+    print(&quot;⚠️  Top-val trials show an overfitting signal. Consider nested CV.&quot;)
+else:
+    print(&quot;✓  No overfitting signal in top-val trials.&quot;)
+</pre></div>
+  <p>The quantitative check at the end — comparing the mean train-val gap of the top-10 trials against the overall mean gap — is a useful heuristic. If the top-10 gap is more than 1.5× the overall gap, the search is selectively finding trials that overfit the validation folds. In that case, treat the reported best score as optimistic by the size of the gap, and validate the final model on a truly held-out test set (or via nested CV).</p>
+  <div class="callout important"><div class="callout-icon">🔥</div><div class="callout-body"><div class="callout-title">Nested CV is the gold standard</div><p>If you are reporting results in a paper or to a regulator, single-loop CV with hyperparameter tuning <strong>leaks</strong> — the validation set used to pick hyperparameters is the same one used to estimate generalization. Nested CV (5 outer folds × 3 inner folds = 15 fits, but it scales) fixes this by tuning separately inside each outer fold. Use it whenever the reported number matters more than the wall-clock cost.</p></div></div>
+</section>
+
+<section id="section-9">
+  <h2>9. The Full Analysis Pipeline: From Study to Report</h2>
+  <p>Let's close with a single end-to-end script that takes an Optuna <code>study</code> and produces a complete analysis report: convergence, parallel coordinates, parameter importances, contour plots for the top-2 most important pairs, slice plots, and a train-vs-validation overfitting check. This is the script you should run after every tuning job before deciding what to do next.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── analyze_study.py ─────────────────────────────────────────────────────────
+# End-to-end analysis pipeline for an Optuna study.
+# Produces: 6 HTML plots + a Markdown summary table.
+
+import optuna
+import itertools
+import numpy as np
+import pandas as pd
+from pathlib import Path
+from optuna.importance import get_param_importances, FanovaImportanceEvaluator
+
+OUT = Path(&quot;analysis_report&quot;); OUT.mkdir(exist_ok=True)
+study = optuna.load_study(study_name=&quot;xgb_breast_cancer&quot;, storage=&quot;sqlite:///xgb.db&quot;)
+trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
+print(f&quot;Loaded {len(trials)} complete trials. Best value = {study.best_value:.4f}&quot;)
+
+# 1. Convergence (optimization history)
+fig = optuna.visualization.plot_optimization_history(study)
+fig.write_html(OUT / &quot;01_optimization_history.html&quot;)
+
+# 2. Parallel coordinates (all params)
+fig = optuna.visualization.plot_parallel_coordinate(study)
+fig.write_html(OUT / &quot;02_parallel_coords_all.html&quot;)
+
+# 3. Parallel coordinates (top 20% trials only)
+threshold = np.quantile([t.value for t in trials], 0.80)
+top_study = optuna.create_study(direction=study.direction)
+for t in trials:
+    if t.value &gt;= threshold:
+        top_study.add_trial(t)
+fig = optuna.visualization.plot_parallel_coordinate(top_study)
+fig.write_html(OUT / &quot;03_parallel_coords_top20.html&quot;)
+
+# 4. Hyperparameter importances
+fig = optuna.visualization.plot_param_importances(study)
+fig.write_html(OUT / &quot;04_param_importances.html&quot;)
+imps = get_param_importances(study, evaluator=FanovaImportanceEvaluator(seed=42))
+top_params = list(imps.keys())[:3]
+print(f&quot;Top-3 most important params: {top_params}&quot;)
+
+# 5. Contour plots for every pair of top-3 params (3 plots)
+for a, b in itertools.combinations(top_params, 2):
+    fig = optuna.visualization.plot_contour(study, params=[a, b])
+    fig.write_html(OUT / f&quot;05_contour_{a}_{b}.html&quot;)
+
+# 6. Slice plots
+fig = optuna.visualization.plot_slice(study, params=top_params)
+fig.write_html(OUT / &quot;06_slice_top3.html&quot;)
+
+# 7. Train-vs-val overfitting check (requires user_attrs logged during the trial)
+rows = []
+for t in trials:
+    row = {&quot;number&quot;: t.number, &quot;val_score&quot;: t.value}
+    row.update(t.params)
+    # &#x27;train_score&#x27; must be stored via trial.set_user_attr(&quot;train_score&quot;, ...) in the objective
+    row[&quot;train_score&quot;] = t.user_attrs.get(&quot;train_score&quot;, np.nan)
+    rows.append(row)
+df = pd.DataFrame(rows)
+if &quot;train_score&quot; in df and df[&quot;train_score&quot;].notna().any():
+    df[&quot;gap&quot;] = df[&quot;train_score&quot;] - df[&quot;val_score&quot;]
+    top10_gap = df.nlargest(10, &quot;val_score&quot;)[&quot;gap&quot;].mean()
+    overall_gap = df[&quot;gap&quot;].mean()
+    overfit_flag = top10_gap &gt; 1.5 * overall_gap
+    print(f&quot;Top-10 gap={top10_gap:.4f}  overall gap={overall_gap:.4f}  &quot;
+          f&quot;overfit={&#x27;YES&#x27; if overfit_flag else &#x27;no&#x27;}&quot;)
+
+# 8. Markdown summary
+with open(OUT / &quot;summary.md&quot;, &quot;w&quot;) as f:
+    f.write(f&quot;# Analysis Report\n\n&quot;)
+    f.write(f&quot;- Trials: {len(trials)}\n&quot;)
+    f.write(f&quot;- Best value: {study.best_value:.4f}\n&quot;)
+    f.write(f&quot;- Best params: {study.best_params}\n\n&quot;)
+    f.write(f&quot;## Hyperparameter importances\n\n&quot;)
+    for name, imp in imps.items():
+        bar = &quot;#&quot; * int(imp * 50)
+        f.write(f&quot;- `{name}`: {imp:.3f} {bar}\n&quot;)
+    f.write(f&quot;\n## Plots\n\n&quot;)
+    for p in sorted(OUT.glob(&quot;*.html&quot;)):
+        f.write(f&quot;- [{p.name}]({p.name})\n&quot;)
+print(f&quot;\nReport written to {OUT.resolve()}&quot;)
+</pre></div>
+  <p>Save this as <code>analyze_study.py</code> next to your tuning script and run it whenever a search finishes. The Markdown summary is small enough to commit to git alongside the study database, giving you a reproducible record of what each search found and why.</p>
+  <div class="quiz-box">
+  <div class="quiz-label">🧠 Quick Check</div>
+  <p class="quiz-question">Your fANOVA importances show that `reg_lambda` explains only 0.5% of the variance in validation score. Should you (a) delete it from the search space, (b) keep it but fix it to a sensible default, or (c) leave it as-is in the next search?</p>
+  <details class="quiz-answer">
+    <summary>Show Answer</summary>
+    <p>Probably (b). A hyperparameter with &lt;1% importance in this search is unlikely to start mattering in a larger search, so spending sampler budget on it is wasteful. But deleting it entirely is risky: fANOVA importances are conditional on the search space you ran, and `reg_lambda` might matter more on a different dataset. Fixing it to a reasonable default (e.g. reg_lambda=1.0, the XGBoost default) keeps it in the model without consuming tuning budget. Option (c) is acceptable if you have compute to spare; the sampler will simply learn to ignore it.</p>
+  </details>
+</div>
+</section>
+
+<div class="summary-box"><h3>🎯 Key Takeaways</h3><ul><li><strong>A tuning study is a dataset.</strong> Every trial is a row; treat the study with the same EDA toolkit you would apply to any other dataset.</li><li><strong>Convergence plots tell you when to stop</strong> — flat best-so-far curve means the sampler has converged; still-rising curve means run more trials.</li><li><strong>Parallel coordinates show the joint structure</strong> of the good region. Plot the top-10% trials separately for a cleaner view.</li><li><strong>fANOVA gives you the importance ranking</strong> in one number per hyperparameter. Usually 2–3 hyperparameters explain 80%+ of variance.</li><li><strong>Contour plots reveal pairwise interactions</strong>; slice plots show marginal 1D sweet spots. Use both — they are complementary.</li><li><strong>Always check the train-vs-val gap</strong> for your top trials. A growing gap is the tell-tale sign of overfitting to the validation set.</li><li><strong>Automate the analysis</strong> — run a single end-to-end script after every search and commit the report alongside the study database.</li></ul></div>
+
+<section id="resources"><h2>Useful Resources</h2><ul class="resource-list"><li><a href="https://ml.informatik.uni-freiburg.de/papers/14-NIPS-ANOVA.pdf">Hutter et al. (2014) — Multi-Tree Importance Sampling for fANOVA</a></li><li><a href="https://optuna.readthedocs.io/en/stable/tutorial/10_key_features.html#key-features-005-visualization">Optuna — Visualization Tutorial</a></li><li><a href="https://optuna.readthedocs.io/en/stable/reference/generated/optuna.visualization.plot_parallel_coordinate.html">Optuna — plot_parallel_coordinate API reference</a></li><li><a href="https://plotly.com/python/parallel-coordinates-plot/">Plotly — Parallel Coordinates Plot in Python</a></li><li><a href="https://www.jmlr.org/papers/v13/bergstra12a.html">Bergstra &amp; Bengio (2012) — Random Search for Hyper-Parameter Optimization (visualization case studies)</a></li><li><a href="https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html#sklearn.model_selection.GridSearchCV.cv_results_">scikit-learn — cv_results_ documentation</a></li><li><a href="https://optuna.readthedocs.io/en/stable/reference/importance.html">Optuna — Hyperparameter Importance documentation</a></li></ul></section>
+
+  </article>
+</div>
+<div class="page-nav"><a href="intro.html" class="page-nav-btn prev"><span class="nav-dir">← Previous</span><span class="nav-title">Module 11</span></a><a href="assignment_task.html" class="page-nav-btn next"><span class="nav-dir">Next →</span><span class="nav-title">Assignment 11</span></a></div>
+<footer>
+  <div class="container">
+    <div style="font-size:1.5rem;font-weight:800;font-family:var(--display);color:var(--accent);margin-bottom:0.5rem">HyperTune</div>
+    <p style="color:var(--muted2);font-size:0.85rem;max-width:500px;margin:0 auto">The complete hyperparameter tuning reference for ML &amp; DL engineers. Covers scikit-learn, XGBoost, LightGBM, PyTorch, Optuna, Ray Tune, and beyond — from first principles to production.</p>
+    <div style="margin-top:2rem;font-size:0.78rem;color:var(--muted2)">Built for learning · Python 3.10+ · scikit-learn 1.4+ · Optuna 3.0+</div>
+  </div>
+</footer>
+<script>
+(function() {
+  const links = Array.from(document.querySelectorAll('.toc-link'));
+  const sections = links
+    .map(l => document.querySelector(l.getAttribute('href')))
+    .filter(Boolean);
+  if (!('IntersectionObserver' in window) || sections.length === 0) return;
+  const setActive = id => {
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+  };
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  sections.forEach(s => observer.observe(s));
+})();
+</script>
+</body>
+</html>

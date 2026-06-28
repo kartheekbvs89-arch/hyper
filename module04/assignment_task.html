@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assignment 04 — Tuning an XGBoost Model End-to-End on Adult Census — HyperTune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<style>
+
+:root {
+  --bg: #070b14; --bg2: #0c1220; --bg3: #111827;
+  --card: #131d2e; --card2: #1a2640;
+  --border: rgba(99,179,237,0.12); --border2: rgba(99,179,237,0.22);
+  --accent: #38bdf8; --accent2: #818cf8; --accent3: #34d399;
+  --accent4: #f59e0b; --accent5: #f472b6;
+  --text: #f0f6fc; --muted: #8899aa; --muted2: #64748b;
+  --code-bg: #0d1117;
+  --ff: 'Inter', sans-serif; --mono: 'JetBrains Mono', monospace;
+  --display: 'Sora', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,11,20,0.85);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:var(--display);font-weight:800;font-size:1.25rem;color:var(--accent);letter-spacing:-0.03em;text-decoration:none}
+.logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#000;padding:7px 18px;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85}
+
+/* LAYOUT */
+.page-layout { display: grid; grid-template-columns: 280px 1fr; gap: 3rem; max-width: 1200px; margin: 0 auto; padding: 5rem 2rem 5rem; padding-top: 80px; }
+@media(max-width: 900px) { .page-layout { grid-template-columns: 1fr; } .toc-sidebar { display: none; } }
+
+/* TOC SIDEBAR */
+.toc-sidebar { position: sticky; top: 80px; height: fit-content; max-height: calc(100vh - 100px); overflow-y: auto; }
+.toc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.75rem; }
+.toc-nav { display: flex; flex-direction: column; gap: 2px; }
+.toc-link { color: var(--muted); font-size: 0.82rem; text-decoration: none; padding: 4px 10px; border-left: 2px solid transparent; transition: all 0.15s; border-radius: 0 4px 4px 0; }
+.toc-link:hover, .toc-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(56,189,248,0.05); }
+.toc-link.toc-sub { font-size: 0.78rem; padding-left: 22px; }
+
+/* ARTICLE BODY */
+.article-body { min-width: 0; }
+.breadcrumb { font-size: 0.78rem; color: var(--muted2); margin-bottom: 1.5rem; }
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--accent); }
+.module-badge { display: inline-block; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: var(--accent); padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 1rem; }
+.article-title { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
+.article-meta { font-size: 0.83rem; color: var(--muted); margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+
+/* OUTLINE BOX */
+.outline-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 3rem; }
+.outline-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.75rem; color: var(--text); }
+.outline-list { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.85rem; }
+.outline-list a { color: var(--accent); text-decoration: none; }
+.outline-list a:hover { text-decoration: underline; }
+.outline-list li { margin: 4px 0; }
+.outline-list ul { margin: 4px 0; padding-left: 1rem; }
+
+/* ARTICLE PROSE */
+.article-body h2 { font-family: var(--display); font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; margin: 3rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); scroll-margin-top: 80px; }
+.article-body h3 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 80px; }
+.article-body h4 { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.article-body p { margin-bottom: 1.25rem; color: var(--muted); font-size: 0.97rem; line-height: 1.85; }
+.article-body strong { color: var(--text); font-weight: 600; }
+.article-body em { color: var(--accent3); font-style: italic; }
+.article-body ul, .article-body ol { margin: 0 0 1.25rem 1.5rem; color: var(--muted); font-size: 0.95rem; }
+.article-body li { margin-bottom: 6px; line-height: 1.75; }
+.article-body code { font-family: var(--mono); font-size: 0.82em; background: rgba(56,189,248,0.08); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
+.article-body a { color: var(--accent2); text-decoration: none; }
+.article-body a:hover { text-decoration: underline; }
+
+/* CODE BLOCKS */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+.code-block-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot.r { background: #ff5f57; } .code-dot.y { background: #ffbd2e; } .code-dot.g { background: #28c840; }
+.code-filename { font-family: var(--mono); font-size: 0.73rem; color: var(--muted2); margin-left: 8px; }
+.code-block pre { padding: 1.5rem; overflow-x: auto; margin: 0; font-family: var(--mono); font-size: 0.82rem; line-height: 1.8; color: #e2e8f0; }
+/* Syntax colors */
+.kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; }
+.num { color: #f78c6c; } .cm { color: #546e7a; font-style: italic; }
+.cls { color: #ffcb6b; } .imp { color: #89ddff; } .op { color: #89ddff; }
+
+/* CALLOUT BOXES */
+.callout { display: flex; gap: 1rem; border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; border-width: 1px; border-style: solid; }
+.callout-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+.callout-body { font-size: 0.88rem; line-height: 1.75; }
+.callout-body strong { font-weight: 600; }
+.callout-title { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+.callout.note { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.22); color: var(--muted); }
+.callout.note .callout-title, .callout.note strong { color: var(--accent); }
+.callout.warning { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.22); color: var(--muted); }
+.callout.warning .callout-title, .callout.warning strong { color: var(--accent4); }
+.callout.tip { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); color: var(--muted); }
+.callout.tip .callout-title, .callout.tip strong { color: var(--accent3); }
+.callout.important { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.22); color: var(--muted); }
+.callout.important .callout-title, .callout.important strong { color: var(--accent5); }
+
+/* MATH DISPLAY */
+.math-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.75rem; margin: 1.25rem 0; overflow-x: auto; font-size: 1.05rem; text-align: center; }
+.math-label { font-size: 0.72rem; color: var(--muted2); font-family: var(--mono); margin-top: 0.5rem; text-align: right; }
+
+/* INLINE FIGURE / DIAGRAM */
+.figure { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; margin: 2rem 0; text-align: center; }
+.figure-caption { font-size: 0.8rem; color: var(--muted2); margin-top: 1rem; font-style: italic; }
+
+/* DATA TABLE */
+.data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.85rem; }
+.data-table th { padding: 10px 14px; background: var(--card2); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); text-align: left; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(99,179,237,0.03); }
+
+/* SUMMARY BOX */
+.summary-box { background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(129,140,248,0.07)); border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 1.75rem 2rem; margin: 3rem 0 2rem; }
+.summary-box h3 { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+.summary-box ul { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.88rem; }
+.summary-box li { margin-bottom: 6px; line-height: 1.7; }
+
+/* RESOURCE LIST */
+.resource-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.resource-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.resource-list li::before { content: '\2192'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.resource-list a { color: var(--accent2); }
+
+/* PREV/NEXT NAV */
+.page-nav { display: flex; justify-content: space-between; gap: 1rem; padding: 2rem; max-width: 1200px; margin: 0 auto; border-top: 1px solid var(--border); }
+.page-nav-btn { display: flex; flex-direction: column; gap: 4px; padding: 1rem 1.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; transition: all 0.2s; max-width: 45%; }
+.page-nav-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.page-nav-btn .nav-dir { font-size: 0.72rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; }
+.page-nav-btn .nav-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.page-nav-btn.next { text-align: right; margin-left: auto; }
+
+/* QUIZ/EXERCISE BOX */
+.exercise-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin: 2rem 0; }
+.exercise-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent4); margin-bottom: 0.5rem; }
+.exercise-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; }
+.exercise-body { font-size: 0.88rem; color: var(--muted); line-height: 1.75; }
+
+/* QUIZ BOX */
+.quiz-box { background: rgba(129,140,248,0.06); border: 1px solid rgba(129,140,248,0.22); border-radius: 14px; padding: 1.5rem; margin: 1.5rem 0; }
+.quiz-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.5rem; }
+.quiz-question { font-size: 0.93rem; color: var(--text); margin-bottom: 0.75rem; font-weight: 500; }
+.quiz-answer { margin-top: 0.5rem; }
+.quiz-answer summary { cursor: pointer; font-size: 0.82rem; color: var(--accent2); font-weight: 600; }
+.quiz-answer p { margin-top: 0.5rem; font-size: 0.86rem; color: var(--muted); }
+
+/* CELL (for assignment files - jupyter style) */
+.jupyter-cell { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin: 1.5rem 0; overflow: hidden; }
+.cell-header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted2); font-family: var(--mono); }
+.cell-input-label { color: var(--accent4); font-weight: 600; }
+.cell-body { padding: 1rem 1.25rem; }
+.jupyter-cell pre { padding: 1rem 1.25rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; background: var(--code-bg); margin: 0; }
+.cell-prompt { color: var(--accent3); font-weight: 700; }
+
+/* GRADING RUBRIC */
+.rubric-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+.rubric-table th { background: var(--card2); padding: 10px 14px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); }
+.rubric-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+
+/* DETAILS (collapsible hints) */
+details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; }
+details summary { cursor: pointer; font-size: 0.85rem; color: var(--accent2); font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
+
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">Hyper<span>Tune</span></a>
+    <ul class="nav-links">
+
+    </ul>
+    <a href="../index.html#curriculum" class="nav-cta">Start Learning</a>
+  </div>
+</nav>
+<div class="page-layout">
+  <aside class="toc-sidebar">
+    <div class="toc-label">On this page</div>
+    <nav class="toc-nav">
+<a href="#overview" class="toc-link">Overview</a>
+<a href="#dataset" class="toc-link">Dataset</a>
+<a href="#task1" class="toc-link">Task 1 — Cached Pipeline</a>
+<a href="#task2" class="toc-link">Task 2 — Triad with Early Stopping</a>
+<a href="#task3" class="toc-link">Task 3 — RandomizedSearchCV</a>
+<a href="#task4" class="toc-link">Task 4 — Feature Importance</a>
+<a href="#task5" class="toc-link">Task 5 (Bonus) — LightGBM</a>
+<a href="#rubric" class="toc-link">Grading Rubric</a>
+<a href="#submit" class="toc-link">Submission</a>
+<a href="#resources" class="toc-link">Resources</a>
+    </nav>
+  </aside>
+  <article class="article-body">
+    <div class="breadcrumb"><a href="../index.html">HyperTune</a> › <a href="intro.html">Module 04</a> › Assignment 04</div>
+    <div class="article-header">
+      <div class="module-badge">Module 04 · Assignment</div>
+      <h1 class="article-title">Assignment 04 — Tuning an XGBoost Model End-to-End on Adult Census</h1>
+      <div class="article-meta">Difficulty: ★★★★☆ · Est. time: 3–4 hours · Dataset: UCI Adult Census (fetch_openml)</div>
+    </div>
+    <div class="outline-box">
+      <div class="outline-title">📋 Article Outline</div>
+      <ol class="outline-list">
+
+<li><a href="#overview">Assignment Overview</a></li>
+<li><a href="#dataset">Dataset: UCI Adult Census</a></li>
+<li><a href="#task1">Task 1 — Build a Cached Pipeline</a></li>
+<li><a href="#task2">Task 2 — Tune the Triad with Early Stopping</a></li>
+<li><a href="#task3">Task 3 — RandomizedSearchCV over Regularization Knobs</a></li>
+<li><a href="#task4">Task 4 — Feature Importance: Gain vs Weight vs Permutation</a></li>
+<li><a href="#task5">Task 5 (Bonus) — XGBoost vs LightGBM</a></li>
+<li><a href="#rubric">Grading Rubric</a></li>
+<li><a href="#submit">Submission Instructions</a></li>
+<li><a href="#resources">Resources</a></li>
+      </ol>
+    </div>
+<section id="overview">
+  <h2>Assignment Overview</h2>
+  <p>In this assignment you will build, tune, and analyze an end-to-end XGBoost model on the UCI Adult Census dataset — the same dataset we used as a worked example in Part 1. The goal is to put into practice the full gradient boosting tuning workflow you learned in Part 3: pipeline construction, the triad (learning_rate × n_estimators × max_depth) with early stopping, the regularization knobs with RandomizedSearchCV, and feature importance analysis. The bonus task introduces LightGBM and asks you to compare it head-to-head with XGBoost under matched hyperparameters.</p>
+  <p>Estimated time: 3–4 hours if you are comfortable with scikit-learn pipelines and have XGBoost installed. If you find yourself spending more than 5 hours, re-read Part 3 sections 3, 4, and 11 — most stuck points come from skipping the early-stopping step or from a malformed pipeline.</p>
+  <p>You will need the following packages installed: <code>numpy</code>, <code>pandas</code>, <code>scikit-learn</code> (1.4+), <code>xgboost</code> (2.0+), <code>lightgbm</code> (4.0+), <code>matplotlib</code>. Install with <code>pip install numpy pandas scikit-learn xgboost lightgbm matplotlib</code>.</p>
+</section>
+<section id="dataset">
+  <h2>Dataset: UCI Adult Census</h2>
+  <p>We use the UCI Adult Census dataset, fetched via scikit-learn's <code>fetch_openml(name='adult', version=2)</code>. It has 48,842 rows and 14 mixed-type features (5 numeric, 9 categorical). The target is binary: <code>&lt;=50K</code> (76% of samples) vs <code>&gt;50K</code> (24%). This is a realistic imbalanced binary classification problem with enough samples that hyperparameter choices matter, but small enough that each XGBoost fit takes only a few seconds.</p>
+<div class="jupyter-cell">
+  <div class="cell-header"><span class="cell-input-label">In [1]:</span> <span style="color:var(--muted2)">python</span></div>
+  <pre><span class="cell-prompt">&gt;&gt;&gt;</span> # Load Adult Census and basic EDA
+from sklearn.datasets import fetch_openml
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+adult = fetch_openml(name=&#x27;adult&#x27;, version=2, as_frame=True, parser=&#x27;auto&#x27;)
+X = adult.data
+y = adult.target
+
+print(f&quot;X.shape = {X.shape}&quot;)
+print(f&quot;target distribution:\n{y.value_counts(normalize=True).round(3)}&quot;)
+print(f&quot;\nfeature dtypes:\n{X.dtypes}&quot;)
+print(f&quot;\nmissing values per column:\n{X.isna().sum()[X.isna().sum() &gt; 0]}&quot;)
+
+# Drop rows with missing values for simplicity (in production, impute instead)
+mask = ~X.isna().any(axis=1)
+X, y = X[mask], y[mask]
+print(f&quot;\nAfter dropping missing: X.shape = {X.shape}&quot;)
+
+# Encode target as 0/1
+y = (y == &#x27;&gt;50K&#x27;).astype(int)
+print(f&quot;y mean (positive rate): {y.mean():.3f}&quot;)</pre>
+</div>
+</section>
+<section id="task1">
+  <h2>Task 1 — Build a Cached <code>Pipeline(ColumnTransformer, XGBClassifier)</code></h2>
+  <p>Construct a scikit-learn <code>Pipeline</code> with two stages: a <code>ColumnTransformer</code> that applies <code>StandardScaler</code> to numeric features and <code>OneHotEncoder(handle_unknown='ignore', max_categories=20)</code> to categorical features, followed by an <code>XGBClassifier</code> with sensible defaults. Wrap the pipeline in <code>memory=...</code> via the <code>memory</code> argument of <code>Pipeline</code> so that the preprocessing is cached across hyperparameter search iterations (this dramatically speeds up <code>RandomizedSearchCV</code> when the preprocessing is expensive).</p>
+  <p>Compute <code>scale_pos_weight</code> from the training set's class balance and pass it to the <code>XGBClassifier</code>. Use a small learning rate (0.05), a moderate <code>max_depth</code> (6), and reasonable defaults for the other hyperparameters. Compute the test-set ROC-AUC of this baseline model.</p>
+  <details><summary>Hint: pipeline structure</summary>
+    <p>Use <code>Pipeline([...], memory='/tmp/xgb_cache')</code> to enable caching. The <code>ColumnTransformer</code> needs <code>num_cols</code> and <code>cat_cols</code> lists, which you can get with <code>X.select_dtypes(include=['number']).columns</code> and <code>X.select_dtypes(exclude=['number']).columns</code>. For the <code>XGBClassifier</code>, use <code>tree_method='hist'</code>, <code>n_estimators=200</code>, <code>learning_rate=0.05</code>, <code>max_depth=6</code>, <code>subsample=0.8</code>, <code>colsample_bytree=0.8</code>, <code>eval_metric='logloss'</code>, <code>scale_pos_weight=spw</code>, <code>n_jobs=-1</code>, <code>random_state=42</code>.</p>
+  </details>
+<div class="jupyter-cell">
+  <div class="cell-header"><span class="cell-input-label">In [2]:</span> <span style="color:var(--muted2)">python</span></div>
+  <pre><span class="cell-prompt">&gt;&gt;&gt;</span> # YOUR CODE HERE
+# 1. Split X, y into train/test (80/20, stratified, random_state=42).
+# 2. Compute scale_pos_weight = (y_train == 0).sum() / (y_train == 1).sum().
+# 3. Build ColumnTransformer: StandardScaler on numeric cols, OneHotEncoder
+#    (handle_unknown=&#x27;ignore&#x27;, max_categories=20) on categorical cols.
+# 4. Build Pipeline([(&quot;pre&quot;, preprocess), (&quot;clf&quot;, XGBClassifier(...))],
+#    memory=&quot;/tmp/xgb_cache&quot;).
+# 5. Fit and evaluate test ROC-AUC.
+
+from sklearn.model_selection import train_test_split
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import roc_auc_score
+from xgboost import XGBClassifier
+
+# YOUR CODE HERE
+pass</pre>
+</div>
+  <p><strong>Expected output:</strong> A baseline test ROC-AUC around 0.92–0.93. The cached pipeline should fit in 5–15 seconds. If your ROC-AUC is below 0.90, the most likely cause is forgetting <code>scale_pos_weight</code> (the model will be biased toward the majority class).</p>
+</section>
+<section id="task2">
+  <h2>Task 2 — Tune the Triad with Early Stopping</h2>
+  <p>Use <code>xgb.cv()</code> with <code>early_stopping_rounds=50</code> to find the optimal <code>n_estimators</code> for a fixed <code>learning_rate=0.05</code> and <code>max_depth=6</code>. Then sweep <code>max_depth</code> over <code>[3, 4, 6, 8, 10]</code> and <code>learning_rate</code> over <code>[0.01, 0.05, 0.1, 0.3]</code>, using early stopping to determine <code>n_estimators</code> for each combination. Plot a heatmap of CV ROC-AUC across the (learning_rate, max_depth) grid, and identify the best (learning_rate, max_depth, n_estimators) triple.</p>
+  <p>Because <code>xgb.cv()</code> needs a <code>DMatrix</code>, you will need to preprocess the data once and pass the preprocessed array to <code>xgb.cv()</code>. The cleanest pattern is to fit the <code>ColumnTransformer</code> on the training data once, transform the training data into a numeric matrix, and pass that to <code>xgb.cv()</code>.</p>
+  <details><summary>Hint: extracting preprocessed features</summary>
+    <p>Call <code>preprocess.fit_transform(X_train)</code> to get the preprocessed numeric matrix. Wrap it in <code>xgb.DMatrix(X_pre, label=y_train)</code> and pass to <code>xgb.cv</code>. The <code>eval_metric</code> should be <code>'auc'</code> (not <code>'logloss'</code>) if your grid-search metric is ROC-AUC.</p>
+  </details>
+<div class="jupyter-cell">
+  <div class="cell-header"><span class="cell-input-label">In [3]:</span> <span style="color:var(--muted2)">python</span></div>
+  <pre><span class="cell-prompt">&gt;&gt;&gt;</span> # YOUR CODE HERE
+# 1. Fit the ColumnTransformer on X_train and transform to get X_train_pre.
+# 2. Build DMatrix(X_train_pre, label=y_train).
+# 3. For each (learning_rate, max_depth) in the grid:
+#      Run xgb.cv() with num_boost_round=2000, early_stopping_rounds=50,
+#      nfold=5, metrics=&#x27;auc&#x27;, as_pandas=True, seed=42.
+#      Record the best iteration and the CV AUC at that iteration.
+# 4. Plot a (learning_rate x max_depth) heatmap of best CV AUC.
+# 5. Report the best (learning_rate, max_depth, n_estimators) triple.
+
+import xgboost as xgb
+import numpy as np
+import matplotlib.pyplot as plt
+
+# YOUR CODE HERE
+pass</pre>
+</div>
+  <p><strong>Expected output:</strong> A 4×5 heatmap showing CV AUC across the (learning_rate, max_depth) grid. The best combination is typically <code>learning_rate=0.05</code> or <code>0.1</code>, <code>max_depth=6</code> or <code>8</code>, with <code>n_estimators</code> around 200–500 (depending on the learning rate). CV AUC should peak around 0.93–0.935, a small improvement over the Task 1 baseline.</p>
+</section>
+<section id="task3">
+  <h2>Task 3 — RandomizedSearchCV Over the Regularization Knobs</h2>
+  <p>Fix <code>learning_rate</code>, <code>max_depth</code>, and <code>n_estimators</code> at the values from Task 2. Run <code>RandomizedSearchCV</code> with <code>n_iter=50</code> over the remaining five hyperparameters: <code>subsample</code>, <code>colsample_bytree</code>, <code>gamma</code>, <code>reg_alpha</code>, <code>reg_lambda</code>. Use 5-fold <code>StratifiedKFold</code> and ROC-AUC as the scoring metric. Report the best params and the test-set ROC-AUC of the best model.</p>
+  <details><summary>Hint: search space</summary>
+    <p>Use <code>scipy.stats</code> distributions: <code>uniform(0.5, 0.5)</code> for subsample and colsample_bytree (range 0.5 to 1.0), <code>uniform(0, 5)</code> for gamma, <code>loguniform(1e-3, 10)</code> for reg_alpha and reg_lambda. The pipeline step name is <code>'clf__subsample'</code> etc. Use <code>memory=...</code> on the Pipeline to cache preprocessing.</p>
+  </details>
+<div class="jupyter-cell">
+  <div class="cell-header"><span class="cell-input-label">In [4]:</span> <span style="color:var(--muted2)">python</span></div>
+  <pre><span class="cell-prompt">&gt;&gt;&gt;</span> # YOUR CODE HERE
+# 1. Fix learning_rate, max_depth, n_estimators at Task 2 best values.
+# 2. Define param_distributions over subsample, colsample_bytree, gamma,
+#    reg_alpha, reg_lambda (use scipy.stats for continuous distributions).
+# 3. Run RandomizedSearchCV with n_iter=50, cv=5-fold StratifiedKFold,
+#    scoring=&#x27;roc_auc&#x27;, n_jobs=-1, random_state=42.
+# 4. Report best_params_, best CV ROC-AUC, and test ROC-AUC.
+
+from sklearn.model_selection import RandomizedSearchCV, StratifiedKFold
+from scipy.stats import uniform, loguniform
+
+# YOUR CODE HERE
+pass</pre>
+</div>
+  <p><strong>Expected output:</strong> A best-test ROC-AUC around 0.935–0.94, a small but real improvement over Task 2. The best params usually land at <code>subsample</code> around 0.7–0.9, <code>colsample_bytree</code> around 0.5–0.8, <code>gamma</code> near 0 or modest (0–1), <code>reg_alpha</code> near the small end of the search range, and <code>reg_lambda</code> around 1.0.</p>
+</section>
+<section id="task4">
+  <h2>Task 4 — Feature Importance: Gain vs Weight vs Permutation</h2>
+  <p>Using the best model from Task 3, compute and compare three feature importance measures: (a) XGBoost's built-in <code>feature_importances_</code> with <code>importance_type='gain'</code> (the default), (b) the same with <code>importance_type='weight'</code>, and (c) scikit-learn's <code>permutation_importance</code> on the test set. Plot all three rankings side by side as a grouped bar chart for the top 15 features.</p>
+  <p>Note: because the model is wrapped in a pipeline with a <code>ColumnTransformer</code>, the feature names after one-hot encoding will be different from the original column names. Use <code>preprocess.get_feature_names_out()</code> to get the post-encoding feature names.</p>
+<div class="jupyter-cell">
+  <div class="cell-header"><span class="cell-input-label">In [5]:</span> <span style="color:var(--muted2)">python</span></div>
+  <pre><span class="cell-prompt">&gt;&gt;&gt;</span> # YOUR CODE HERE
+# 1. Extract the fitted XGBClassifier from the best pipeline.
+# 2. Compute feature_importances_ with importance_type=&#x27;gain&#x27;.
+# 3. Re-fit a fresh XGBClassifier with importance_type=&#x27;weight&#x27; and
+#    compute its feature_importances_.
+# 4. Use sklearn.inspection.permutation_importance on the test set with
+#    n_repeats=10, scoring=&#x27;roc_auc&#x27;, random_state=42.
+# 5. Plot top-15 features as a grouped bar chart.
+
+from sklearn.inspection import permutation_importance
+import matplotlib.pyplot as plt
+import numpy as np
+
+# YOUR CODE HERE
+pass</pre>
+</div>
+  <p><strong>Expected output:</strong> A grouped bar chart with three bars per feature. Gain and weight importance will often disagree on the ranking — gain favors features whose splits produce large loss reductions; weight favors features that are split on frequently even if each split is small. Permutation importance, measured on the test set, is the most reliable measure of actual model reliance and will typically rank "age", "capital-gain", "education-num", and "marital-status" features at the top.</p>
+</section>
+<section id="task5">
+  <h2>Task 5 (Bonus) — XGBoost vs LightGBM with Matched Hyperparameters</h2>
+  <p>Build a LightGBM model with hyperparameters matched as closely as possible to your best XGBoost model from Task 3. Use the following mapping: XGBoost <code>max_depth</code> → LightGBM <code>max_depth</code> (with <code>num_leaves = 2^max_depth - 1</code> capped at 63); <code>learning_rate</code> → <code>learning_rate</code>; <code>subsample</code> → <code>bagging_fraction</code> (with <code>bagging_freq=1</code>); <code>colsample_bytree</code> → <code>feature_fraction</code>; <code>reg_alpha</code> → <code>lambda_l1</code>; <code>reg_lambda</code> → <code>lambda_l2</code>; <code>min_child_weight</code> → <code>min_child_samples</code> (approximate). Compare test ROC-AUC, training time, and prediction time.</p>
+<div class="jupyter-cell">
+  <div class="cell-header"><span class="cell-input-label">In [6]:</span> <span style="color:var(--muted2)">python</span></div>
+  <pre><span class="cell-prompt">&gt;&gt;&gt;</span> # YOUR CODE HERE
+# 1. Build LGBMClassifier with hyperparameters mapped from the best XGBoost
+#    config from Task 3.
+# 2. Fit on the same preprocessed training data (use the same ColumnTransformer
+#    pipeline).
+# 3. Use early_stopping_rounds via callbacks or lgb.early_stopping().
+# 4. Compare test ROC-AUC, fit time, and predict time against XGBoost.
+
+from lightgbm import LGBMClassifier
+import time
+
+# YOUR CODE HERE
+pass</pre>
+</div>
+  <p><strong>Expected output:</strong> A side-by-side comparison table showing that LightGBM trains 2–4x faster than XGBoost on this dataset, with comparable (within 0.5%) test ROC-AUC. The exact speedup depends on the implementation details, but LightGBM is almost always faster on tabular data of this size due to its leaf-wise growth and histogram binning defaults.</p>
+</section>
+<section id="rubric">
+  <h2>Grading Rubric</h2>
+  <table class="rubric-table">
+    <thead><tr><th>Task</th><th>Points</th><th>Criteria</th></tr></thead>
+    <tbody>
+      <tr><td>Task 1 — Cached Pipeline</td><td>15</td><td>Pipeline correctly uses ColumnTransformer + XGBClassifier; <code>memory=</code> caching is enabled; <code>scale_pos_weight</code> is set correctly; baseline ROC-AUC ≥ 0.90.</td></tr>
+      <tr><td>Task 2 — Triad with Early Stopping</td><td>25</td><td><code>xgb.cv()</code> with early stopping is used correctly; heatmap is plotted; best (LR, depth, n_est) triple is identified and reported.</td></tr>
+      <tr><td>Task 3 — RandomizedSearchCV</td><td>25</td><td>Search space covers all 5 regularization knobs; <code>n_iter=50</code>; best params and test ROC-AUC reported; improvement over Task 2 baseline.</td></tr>
+      <tr><td>Task 4 — Feature Importance Comparison</td><td>20</td><td>All three importance measures computed; grouped bar chart with top-15 features; written interpretation of where rankings agree and disagree.</td></tr>
+      <tr><td>Task 5 — LightGBM Bonus</td><td>15</td><td>LightGBM hyperparameters correctly mapped; comparison table with ROC-AUC, fit time, predict time; written interpretation of the speed/accuracy tradeoff.</td></tr>
+    </tbody>
+  </table>
+</section>
+<section id="submit">
+  <h2>Submission Instructions</h2>
+  <p>Save your notebook as <code>assignment_04_[your_name].ipynb</code> and submit it via your course platform. Make sure every code cell runs from top to bottom without errors in a fresh kernel — clear all outputs before submission so the file size stays manageable. Include a brief (3–5 sentence) summary at the top of the notebook describing what you found: the best hyperparameters, the test ROC-AUC you achieved, and any surprises.</p>
+  <p>If you got stuck on a task, submit what you have and write a paragraph at the end explaining where you got stuck — partial credit is available for honest attempts. Do not copy solutions from classmates or from the solution article without attempting the problem yourself first.</p>
+<div class="callout tip"><div class="callout-icon">💡</div><div class="callout-body"><div class="callout-title">Stuck? Re-read Part 3 sections 3, 4, and 11.</div><p>Task 2 in particular is a direct application of the early-stopping pattern from Part 3 section 4. Task 3 follows the RandomizedSearchCV pattern from section 11. If your numbers are off, the most common cause is a malformed pipeline — make sure the <code>ColumnTransformer</code> is fit on the training set only (not on train+test), and that <code>scale_pos_weight</code> is computed from the training set's class balance (not the full dataset's).</p></div></div>
+</section>
+<section id="resources"><h2>Useful Resources</h2><ul class="resource-list"><li><a href="https://scikit-learn.org/stable/modules/generated/sklearn.datasets.fetch_openml.html">scikit-learn fetch_openml — Adult dataset</a></li><li><a href="https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.cv">XGBoost Python API — xgb.cv</a></li><li><a href="https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.RandomizedSearchCV.html">scikit-learn RandomizedSearchCV</a></li><li><a href="https://scikit-learn.org/stable/modules/generated/sklearn.inspection.permutation_importance.html">scikit-learn permutation_importance</a></li><li><a href="https://lightgbm.readthedocs.io/en/latest/pythonapi/lightgbm.LGBMClassifier.html">LightGBM Python API — LGBMClassifier</a></li><li><a href="https://archive.ics.uci.edu/dataset/2/adult">UCI Adult Census Dataset description</a></li></ul></section>
+  </article>
+</div>
+<div class="page-nav"><a href="part4_svm_logistic.html" class="page-nav-btn prev"><span class="nav-dir">← Previous</span><span class="nav-title">SVM and Logistic Regression</span></a><a href="assignment_solution.html" class="page-nav-btn next"><span class="nav-dir">Next →</span><span class="nav-title">Assignment 04 Solution</span></a></div>
+<footer>
+  <div class="container">
+    <div style="font-size:1.5rem;font-weight:800;font-family:var(--display);color:var(--accent);margin-bottom:0.5rem">HyperTune</div>
+    <p style="color:var(--muted2);font-size:0.85rem;max-width:500px;margin:0 auto">The complete hyperparameter tuning reference for ML &amp; DL engineers. Covers scikit-learn, XGBoost, LightGBM, PyTorch, Optuna, Ray Tune, and beyond — from first principles to production.</p>
+    <div style="margin-top:2rem;font-size:0.78rem;color:var(--muted2)">Built for learning · Python 3.10+ · scikit-learn 1.4+ · Optuna 3.0+</div>
+  </div>
+</footer>
+<script>
+(function() {
+  const links = Array.from(document.querySelectorAll('.toc-link'));
+  const sections = links
+    .map(l => document.querySelector(l.getAttribute('href')))
+    .filter(Boolean);
+  if (!('IntersectionObserver' in window) || sections.length === 0) return;
+  const setActive = id => {
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+  };
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  sections.forEach(s => observer.observe(s));
+})();
+</script>
+</body>
+</html>

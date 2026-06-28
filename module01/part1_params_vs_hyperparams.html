@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parameters vs Hyperparameters — HyperTune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<style>
+
+:root {
+  --bg: #070b14; --bg2: #0c1220; --bg3: #111827;
+  --card: #131d2e; --card2: #1a2640;
+  --border: rgba(99,179,237,0.12); --border2: rgba(99,179,237,0.22);
+  --accent: #38bdf8; --accent2: #818cf8; --accent3: #34d399;
+  --accent4: #f59e0b; --accent5: #f472b6;
+  --text: #f0f6fc; --muted: #8899aa; --muted2: #64748b;
+  --code-bg: #0d1117;
+  --ff: 'Inter', sans-serif; --mono: 'JetBrains Mono', monospace;
+  --display: 'Sora', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,11,20,0.85);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:var(--display);font-weight:800;font-size:1.25rem;color:var(--accent);letter-spacing:-0.03em;text-decoration:none}
+.logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#000;padding:7px 18px;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85}
+
+/* LAYOUT */
+.page-layout { display: grid; grid-template-columns: 280px 1fr; gap: 3rem; max-width: 1200px; margin: 0 auto; padding: 5rem 2rem 5rem; padding-top: 80px; }
+@media(max-width: 900px) { .page-layout { grid-template-columns: 1fr; } .toc-sidebar { display: none; } }
+
+/* TOC SIDEBAR */
+.toc-sidebar { position: sticky; top: 80px; height: fit-content; max-height: calc(100vh - 100px); overflow-y: auto; }
+.toc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.75rem; }
+.toc-nav { display: flex; flex-direction: column; gap: 2px; }
+.toc-link { color: var(--muted); font-size: 0.82rem; text-decoration: none; padding: 4px 10px; border-left: 2px solid transparent; transition: all 0.15s; border-radius: 0 4px 4px 0; }
+.toc-link:hover, .toc-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(56,189,248,0.05); }
+.toc-link.toc-sub { font-size: 0.78rem; padding-left: 22px; }
+
+/* ARTICLE BODY */
+.article-body { min-width: 0; }
+.breadcrumb { font-size: 0.78rem; color: var(--muted2); margin-bottom: 1.5rem; }
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--accent); }
+.module-badge { display: inline-block; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: var(--accent); padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 1rem; }
+.article-title { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
+.article-meta { font-size: 0.83rem; color: var(--muted); margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+
+/* OUTLINE BOX */
+.outline-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 3rem; }
+.outline-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.75rem; color: var(--text); }
+.outline-list { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.85rem; }
+.outline-list a { color: var(--accent); text-decoration: none; }
+.outline-list a:hover { text-decoration: underline; }
+.outline-list li { margin: 4px 0; }
+.outline-list ul { margin: 4px 0; padding-left: 1rem; }
+
+/* ARTICLE PROSE */
+.article-body h2 { font-family: var(--display); font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; margin: 3rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); scroll-margin-top: 80px; }
+.article-body h3 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 80px; }
+.article-body h4 { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.article-body p { margin-bottom: 1.25rem; color: var(--muted); font-size: 0.97rem; line-height: 1.85; }
+.article-body strong { color: var(--text); font-weight: 600; }
+.article-body em { color: var(--accent3); font-style: italic; }
+.article-body ul, .article-body ol { margin: 0 0 1.25rem 1.5rem; color: var(--muted); font-size: 0.95rem; }
+.article-body li { margin-bottom: 6px; line-height: 1.75; }
+.article-body code { font-family: var(--mono); font-size: 0.82em; background: rgba(56,189,248,0.08); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
+.article-body a { color: var(--accent2); text-decoration: none; }
+.article-body a:hover { text-decoration: underline; }
+
+/* CODE BLOCKS */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+.code-block-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot.r { background: #ff5f57; } .code-dot.y { background: #ffbd2e; } .code-dot.g { background: #28c840; }
+.code-filename { font-family: var(--mono); font-size: 0.73rem; color: var(--muted2); margin-left: 8px; }
+.code-block pre { padding: 1.5rem; overflow-x: auto; margin: 0; font-family: var(--mono); font-size: 0.82rem; line-height: 1.8; color: #e2e8f0; }
+/* Syntax colors */
+.kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; }
+.num { color: #f78c6c; } .cm { color: #546e7a; font-style: italic; }
+.cls { color: #ffcb6b; } .imp { color: #89ddff; } .op { color: #89ddff; }
+
+/* CALLOUT BOXES */
+.callout { display: flex; gap: 1rem; border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; border-width: 1px; border-style: solid; }
+.callout-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+.callout-body { font-size: 0.88rem; line-height: 1.75; }
+.callout-body strong { font-weight: 600; }
+.callout-title { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+.callout.note { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.22); color: var(--muted); }
+.callout.note .callout-title, .callout.note strong { color: var(--accent); }
+.callout.warning { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.22); color: var(--muted); }
+.callout.warning .callout-title, .callout.warning strong { color: var(--accent4); }
+.callout.tip { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); color: var(--muted); }
+.callout.tip .callout-title, .callout.tip strong { color: var(--accent3); }
+.callout.important { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.22); color: var(--muted); }
+.callout.important .callout-title, .callout.important strong { color: var(--accent5); }
+
+/* MATH DISPLAY */
+.math-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.75rem; margin: 1.25rem 0; overflow-x: auto; font-size: 1.05rem; text-align: center; }
+.math-label { font-size: 0.72rem; color: var(--muted2); font-family: var(--mono); margin-top: 0.5rem; text-align: right; }
+
+/* INLINE FIGURE / DIAGRAM */
+.figure { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; margin: 2rem 0; text-align: center; }
+.figure-caption { font-size: 0.8rem; color: var(--muted2); margin-top: 1rem; font-style: italic; }
+
+/* DATA TABLE */
+.data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.85rem; }
+.data-table th { padding: 10px 14px; background: var(--card2); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); text-align: left; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(99,179,237,0.03); }
+
+/* SUMMARY BOX */
+.summary-box { background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(129,140,248,0.07)); border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 1.75rem 2rem; margin: 3rem 0 2rem; }
+.summary-box h3 { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+.summary-box ul { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.88rem; }
+.summary-box li { margin-bottom: 6px; line-height: 1.7; }
+
+/* RESOURCE LIST */
+.resource-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.resource-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.resource-list li::before { content: '\2192'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.resource-list a { color: var(--accent2); }
+
+/* PREV/NEXT NAV */
+.page-nav { display: flex; justify-content: space-between; gap: 1rem; padding: 2rem; max-width: 1200px; margin: 0 auto; border-top: 1px solid var(--border); }
+.page-nav-btn { display: flex; flex-direction: column; gap: 4px; padding: 1rem 1.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; transition: all 0.2s; max-width: 45%; }
+.page-nav-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.page-nav-btn .nav-dir { font-size: 0.72rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; }
+.page-nav-btn .nav-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.page-nav-btn.next { text-align: right; margin-left: auto; }
+
+/* QUIZ/EXERCISE BOX */
+.exercise-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin: 2rem 0; }
+.exercise-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent4); margin-bottom: 0.5rem; }
+.exercise-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; }
+.exercise-body { font-size: 0.88rem; color: var(--muted); line-height: 1.75; }
+
+/* QUIZ BOX */
+.quiz-box { background: rgba(129,140,248,0.06); border: 1px solid rgba(129,140,248,0.22); border-radius: 14px; padding: 1.5rem; margin: 1.5rem 0; }
+.quiz-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.5rem; }
+.quiz-question { font-size: 0.93rem; color: var(--text); margin-bottom: 0.75rem; font-weight: 500; }
+.quiz-answer { margin-top: 0.5rem; }
+.quiz-answer summary { cursor: pointer; font-size: 0.82rem; color: var(--accent2); font-weight: 600; }
+.quiz-answer p { margin-top: 0.5rem; font-size: 0.86rem; color: var(--muted); }
+
+/* CELL (for assignment files - jupyter style) */
+.jupyter-cell { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin: 1.5rem 0; overflow: hidden; }
+.cell-header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted2); font-family: var(--mono); }
+.cell-input-label { color: var(--accent4); font-weight: 600; }
+.cell-body { padding: 1rem 1.25rem; }
+.jupyter-cell pre { padding: 1rem 1.25rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; background: var(--code-bg); margin: 0; }
+.cell-prompt { color: var(--accent3); font-weight: 700; }
+
+/* GRADING RUBRIC */
+.rubric-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+.rubric-table th { background: var(--card2); padding: 10px 14px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); }
+.rubric-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+
+/* DETAILS (collapsible hints) */
+details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; }
+details summary { cursor: pointer; font-size: 0.85rem; color: var(--accent2); font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
+
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">Hyper<span>Tune</span></a>
+    <ul class="nav-links">
+
+    </ul>
+    <a href="../index.html#curriculum" class="nav-cta">Start Learning</a>
+  </div>
+</nav>
+<div class="page-layout">
+  <aside class="toc-sidebar">
+    <div class="toc-label">On this page</div>
+    <nav class="toc-nav">
+<a href="#section-1" class="toc-link">1. What Counts as a Parameter?</a>
+<a href="#section-2" class="toc-link">2. What Counts as a Hyperparameter?</a>
+<a href="#section-3" class="toc-link">3. Five Models, Side by Side</a>
+<a href="#linear-regression" class="toc-link toc-sub">3.1 Linear Regression</a>
+<a href="#decision-tree" class="toc-link toc-sub">3.2 Decision Tree</a>
+<a href="#svm" class="toc-link toc-sub">3.3 Support Vector Machine</a>
+<a href="#random-forest" class="toc-link toc-sub">3.4 Random Forest</a>
+<a href="#neural-network" class="toc-link toc-sub">3.5 Neural Network</a>
+<a href="#section-4" class="toc-link">4. The scikit-learn API</a>
+<a href="#section-5" class="toc-link">5. Why HPs Cannot Be Learned by GD</a>
+<a href="#section-6" class="toc-link">6. The Magnitude of the Effect</a>
+<a href="#section-7" class="toc-link">7. A Complete Worked Example</a>
+<a href="#resources" class="toc-link">Useful Resources</a>
+    </nav>
+  </aside>
+  <article class="article-body">
+    <div class="breadcrumb"><a href="../index.html">HyperTune</a> › <a href="intro.html">Module 01</a> › Parameters vs Hyperparameters</div>
+    <div class="article-header">
+      <div class="module-badge">Module 01 · Foundations</div>
+      <h1 class="article-title">Parameters vs Hyperparameters: The Core Distinction Every ML Engineer Must Know</h1>
+      <div class="article-meta">Part of the <strong>HyperTune</strong> open course · Estimated read time: 12 min · Python 3.10+ · scikit-learn 1.4+</div>
+    </div>
+    <div class="outline-box">
+      <div class="outline-title">📋 Article Outline</div>
+      <ol class="outline-list">
+
+<li><a href="#section-1">1. What Counts as a "Parameter"?</a></li>
+<li><a href="#section-2">2. What Counts as a "Hyperparameter"?</a></li>
+<li><a href="#section-3">3. Five Models, Side by Side</a>
+  <ul>
+    <li><a href="#linear-regression">3.1 Linear Regression</a></li>
+    <li><a href="#decision-tree">3.2 Decision Tree</a></li>
+    <li><a href="#svm">3.3 Support Vector Machine</a></li>
+    <li><a href="#random-forest">3.4 Random Forest</a></li>
+    <li><a href="#neural-network">3.5 Neural Network</a></li>
+  </ul>
+</li>
+<li><a href="#section-4">4. The scikit-learn API: get_params and set_params</a></li>
+<li><a href="#section-5">5. Why Hyperparameters Cannot Be Learned by Gradient Descent</a></li>
+<li><a href="#section-6">6. The Magnitude of the Effect</a></li>
+<li><a href="#section-7">7. A Complete Worked Example</a></li>
+<li><a href="#resources">Useful Resources</a></li>
+      </ol>
+    </div>
+
+<section id="section-1">
+  <h2>1. What Counts as a "Parameter"?</h2>
+  <p>When you fit a machine-learning model to data, the model has numbers inside it that <em>change</em> during training. Those numbers are the model's <strong>parameters</strong>. They are the things the learning algorithm actually <em>learns</em> from the data, by minimizing some loss function via gradient descent, ordinary least squares, or a closed-form update rule. Everything else — the things you typed into the constructor before calling <code>fit</code> — is something else entirely, and conflating the two is one of the most common conceptual mistakes junior ML engineers make.</p>
+  <p>Concretely, in linear regression the parameters are the coefficient vector $\mathbf{w} \in \mathbb{R}^d$ and the intercept $b$. The training procedure picks them to minimize the mean squared error between predictions $\hat{y}_i = \mathbf{w}^\top \mathbf{x}_i + b$ and the true targets $y_i$. After <code>model.fit(X, y)</code> returns, you can inspect them with <code>model.coef_</code> and <code>model.intercept_</code>. The trailing underscore is scikit-learn's convention for "this attribute was learned from data, not supplied by the user." It is a small piece of API hygiene that becomes surprisingly load-bearing once you start writing your own estimators.</p>
+  <p>The same picture holds for every other model family. A decision tree's parameters are its split thresholds and feature indices — one per internal node — plus the class distribution stored at each leaf. A support vector machine's parameters are the support vectors themselves, their dual coefficients, and the bias term. A random forest's parameters are the parameters of every tree inside it. A neural network's parameters are its weight matrices and bias vectors, sometimes billions of them. In every case, the rule is the same: <strong>parameters are learned, they live as <code>_</code>-suffixed attributes after <code>fit</code>, and they can be very numerous.</strong></p>
+  <div class="callout note"><div class="callout-icon">📌</div><div class="callout-body"><div class="callout-title">sklearn convention</div><p>Any attribute ending in <code>_</code> on a fitted estimator is a <em>learned</em> parameter or learned statistic. <code>coef_</code>, <code>intercept_</code>, <code>feature_importances_</code>, <code>classes_</code>, <code>n_support_</code> — all of these are produced by <code>fit</code>, never set by the user. If you ever see code that manually assigns <code>model.coef_ = ...</code>, treat it with deep suspicion.</p></div></div>
+</section>
+
+<section id="section-2">
+  <h2>2. What Counts as a "Hyperparameter"?</h2>
+  <p>Hyperparameters are the configuration knobs of the learning process itself. You set them <em>before</em> <code>fit</code> is called, and they govern <em>how</em> the parameters are learned — or even <em>which family</em> of models the parameters live in. They are not differentiable, they are often discrete or structural, and there is no closed-form rule that picks them from the training data. You, the engineer, have to choose them, and choosing well can swing your final accuracy by tens of percentage points.</p>
+  <p>For a <code>RandomForestClassifier</code>, the hyperparameters include <code>n_estimators</code> (how many trees to grow), <code>max_depth</code> (how deep each tree can grow), <code>max_features</code> (how many features to consider at each split), <code>min_samples_split</code> and <code>min_samples_leaf</code> (regularization-like constraints on the trees), and <code>bootstrap</code> (whether each tree sees a resampled version of the data). None of these are learned from the training set. You fix them, and then the learning algorithm produces parameters (one tree per estimator) given those fixed knobs.</p>
+  <p>The cleanest mental model is the <em>two-level optimization</em> picture. The <em>inner</em> level learns parameters by minimizing training loss for a fixed set of hyperparameters. The <em>outer</em> level — which is what this entire course is about — searches over hyperparameters using validation performance as its objective. This decomposition is what makes hyperparameter tuning a well-defined problem, and it is also why you cannot just "learn" hyperparameters by gradient descent: they live one level above the differentiable loss surface.</p>
+  <div class="callout warning"><div class="callout-icon">⚠️</div><div class="callout-body"><div class="callout-title">Don&#x27;t confuse n_estimators with the trees</div><p><code>n_estimators=500</code> is a hyperparameter — an integer you set in the constructor. The 500 decision trees that the forest actually contains are <em>learned parameters</em>. If someone asks "how many parameters does a random forest with 500 estimators and max_depth=8 have?", the honest answer is "approximately 500 trees, each with up to $2^8 - 1 = 255$ internal nodes, each storing a feature index and a threshold, plus per-leaf class distributions." That is a lot of learned state, and none of it is a hyperparameter.</p></div></div>
+</section>
+
+<section id="section-3">
+  <h2>3. Five Models, Side by Side</h2>
+  <p>The cleanest way to internalize the distinction is to walk through a handful of model families and explicitly name the parameters and hyperparameters for each. Let's do that now.</p>
+  <h3 id="linear-regression">3.1 Linear Regression</h3>
+  <p>For plain <code>LinearRegression</code>, the parameters are the coefficient vector and intercept. The hyperparameters are <code>fit_intercept</code> (whether to include the $b$ term at all) and, for the regularized variants, <code>alpha</code> (Ridge/Lasso strength) or <code>l1_ratio</code> (ElasticNet mixing). For ordinary least squares there are essentially no interesting hyperparameters — the model is so simple that "tuning" it means deciding whether to add regularization and which kind.</p>
+  <h3 id="decision-tree">3.2 Decision Tree</h3>
+  <p>A <code>DecisionTreeClassifier</code>'s parameters are the per-node split thresholds and feature indices. Its hyperparameters are the structural constraints: <code>max_depth</code>, <code>min_samples_split</code>, <code>min_samples_leaf</code>, <code>max_features</code>, <code>max_leaf_nodes</code>, <code>min_impurity_decrease</code>, the split <code>criterion</code> (<code>'gini'</code> vs <code>'entropy'</code>), and <code>ccp_alpha</code> (cost-complexity pruning). A tree is unusual in that you can make its parameter count arbitrarily large by raising <code>max_depth</code>; it is one of the few models where the number of parameters is itself controlled by a hyperparameter.</p>
+  <h3 id="svm">3.3 Support Vector Machine</h3>
+  <p>For an RBF-kernel <code>SVC</code>, the parameters are the support vectors (a subset of the training points), the dual coefficients (one per support vector per class, in the dual formulation), and the bias. The hyperparameters are <code>C</code> (the box constraint that trades margin width against classification errors), <code>kernel</code> (the choice of similarity function), <code>gamma</code> (the RBF bandwidth), and <code>degree</code> (only relevant when <code>kernel='poly'</code>). Notice that <code>kernel</code> is a <em>structural</em> hyperparameter — it picks which family of decision boundaries the model can express at all.</p>
+  <h3 id="random-forest">3.4 Random Forest</h3>
+  <p>A <code>RandomForestClassifier</code> is a bagging ensemble of decision trees. Its parameters are <em>all the parameters of all the trees inside it</em>. Its hyperparameters include <code>n_estimators</code> (the ensemble size), every per-tree structural constraint from the DecisionTree section above, <code>max_features</code> (the per-split feature subsampling ratio — this is the random forest's most important hyperparameter and is different from the DecisionTree version because it is randomized), <code>bootstrap</code>, <code>max_samples</code>, <code>oob_score</code>, and <code>n_jobs</code>.</p>
+  <h3 id="neural-network">3.5 Neural Network</h3>
+  <p>A multilayer perceptron's parameters are its weight matrices and bias vectors — one of each per layer. Its hyperparameters include <code>learning_rate</code>, <code>batch_size</code>, the number of layers, the width of each layer, the choice of activation function, the optimizer (SGD, Adam, AdamW, …), the weight-decay coefficient, the dropout rate, and whether to use batch normalization. Notice that for neural networks, unlike for trees, the number of parameters is determined by the architecture hyperparameters (layer count and widths) but is not directly controllable; you change it by changing the architecture.</p>
+</section>
+
+<section id="section-4">
+  <h2>4. The scikit-learn API: <code>get_params</code> and <code>set_params</code></h2>
+  <p>Every scikit-learn estimator implements <code>get_params()</code> and <code>set_params(**kwargs)</code>. These two methods are the public API for hyperparameters, and the entire tuning infrastructure of scikit-learn — <code>GridSearchCV</code>, <code>RandomizedSearchCV</code>, pipelines — talks to models through them. <code>get_params()</code> returns a dictionary of every constructor argument and its current value; <code>set_params</code> mutates them in place. Crucially, <strong>these methods deal only with hyperparameters, not learned parameters.</strong> Calling <code>get_params()</code> on a fitted model will <em>not</em> return <code>coef_</code> or <code>feature_importances_</code>; those live directly on the model instance and are accessed as attributes.</p>
+  <p>This separation is what makes <code>GridSearchCV</code> possible: the search code clones the estimator (using <code>sklearn.base.clone</code>, which calls <code>get_params</code> and constructs a fresh instance with the same hyperparameters but no learned state), sets new hyperparameters via <code>set_params</code>, calls <code>fit</code>, and records the validation score. The search never has to know anything about the model's internal parameter representation — it only has to know how to manipulate the constructor arguments.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── params_vs_hyperparams.py ────────────────────────────────────────────────
+# Fit a RandomForestClassifier on the breast_cancer dataset and inspect the
+# boundary between hyperparameters (configuration) and learned parameters
+# (state produced by fit).
+
+from sklearn.datasets import load_breast_cancer
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+
+X, y = load_breast_cancer(return_X_y=True)
+X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# ─── 1. Construct: hyperparameters are fixed here ─────────────────────────────
+model = RandomForestClassifier(
+    n_estimators=200,         # hyperparameter
+    max_depth=8,              # hyperparameter
+    max_features=&quot;sqrt&quot;,      # hyperparameter
+    min_samples_leaf=2,       # hyperparameter
+    bootstrap=True,           # hyperparameter
+    oob_score=True,           # hyperparameter
+    n_jobs=-1,                # hyperparameter (controls compute, not the model)
+    random_state=42,
+)
+
+# ─── 2. Fit: this is where parameters are learned ─────────────────────────────
+model.fit(X_tr, y_tr)
+
+# ─── 3. Inspect hyperparameters via get_params() ──────────────────────────────
+hp = model.get_params()
+print(&quot;Hyperparameters (set by user, returned by get_params):&quot;)
+for k in [&quot;n_estimators&quot;, &quot;max_depth&quot;, &quot;max_features&quot;, &quot;min_samples_leaf&quot;]:
+    print(f&quot;  {k:25s} = {hp[k]}&quot;)
+
+# ─── 4. Inspect learned parameters as _-suffixed attributes ───────────────────
+print(&quot;\nLearned parameters (produced by fit, NOT in get_params):&quot;)
+print(f&quot;  n_estimators_            = {model.n_estimators_}   # actual trees grown&quot;)
+print(f&quot;  classes_                 = {model.classes_}&quot;)
+print(f&quot;  n_features_in_           = {model.n_features_in_}&quot;)
+print(f&quot;  feature_importances_[:5] = {model.feature_importances_[:5].round(4)}&quot;)
+print(f&quot;  estimators_[0].tree_.node_count = {model.estimators_[0].tree_.node_count}&quot;)
+print(f&quot;  oob_score_               = {model.oob_score_:.4f}&quot;)
+</pre></div>
+  <p>Run this and you will see the asymmetry directly: <code>get_params()</code> returns the constructor arguments, while <code>coef_</code>, <code>feature_importances_</code>, <code>estimators_</code>, and <code>oob_score_</code> are <em>only</em> available after fitting. The constructor arguments and the learned state live in completely different namespaces, and that is what makes the hyperparameter search loop clean.</p>
+</section>
+
+<section id="section-5">
+  <h2>5. Why Hyperparameters Cannot Be Learned by Gradient Descent</h2>
+  <p>It is natural to ask: if parameters are learned by gradient descent, why can't we learn hyperparameters the same way? The answer has three parts, and understanding all three is what separates someone who has memorized "hyperparameters are set by the user" from someone who actually understands why.</p>
+  <p>First, <strong>most hyperparameters are not differentiable</strong>. <code>n_estimators</code> is an integer. <code>kernel</code> is a categorical string. <code>max_features</code> is a string or an integer. You cannot take a gradient with respect to any of them, so plain backpropagation is off the table from the start. Even continuous hyperparameters like <code>alpha</code> in Ridge regression have a wrinkle: the gradient of validation loss with respect to <code>alpha</code> is only defined once you have solved the inner optimization, which makes the outer gradient expensive to compute and noisy.</p>
+  <p>Second, <strong>hyperparameters often change the structure of the model</strong>, not just the values inside it. Changing <code>kernel='linear'</code> to <code>kernel='rbf'</code> doesn't slide along a smooth family of models — it picks a different function class entirely. There is no continuous path between them, so a gradient-based optimizer would have nowhere to walk. The same goes for changing the number of layers in a neural network: the parameter vector changes shape, and the loss surface is not even defined in between.</p>
+  <p>Third, <strong>the objective for hyperparameters is validation loss, which is itself a noisy, expensive function</strong>. Each evaluation requires retraining the model from scratch and running it through cross-validation. That is thousands of times more expensive than a single gradient step, and the noise in the validation estimate (especially with small datasets) means you would need many evaluations to estimate a reliable gradient. This is why hyperparameter optimization is its own field, with methods like Bayesian optimization, Hyperband, and TPE designed specifically for the expensive-black-box regime.</p>
+  <div class="math-block">$$ \text{outer objective: } \quad \lambda^* = \arg\min_\lambda \; \mathbb{{E}}_{{(X,y)\sim\mathcal{{D}}}} \; L\bigl(f_{{\theta^*(\lambda)}}(X), y\bigr), \quad \text{where } \theta^*(\lambda) = \arg\min_\theta \; \hat{{L}}_{{\text{train}}}}(\theta; \lambda) $$ <div class="math-label">Eq. 1 — The two-level problem. Inner argmin learns parameters θ; outer argmin picks hyperparameters λ.</div></div>
+  <p>Equation 1 makes the structure explicit: the inner problem finds parameters $\theta$ for a fixed $\lambda$, and the outer problem searches over $\lambda$ using validation loss as its objective. The bi-level structure is exactly why we need cross-validation in the next article: the outer objective is an expectation over the data distribution, which we approximate by averaging over held-out folds.</p>
+  <div class="callout tip"><div class="callout-icon">💡</div><div class="callout-body"><div class="callout-title">Use model.__dict__ to see everything</div><p>After fitting, <code>model.__dict__</code> shows you <em>every</em> attribute, including learned parameters and cached state. It is a fantastic debugging tool when you are not sure what an estimator actually stores. For <code>RandomForestClassifier</code> you will see <code>estimators_</code> (a list of <code>DecisionTreeClassifier</code> instances), <code>classes_</code>, <code>n_features_in_</code>, <code>feature_importances_</code>, <code>oob_score_</code>, <code>oob_decision_function_</code>, and the original constructor args.</p></div></div>
+</section>
+
+<section id="section-6">
+  <h2>6. The Magnitude of the Effect: Why Tuning Matters</h2>
+  <p>It is fair to ask, before spending an entire course on this, how much hyperparameters actually matter. The honest answer is: sometimes a little, sometimes a lot, and you can almost never tell in advance which case you are in. The literature is full of cases where a well-tuned simple model beat a poorly-tuned sophisticated one. The classic Caruana et al. (2006) experiment showed that tuned random forests and boosted trees were competitive with tuned SVMs and neural nets on a wide range of binary classification benchmarks — the algorithm family mattered less than the tuning effort.</p>
+  <p>Concretely, on a typical tabular classification task you should expect:</p>
+  <ul>
+    <li><strong>Default to tuned RandomForest/XGBoost:</strong> 5–15% accuracy improvement is routine.</li>
+    <li><strong>Tuned SVM with RBF kernel vs untuned:</strong> 10–25% improvement is common, because the default <code>gamma='scale'</code> and <code>C=1.0</code> are often wildly wrong for the dataset's geometry.</li>
+    <li><strong>Deep learning: learning rate alone</strong> can change final accuracy by 20%+ on image classification tasks, and is the single most important knob.</li>
+    <li><strong>XGBoost triad (learning_rate × n_estimators × max_depth):</strong> easily 5–10% accuracy swing, and the difference between a model that trains in 30 seconds versus one that takes 30 minutes.</li>
+  </ul>
+  <p>These numbers are not cherry-picked — they are the baseline expectation. If you are not tuning, you are leaving meaningful performance on the table, and on a competitive problem you may be leaving enough that your model is no longer competitive at all.</p>
+  <div class="quiz-box">
+  <div class="quiz-label">🧠 Quick Check</div>
+  <p class="quiz-question">If a colleague tells you their SVM &#x27;just doesn&#x27;t work on this dataset&#x27; and shows you code that constructs SVC() with no arguments, what is the most likely actual problem?</p>
+  <details class="quiz-answer">
+    <summary>Show Answer</summary>
+    <p>Almost certainly not the algorithm. The default SVC uses C=1.0 and gamma=&#x27;scale&#x27;, which are wrong for most datasets. Have them try C in [0.1, 1, 10, 100] and gamma in [0.001, 0.01, 0.1, 1] with GridSearchCV, and they will usually see double-digit accuracy improvements.</p>
+  </details>
+</div>
+</section>
+
+<section id="section-7">
+  <h2>7. A Complete Worked Example</h2>
+  <p>Let's close with a complete, runnable example that exercises every concept from this article: construct a model with explicit hyperparameters, fit it, inspect both the hyperparameters (via <code>get_params</code>) and the learned parameters (via the <code>_</code>-suffixed attributes), and confirm that the learned state is exactly what the constructor did <em>not</em> touch.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── complete_walkthrough.py ──────────────────────────────────────────────────
+# Full lifecycle: construct → fit → inspect → predict, with a clear separation
+# between hyperparameters (set at construction) and parameters (learned at fit).
+
+import numpy as np
+from sklearn.datasets import load_breast_cancer
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
+
+X, y = load_breast_cancer(return_X_y=True)
+X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# ─── Compare three model families with reasonable default hyperparams ─────────
+models = {
+    &quot;LogReg&quot;: make_pipeline(
+        StandardScaler(),
+        LogisticRegression(C=1.0, max_iter=5000, random_state=42),
+    ),
+    &quot;SVM-RBF&quot;: make_pipeline(
+        StandardScaler(),
+        SVC(C=10.0, gamma=&quot;scale&quot;, kernel=&quot;rbf&quot;, random_state=42),
+    ),
+    &quot;RandomForest&quot;: RandomForestClassifier(
+        n_estimators=300, max_depth=8, max_features=&quot;sqrt&quot;,
+        min_samples_leaf=2, n_jobs=-1, random_state=42,
+    ),
+}
+
+for name, model in models.items():
+    cv = cross_val_score(model, X_tr, y_tr, cv=5, scoring=&quot;accuracy&quot;)
+    model.fit(X_tr, y_tr)
+    test_acc = model.score(X_te, y_te)
+    print(f&quot;{name:15s}  CV acc = {cv.mean():.4f} ± {cv.std():.4f}   &quot;
+          f&quot;test acc = {test_acc:.4f}&quot;)
+
+# ─── Inspect the RandomForest&#x27;s parameters vs hyperparameters ────────────────
+rf = models[&quot;RandomForest&quot;]
+print(&quot;\nRandomForest hyperparameters (from get_params):&quot;)
+for k in [&quot;n_estimators&quot;, &quot;max_depth&quot;, &quot;max_features&quot;, &quot;min_samples_leaf&quot;]:
+    print(f&quot;  {k:25s} = {rf.get_params()[k]}&quot;)
+
+print(&quot;\nRandomForest learned parameters (_-suffixed attributes):&quot;)
+print(f&quot;  n_estimators_           = {rf.n_estimators_}&quot;)
+print(f&quot;  n_features_in_          = {rf.n_features_in_}&quot;)
+print(f&quot;  classes_                = {rf.classes_}&quot;)
+print(f&quot;  feature_importances_    = {rf.feature_importances_.round(4)}&quot;)
+print(f&quot;  estimators_[0].node_count = {rf.estimators_[0].tree_.node_count}&quot;)
+</pre></div>
+  <p>When you run this you should see all three models land in the 0.94–0.97 CV accuracy range on the breast cancer dataset — close enough that the choice of model family matters less than the choice of hyperparameters. That is the central empirical fact that motivates the rest of this course: <strong>once you have a few reasonable model families in your toolbox, the way you spend your tuning budget matters more than which family you pick.</strong></p>
+</section>
+
+<div class="summary-box"><h3>🎯 Key Takeaways</h3><ul><li><strong>Parameters are learned from data</strong> by minimizing training loss; they live as <code>_</code>-suffixed attributes after <code>fit</code>.</li><li><strong>Hyperparameters are configuration</strong> set before training; they are returned by <code>get_params()</code> and changed via <code>set_params()</code>.</li><li><strong>Hyperparameters cannot be learned by gradient descent</strong> because they are non-differentiable, structural, and live above the inner optimization.</li><li><strong>Well-tuned hyperparameters routinely swing accuracy by 10–30%</strong>; not tuning is the most common cause of "my model just doesn't work on this dataset."</li><li><strong>Use <code>model.__dict__</code></strong> to see every learned state on a fitted estimator — invaluable for debugging.</li></ul></div>
+
+<section id="resources"><h2>Useful Resources</h2><ul class="resource-list"><li><a href="https://scikit-learn.org/stable/developers/develop.html">scikit-learn estimator API — get_params / set_params</a></li><li><a href="https://www.cs.cornell.edu/~caruana/ctp/ct.papers/caruana.icml06.pdf">Caruana et al. (2006) — An Empirical Comparison of Supervised Learning Algorithms</a></li><li><a href="https://www.jmlr.org/papers/v13/bergstra12a.html">Bergstra &amp; Bengio (2012) — Random Search for Hyper-Parameter Optimization</a></li><li><a href="https://hal.archives-ouvertes.fr/hal-01153371/document">Pedregosa (2016) — Hyperparameter optimization with cascaded Bayesian Optimization</a></li><li><a href="http://hyperopt.github.io/hyperopt/">Hyperopt — a Python library for serial and parallel optimization over awkward search spaces</a></li><li><a href="https://optuna.readthedocs.io/">Optuna — A Next-generation Hyperparameter Optimization Framework</a></li><li><a href="https://mlcourse.ai/book/topic01/topic01_pandas_data_analysis.html">mlcourse.ai — Topic 1: Exploratory data analysis with Pandas (style reference)</a></li></ul></section>
+
+  </article>
+</div>
+<div class="page-nav"><a href="intro.html" class="page-nav-btn prev"><span class="nav-dir">← Previous</span><span class="nav-title">Module 01 — Foundations</span></a><a href="part2_bias_variance.html" class="page-nav-btn next"><span class="nav-dir">Next →</span><span class="nav-title">The Bias-Variance Tradeoff</span></a></div>
+<footer>
+  <div class="container">
+    <div style="font-size:1.5rem;font-weight:800;font-family:var(--display);color:var(--accent);margin-bottom:0.5rem">HyperTune</div>
+    <p style="color:var(--muted2);font-size:0.85rem;max-width:500px;margin:0 auto">The complete hyperparameter tuning reference for ML &amp; DL engineers. Covers scikit-learn, XGBoost, LightGBM, PyTorch, Optuna, Ray Tune, and beyond — from first principles to production.</p>
+    <div style="margin-top:2rem;font-size:0.78rem;color:var(--muted2)">Built for learning · Python 3.10+ · scikit-learn 1.4+ · Optuna 3.0+</div>
+  </div>
+</footer>
+<script>
+(function() {
+  const links = Array.from(document.querySelectorAll('.toc-link'));
+  const sections = links
+    .map(l => document.querySelector(l.getAttribute('href')))
+    .filter(Boolean);
+  if (!('IntersectionObserver' in window) || sections.length === 0) return;
+  const setActive = id => {
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+  };
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  sections.forEach(s => observer.observe(s));
+})();
+</script>
+</body>
+</html>

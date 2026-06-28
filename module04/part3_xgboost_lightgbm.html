@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XGBoost and LightGBM Hyperparameters — HyperTune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<style>
+
+:root {
+  --bg: #070b14; --bg2: #0c1220; --bg3: #111827;
+  --card: #131d2e; --card2: #1a2640;
+  --border: rgba(99,179,237,0.12); --border2: rgba(99,179,237,0.22);
+  --accent: #38bdf8; --accent2: #818cf8; --accent3: #34d399;
+  --accent4: #f59e0b; --accent5: #f472b6;
+  --text: #f0f6fc; --muted: #8899aa; --muted2: #64748b;
+  --code-bg: #0d1117;
+  --ff: 'Inter', sans-serif; --mono: 'JetBrains Mono', monospace;
+  --display: 'Sora', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,11,20,0.85);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:var(--display);font-weight:800;font-size:1.25rem;color:var(--accent);letter-spacing:-0.03em;text-decoration:none}
+.logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#000;padding:7px 18px;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85}
+
+/* LAYOUT */
+.page-layout { display: grid; grid-template-columns: 280px 1fr; gap: 3rem; max-width: 1200px; margin: 0 auto; padding: 5rem 2rem 5rem; padding-top: 80px; }
+@media(max-width: 900px) { .page-layout { grid-template-columns: 1fr; } .toc-sidebar { display: none; } }
+
+/* TOC SIDEBAR */
+.toc-sidebar { position: sticky; top: 80px; height: fit-content; max-height: calc(100vh - 100px); overflow-y: auto; }
+.toc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.75rem; }
+.toc-nav { display: flex; flex-direction: column; gap: 2px; }
+.toc-link { color: var(--muted); font-size: 0.82rem; text-decoration: none; padding: 4px 10px; border-left: 2px solid transparent; transition: all 0.15s; border-radius: 0 4px 4px 0; }
+.toc-link:hover, .toc-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(56,189,248,0.05); }
+.toc-link.toc-sub { font-size: 0.78rem; padding-left: 22px; }
+
+/* ARTICLE BODY */
+.article-body { min-width: 0; }
+.breadcrumb { font-size: 0.78rem; color: var(--muted2); margin-bottom: 1.5rem; }
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--accent); }
+.module-badge { display: inline-block; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: var(--accent); padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 1rem; }
+.article-title { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
+.article-meta { font-size: 0.83rem; color: var(--muted); margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+
+/* OUTLINE BOX */
+.outline-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 3rem; }
+.outline-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.75rem; color: var(--text); }
+.outline-list { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.85rem; }
+.outline-list a { color: var(--accent); text-decoration: none; }
+.outline-list a:hover { text-decoration: underline; }
+.outline-list li { margin: 4px 0; }
+.outline-list ul { margin: 4px 0; padding-left: 1rem; }
+
+/* ARTICLE PROSE */
+.article-body h2 { font-family: var(--display); font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; margin: 3rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); scroll-margin-top: 80px; }
+.article-body h3 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 80px; }
+.article-body h4 { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.article-body p { margin-bottom: 1.25rem; color: var(--muted); font-size: 0.97rem; line-height: 1.85; }
+.article-body strong { color: var(--text); font-weight: 600; }
+.article-body em { color: var(--accent3); font-style: italic; }
+.article-body ul, .article-body ol { margin: 0 0 1.25rem 1.5rem; color: var(--muted); font-size: 0.95rem; }
+.article-body li { margin-bottom: 6px; line-height: 1.75; }
+.article-body code { font-family: var(--mono); font-size: 0.82em; background: rgba(56,189,248,0.08); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
+.article-body a { color: var(--accent2); text-decoration: none; }
+.article-body a:hover { text-decoration: underline; }
+
+/* CODE BLOCKS */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+.code-block-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot.r { background: #ff5f57; } .code-dot.y { background: #ffbd2e; } .code-dot.g { background: #28c840; }
+.code-filename { font-family: var(--mono); font-size: 0.73rem; color: var(--muted2); margin-left: 8px; }
+.code-block pre { padding: 1.5rem; overflow-x: auto; margin: 0; font-family: var(--mono); font-size: 0.82rem; line-height: 1.8; color: #e2e8f0; }
+/* Syntax colors */
+.kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; }
+.num { color: #f78c6c; } .cm { color: #546e7a; font-style: italic; }
+.cls { color: #ffcb6b; } .imp { color: #89ddff; } .op { color: #89ddff; }
+
+/* CALLOUT BOXES */
+.callout { display: flex; gap: 1rem; border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; border-width: 1px; border-style: solid; }
+.callout-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+.callout-body { font-size: 0.88rem; line-height: 1.75; }
+.callout-body strong { font-weight: 600; }
+.callout-title { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+.callout.note { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.22); color: var(--muted); }
+.callout.note .callout-title, .callout.note strong { color: var(--accent); }
+.callout.warning { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.22); color: var(--muted); }
+.callout.warning .callout-title, .callout.warning strong { color: var(--accent4); }
+.callout.tip { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); color: var(--muted); }
+.callout.tip .callout-title, .callout.tip strong { color: var(--accent3); }
+.callout.important { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.22); color: var(--muted); }
+.callout.important .callout-title, .callout.important strong { color: var(--accent5); }
+
+/* MATH DISPLAY */
+.math-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.75rem; margin: 1.25rem 0; overflow-x: auto; font-size: 1.05rem; text-align: center; }
+.math-label { font-size: 0.72rem; color: var(--muted2); font-family: var(--mono); margin-top: 0.5rem; text-align: right; }
+
+/* INLINE FIGURE / DIAGRAM */
+.figure { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; margin: 2rem 0; text-align: center; }
+.figure-caption { font-size: 0.8rem; color: var(--muted2); margin-top: 1rem; font-style: italic; }
+
+/* DATA TABLE */
+.data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.85rem; }
+.data-table th { padding: 10px 14px; background: var(--card2); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); text-align: left; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(99,179,237,0.03); }
+
+/* SUMMARY BOX */
+.summary-box { background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(129,140,248,0.07)); border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 1.75rem 2rem; margin: 3rem 0 2rem; }
+.summary-box h3 { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+.summary-box ul { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.88rem; }
+.summary-box li { margin-bottom: 6px; line-height: 1.7; }
+
+/* RESOURCE LIST */
+.resource-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.resource-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.resource-list li::before { content: '\2192'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.resource-list a { color: var(--accent2); }
+
+/* PREV/NEXT NAV */
+.page-nav { display: flex; justify-content: space-between; gap: 1rem; padding: 2rem; max-width: 1200px; margin: 0 auto; border-top: 1px solid var(--border); }
+.page-nav-btn { display: flex; flex-direction: column; gap: 4px; padding: 1rem 1.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; transition: all 0.2s; max-width: 45%; }
+.page-nav-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.page-nav-btn .nav-dir { font-size: 0.72rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; }
+.page-nav-btn .nav-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.page-nav-btn.next { text-align: right; margin-left: auto; }
+
+/* QUIZ/EXERCISE BOX */
+.exercise-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin: 2rem 0; }
+.exercise-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent4); margin-bottom: 0.5rem; }
+.exercise-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; }
+.exercise-body { font-size: 0.88rem; color: var(--muted); line-height: 1.75; }
+
+/* QUIZ BOX */
+.quiz-box { background: rgba(129,140,248,0.06); border: 1px solid rgba(129,140,248,0.22); border-radius: 14px; padding: 1.5rem; margin: 1.5rem 0; }
+.quiz-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.5rem; }
+.quiz-question { font-size: 0.93rem; color: var(--text); margin-bottom: 0.75rem; font-weight: 500; }
+.quiz-answer { margin-top: 0.5rem; }
+.quiz-answer summary { cursor: pointer; font-size: 0.82rem; color: var(--accent2); font-weight: 600; }
+.quiz-answer p { margin-top: 0.5rem; font-size: 0.86rem; color: var(--muted); }
+
+/* CELL (for assignment files - jupyter style) */
+.jupyter-cell { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin: 1.5rem 0; overflow: hidden; }
+.cell-header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted2); font-family: var(--mono); }
+.cell-input-label { color: var(--accent4); font-weight: 600; }
+.cell-body { padding: 1rem 1.25rem; }
+.jupyter-cell pre { padding: 1rem 1.25rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; background: var(--code-bg); margin: 0; }
+.cell-prompt { color: var(--accent3); font-weight: 700; }
+
+/* GRADING RUBRIC */
+.rubric-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+.rubric-table th { background: var(--card2); padding: 10px 14px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); }
+.rubric-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+
+/* DETAILS (collapsible hints) */
+details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; }
+details summary { cursor: pointer; font-size: 0.85rem; color: var(--accent2); font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
+
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">Hyper<span>Tune</span></a>
+    <ul class="nav-links">
+
+    </ul>
+    <a href="../index.html#curriculum" class="nav-cta">Start Learning</a>
+  </div>
+</nav>
+<div class="page-layout">
+  <aside class="toc-sidebar">
+    <div class="toc-label">On this page</div>
+    <nav class="toc-nav">
+<a href="#section-1" class="toc-link">1. Why Gradient Boosting</a>
+<a href="#section-2" class="toc-link">2. The XGBoost Objective</a>
+<a href="#section-3" class="toc-link">3. The Triad</a>
+<a href="#section-4" class="toc-link">4. learning_rate &amp; Early Stopping</a>
+<a href="#section-5" class="toc-link">5. subsample &amp; colsample_bytree</a>
+<a href="#section-6" class="toc-link">6. colsample_bylevel / bynode</a>
+<a href="#section-7" class="toc-link">7. gamma, reg_alpha, reg_lambda, min_child_weight</a>
+<a href="#section-8" class="toc-link">8. scale_pos_weight</a>
+<a href="#section-9" class="toc-link">9. tree_method=&#x27;hist&#x27;</a>
+<a href="#section-10" class="toc-link">10. LightGBM Differences</a>
+<a href="#section-11" class="toc-link">11. Full Optuna Tuning</a>
+<a href="#resources" class="toc-link">Useful Resources</a>
+    </nav>
+  </aside>
+  <article class="article-body">
+    <div class="breadcrumb"><a href="../index.html">HyperTune</a> › <a href="intro.html">Module 04</a> › XGBoost and LightGBM</div>
+    <div class="article-header">
+      <div class="module-badge">Module 04 · Model Type Deep Dive</div>
+      <h1 class="article-title">XGBoost and LightGBM: Mastering the Gradient Boosting Hyperparameters</h1>
+      <div class="article-meta">Part of the <strong>HyperTune</strong> open course · Estimated read time: 30 min · Python 3.10+ · XGBoost 2.0+ · LightGBM 4.0+</div>
+    </div>
+    <div class="outline-box">
+      <div class="outline-title">📋 Article Outline</div>
+      <ol class="outline-list">
+
+<li><a href="#section-1">1. Why Gradient Boosting Deserves Its Own Article</a></li>
+<li><a href="#section-2">2. The XGBoost Objective Function</a></li>
+<li><a href="#section-3">3. The Triad: learning_rate × n_estimators × max_depth</a></li>
+<li><a href="#section-4">4. learning_rate and Early Stopping</a></li>
+<li><a href="#section-5">5. subsample and colsample_bytree</a></li>
+<li><a href="#section-6">6. colsample_bylevel and colsample_bynode</a></li>
+<li><a href="#section-7">7. gamma, reg_alpha, reg_lambda, min_child_weight</a></li>
+<li><a href="#section-8">8. scale_pos_weight for Imbalanced Classification</a></li>
+<li><a href="#section-9">9. tree_method='hist'</a></li>
+<li><a href="#section-10">10. LightGBM Differences</a></li>
+<li><a href="#section-11">11. Full Optuna Tuning Example</a></li>
+<li><a href="#resources">Useful Resources</a></li>
+      </ol>
+    </div>
+<section id="section-1">
+  <h2>1. Why Gradient Boosting Deserves Its Own Article</h2>
+  <p>Gradient boosted trees are the dominant model family for tabular supervised learning in industry today. Every Kaggle competition on tabular data that does not explicitly forbid tree boosting is won by some variant of it; every production ML system that handles tabular features has at least one boosted tree model in the candidate pool. The three main implementations — XGBoost, LightGBM, and CatBoost — differ in details of how trees are grown, but they share the same fundamental algorithm and the same core set of hyperparameters.</p>
+  <p>This article focuses on XGBoost and LightGBM, which together cover the vast majority of production use cases. XGBoost is the older and more thoroughly documented of the two; LightGBM is faster on large datasets and has a slightly different (and arguably more intuitive) hyperparameter interface. Once you understand the XGBoost hyperparameter triad and the regularization knobs, the LightGBM equivalents are mostly renamings.</p>
+  <p>The reason gradient boosting deserves a full article — separate from the random forest article — is that its hyperparameters behave very differently. A random forest is a bagging ensemble: trees are independent, more is always better, and the per-tree hyperparameters control bias. A gradient boosting model is a <em>sequential</em> ensemble: each tree corrects the residual errors of the trees before it, the learning rate controls how much each tree contributes, and adding too many trees causes overfitting (not just diminishing returns). The tuning strategy is fundamentally different, and getting it wrong is the single most common cause of "XGBoost is overfitting and I don't know why."</p>
+</section>
+<section id="section-2">
+  <h2>2. The XGBoost Objective Function</h2>
+  <p>To tune XGBoost intelligently, you need to understand what it is actually optimizing. The objective function decomposes into a training loss term plus a regularization term that penalizes the complexity of each tree:</p>
+<div class="math-block">$$ \mathcal{L} = \sum_{i=1}^{n} l(y_i, \hat{y}_i) + \sum_{k=1}^{K} \Omega(f_k), \qquad \Omega(f) = \gamma T + \frac{1}{2} \lambda \| w \|^2 $$ <div class="math-label">Eq. 1 — XGBoost objective. The first sum is the training loss; the second sum penalizes tree complexity.</div></div>
+  <p>Walking through each symbol: $y_i$ is the true label for sample $i$; $\hat{y}_i$ is the model's current prediction (the sum of all tree outputs for that sample); $l$ is the loss function (log-loss for classification, squared error for regression); $f_k$ is the $k$-th tree; $K$ is the total number of trees; $T$ is the number of leaves in tree $f_k$; $w$ is the vector of leaf weights; $\gamma$ is the per-leaf penalty (the <code>gamma</code> hyperparameter); $\lambda$ is the L2 penalty on leaf weights (the <code>reg_lambda</code> hyperparameter).</p>
+  <p>The two regularization terms have very different effects. The $\gamma T$ term penalizes the <em>number</em> of leaves: raising <code>gamma</code> makes the algorithm require a larger impurity decrease before it will split a node, which is a form of pre-pruning. The $\frac{1}{2} \lambda \|w\|^2$ term penalizes the <em>magnitude</em> of leaf weights: raising <code>reg_lambda</code> shrinks the predictions of each leaf toward zero, which is a form of post-hoc regularization that smooths predictions. Both reduce overfitting, but they do so in different ways — and you can tune them independently.</p>
+  <p>The training proceeds by adding trees one at a time, each fit to the gradient of the loss with respect to the current ensemble's predictions. After all $K$ trees are added, the final prediction is $\hat{y}_i = \sum_k \eta \, f_k(x_i)$, where $\eta$ is the learning rate. This is why the learning rate interacts so strongly with <code>n_estimators</code>: each tree's contribution is scaled by $\eta$, so adding more trees with a smaller $\eta$ is roughly equivalent to adding fewer trees with a larger $\eta$ — but the regularized path is smoother and usually generalizes better.</p>
+<div class="callout note"><div class="callout-icon">📌</div><div class="callout-body"><div class="callout-title">XGBoost regularizes, not just minimizes loss</div><p>The regularization term $\Omega(f) = \gamma T + \frac{1}{2}\lambda\|w\|^2$ is what distinguishes XGBoost from earlier gradient boosting implementations like scikit-learn's <code>GradientBoostingClassifier</code>, which did not regularize leaf weights by default. This is the main reason XGBoost tends to win benchmarks: not because the algorithm is fundamentally different, but because the regularization is built into the objective and the hyperparameters expose it cleanly.</p></div></div>
+</section>
+<section id="section-3">
+  <h2>3. The Triad: <code>learning_rate</code> × <code>n_estimators</code> × <code>max_depth</code></h2>
+  <p>Three hyperparameters dominate the behavior of any gradient boosting model: <code>learning_rate</code>, <code>n_estimators</code>, and <code>max_depth</code>. Get these three right and you have done 80% of the tuning work; the remaining knobs (subsample, colsample, reg_alpha, reg_lambda, gamma, min_child_weight) are refinement.</p>
+  <p><code>learning_rate</code> (also called <code>eta</code>) scales the contribution of each tree. A smaller learning rate means each tree contributes less, so you need more trees to reach the same training accuracy. The standard advice is to use a small learning rate (0.01–0.1) and let <code>n_estimators</code> grow to whatever early stopping says is enough. Larger learning rates (0.3+) train faster but tend to overfit and produce less smooth predictions.</p>
+  <p><code>n_estimators</code> is the number of trees. Unlike in a random forest, adding more trees to a gradient boosting model <em>can</em> cause overfitting, because each new tree fits the residual errors of the previous trees — eventually the model starts fitting noise in the residuals. The fix is early stopping: monitor validation loss after each tree, and stop training when validation loss has not improved for some number of rounds.</p>
+  <p><code>max_depth</code> controls the depth of each individual tree. XGBoost typically uses shallow trees (depth 3–8) because each tree is meant to capture a small correction to the existing ensemble, not a full model. Deep trees (depth 10+) make each tree too powerful — they overfit the residuals, and the ensemble loses the smoothness that gives gradient boosting its generalization ability. <strong>Higher depth requires stronger regularization</strong> (larger <code>gamma</code>, <code>reg_lambda</code>, <code>min_child_weight</code>), or the model will overfit aggressively.</p>
+<div class="callout tip"><div class="callout-icon">💡</div><div class="callout-body"><div class="callout-title">Tune the triad with early stopping, not grid search</div><p>The right way to set <code>learning_rate</code> and <code>n_estimators</code> is to fix <code>learning_rate</code> at a small value (0.05), enable <code>early_stopping_rounds=50</code>, and let <code>n_estimators</code> be determined automatically by early stopping. This avoids the expensive 2D grid search over (learning_rate, n_estimators) and gives you the optimal n_estimators for each learning_rate automatically.</p></div></div>
+</section>
+<section id="section-4">
+  <h2>4. <code>learning_rate</code> (eta) and Early Stopping</h2>
+  <p>The learning rate is the single hyperparameter that most affects the bias-variance characteristics of a gradient boosting model. A small learning rate (0.01–0.05) with many trees tends to produce the best generalization, at the cost of slower training. A larger learning rate (0.1–0.3) trains faster and is fine for prototyping, but the model will typically underperform the small-LR version by 0.5–2 percentage points on test accuracy.</p>
+  <p>The right way to use the learning rate is in conjunction with early stopping. The XGBoost library provides <code>xgb.cv()</code>, which runs k-fold cross-validation with early stopping and returns the optimal number of trees for each fold. Set <code>num_boost_round</code> to a large value (e.g. 5000), <code>early_stopping_rounds=50</code>, and let the algorithm find the right number of trees automatically. Then retrain on the full training set with that number of trees.</p>
+<div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">xgb_early_stopping.py</span></div><pre># ─── xgb_early_stopping.py ────────────────────────────────────────────────────
+# Use xgb.cv() to find the optimal number of trees for a fixed learning_rate.
+# This is the standard &quot;first step&quot; of any XGBoost tuning workflow: pick a
+# small learning rate, let early stopping decide n_estimators, then refine
+# the other hyperparameters around that baseline.
+
+import numpy as np
+import xgboost as xgb
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import train_test_split
+
+X, y = load_breast_cancer(return_X_y=True)
+X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2,
+                                           stratify=y, random_state=42)
+
+dtrain = xgb.DMatrix(X_tr, label=y_tr)
+dtest = xgb.DMatrix(X_te, label=y_te)
+
+params = {
+    &quot;objective&quot;: &quot;binary:logistic&quot;,
+    &quot;learning_rate&quot;: 0.05,
+    &quot;max_depth&quot;: 6,
+    &quot;subsample&quot;: 0.8,
+    &quot;colsample_bytree&quot;: 0.8,
+    &quot;eval_metric&quot;: &quot;logloss&quot;,
+    &quot;seed&quot;: 42,
+}
+
+# Run 5-fold CV with early stopping
+cv_results = xgb.cv(
+    params=params,
+    dtrain=dtrain,
+    num_boost_round=5000,
+    nfold=5,
+    early_stopping_rounds=50,
+    metrics=&quot;logloss&quot;,
+    as_pandas=True,
+    seed=42,
+    verbose_eval=100,
+)
+
+best_round = cv_results.shape[0]
+print(f&quot;\nOptimal n_estimators (early stopping): {best_round}&quot;)
+print(f&quot;CV logloss at that point: {cv_results[&#x27;test-logloss-mean&#x27;].iloc[-1]:.4f} &quot;
+      f&quot;± {cv_results[&#x27;test-logloss-std&#x27;].iloc[-1]:.4f}&quot;)
+
+# Retrain on the full training set with the discovered n_estimators
+final_model = xgb.train(
+    params=params,
+    dtrain=dtrain,
+    num_boost_round=best_round,
+)
+y_pred = (final_model.predict(dtest) &gt; 0.5).astype(int)
+test_acc = (y_pred == y_te).mean()
+print(f&quot;Test accuracy with early-stopped model: {test_acc:.4f}&quot;)
+</pre></div>
+  <p>The output will typically show the CV logloss dropping for the first 50–200 rounds, then flattening out and starting to rise slightly as the model overfits. Early stopping identifies the inflection point and uses it as <code>n_estimators</code>. This is much more principled than guessing a number — and it adapts automatically when you change other hyperparameters (a deeper tree may need fewer rounds; a smaller learning rate may need more).</p>
+</section>
+<section id="section-5">
+  <h2>5. <code>subsample</code> and <code>colsample_bytree</code>: Stochastic Gradient Boosting</h2>
+  <p>Two hyperparameters introduce randomness into the boosting process, in much the same way that bagging and feature subsampling do for random forests. <code>subsample</code> controls the fraction of rows (samples) used to train each tree; <code>colsample_bytree</code> controls the fraction of columns (features) used. Both default to 1.0 (use all data), but values in the 0.5–1.0 range typically improve generalization by reducing variance.</p>
+  <p>The mechanism is the same as in random forests: by training each tree on a different random subset of the data, you decorrelate the trees, and the averaging effect of the ensemble becomes more powerful. The difference is that in gradient boosting the trees are not independent — each tree corrects the previous one's errors — so the variance reduction is less dramatic than in bagging. Still, subsampling is a near-universal default in production XGBoost pipelines.</p>
+  <p>Typical ranges: <code>subsample</code> in [0.5, 0.6, 0.7, 0.8, 0.9, 1.0], with 0.8 being a sensible default. <code>colsample_bytree</code> in the same range, with 0.8 being common. On datasets with many features, lower <code>colsample_bytree</code> values (0.4–0.6) often work well because they force the model to use a wider variety of features across the ensemble.</p>
+<section id="section-6">
+  <h2>6. <code>colsample_bylevel</code> and <code>colsample_bynode</code> (XGBoost only)</h2>
+  <p>XGBoost offers two additional column-sampling hyperparameters that LightGBM does not. <code>colsample_bylevel</code> resamples the feature set once per tree depth (level): all splits at depth 1 use one feature subset, all splits at depth 2 use a different subset, and so on. <code>colsample_bynode</code> resamples at every split, the way <code>max_features</code> does in a random forest.</p>
+  <p>In practice these are less commonly tuned than <code>colsample_bytree</code>, because the per-tree subsampling usually captures most of the available benefit. But they can be useful when you have many features and want strong decorrelation. A common pattern is to set <code>colsample_bytree=0.8</code> and <code>colsample_bynode=0.8</code> together, which gives two levels of random feature subsampling.</p>
+</section>
+<section id="section-7">
+  <h2>7. <code>gamma</code>, <code>reg_alpha</code>, <code>reg_lambda</code>, <code>min_child_weight</code></h2>
+  <p>Four hyperparameters provide explicit regularization on top of the structural constraints. <code>gamma</code> (also called <code>min_split_loss</code>) is the minimum loss reduction required to make a split: a node will only be split if the split reduces the objective by at least <code>gamma</code>. The default of 0 means any split that helps at all is accepted; values in 1–5 are typical when you need aggressive pruning. <code>gamma</code> is essentially the same as scikit-learn's <code>min_impurity_decrease</code>, but expressed in objective-reduction units rather than impurity units.</p>
+  <p><code>reg_alpha</code> and <code>reg_lambda</code> are L1 and L2 regularization on the leaf weights. <code>reg_lambda</code> defaults to 1.0 and is usually left alone or tuned in the [0.1, 1, 10, 100] range. <code>reg_alpha</code> defaults to 0 and is mostly useful when you want sparse leaf weights (analogous to Lasso for linear models). Both should be searched on a log scale.</p>
+  <p><code>min_child_weight</code> is the minimum sum of instance weights (Hessian) required in a child node after a split. For squared-error loss, this is essentially the minimum number of samples in the child; for log-loss, it is the sum of $p(1-p)$ over the samples, which is bounded above by 0.25 per sample. The default of 1 is usually too low for binary classification — values in 1–10 are common. Raising <code>min_child_weight</code> prevents splits that produce tiny leaves with extreme predictions, which is a major source of overfitting in gradient boosting.</p>
+<div class="callout warning"><div class="callout-icon">⚠️</div><div class="callout-body"><div class="callout-title">min_child_weight is the most under-tuned XGBoost hyperparameter</div><p>Most XGBoost tuning guides focus on the triad and subsample, and treat <code>min_child_weight</code> as an afterthought. This is a mistake — <code>min_child_weight</code> controls the same kind of leaf-stability constraint as <code>min_samples_leaf</code> in a single decision tree, and its effect on overfitting is just as large. Always include it in your search space; values in [1, 3, 5, 10, 20] cover most use cases.</p></div></div>
+</section>
+<section id="section-8">
+  <h2>8. <code>scale_pos_weight</code> for Imbalanced Classification</h2>
+  <p>For binary classification on heavily imbalanced data, <code>scale_pos_weight</code> lets you upweight the minority class during training. The standard recipe is to set it to <code>(# negative samples) / (# positive samples)</code>, which re-balances the loss so that each positive sample contributes as much as a negative sample. This is analogous to <code>class_weight='balanced'</code> in scikit-learn.</p>
+  <p>Setting <code>scale_pos_weight</code> correctly is essential when your metric is recall, F1, or AUC — without it, the model will predict the majority class always and still get high accuracy. With it, the model is forced to actually learn the structure that distinguishes the minority class. The caveat is the same as with <code>class_weight='balanced'</code>: probabilities will not be calibrated to the true prior, so if your downstream metric depends on calibrated probabilities, you will need to recalibrate after training.</p>
+<div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">scale_pos_weight_recipe.py</span></div><pre># ─── scale_pos_weight_recipe.py ────────────────────────────────────────────────
+# Recipe for setting scale_pos_weight on an imbalanced binary classification
+# problem. Uses Adult Census (24% positive) as a realistic example.
+
+import numpy as np
+import xgboost as xgb
+from sklearn.datasets import fetch_openml
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report, roc_auc_score
+
+adult = fetch_openml(name=&quot;adult&quot;, version=2, as_frame=True, parser=&quot;auto&quot;)
+X = adult.data.drop(columns=[&quot;fnlwgt&quot;, &quot;education-num&quot;], errors=&quot;ignore&quot;)
+y = (adult.target == &quot;&gt;50K&quot;).astype(int)
+
+# Encode categorical features via simple one-hot (use sklearn&#x27;s OneHotEncoder
+# in production; this is a minimal demo)
+X = pd.get_dummies(X, columns=X.select_dtypes(exclude=[&quot;number&quot;]).columns)
+
+X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2,
+                                           stratify=y, random_state=42)
+
+# Compute the imbalance ratio
+n_neg = (y_tr == 0).sum()
+n_pos = (y_tr == 1).sum()
+spw = n_neg / n_pos
+print(f&quot;Train: {n_neg} neg / {n_pos} pos = {spw:.3f} scale_pos_weight&quot;)
+
+dtrain = xgb.DMatrix(X_tr, label=y_tr)
+dtest = xgb.DMatrix(X_te, label=y_te)
+
+params = {
+    &quot;objective&quot;: &quot;binary:logistic&quot;,
+    &quot;learning_rate&quot;: 0.05,
+    &quot;max_depth&quot;: 6,
+    &quot;subsample&quot;: 0.8,
+    &quot;colsample_bytree&quot;: 0.8,
+    &quot;min_child_weight&quot;: 5,
+    &quot;reg_lambda&quot;: 1.0,
+    &quot;eval_metric&quot;: &quot;auc&quot;,
+    &quot;scale_pos_weight&quot;: spw,
+    &quot;seed&quot;: 42,
+}
+
+bst = xgb.train(
+    params, dtrain,
+    num_boost_round=500,
+    evals=[(dtrain, &quot;train&quot;), (dtest, &quot;eval&quot;)],
+    early_stopping_rounds=30,
+    verbose_eval=100,
+)
+
+y_proba = bst.predict(dtest, iteration_range=(0, bst.best_iteration + 1))
+y_pred = (y_proba &gt; 0.5).astype(int)
+print(f&quot;\nTest ROC-AUC: {roc_auc_score(y_te, y_proba):.4f}&quot;)
+print(classification_report(y_te, y_pred, target_names=[&quot;&lt;=50K&quot;, &quot;&gt;50K&quot;]))
+
+# Import pandas lazily so the script still imports if the user is in an env
+# without it installed (it is required by fetch_openml as_frame=True anyway).
+import pandas as pd  # noqa: E402
+</pre></div>
+</section>
+<section id="section-9">
+  <h2>9. <code>tree_method='hist'</code>: Histogram-Based Splitting</h2>
+  <p>For large datasets, XGBoost's default <code>tree_method='exact'</code> (which evaluates every possible split point) becomes prohibitively slow. <code>tree_method='hist'</code> bins continuous features into discrete buckets (typically 256 bins) and only evaluates splits at bucket boundaries. This is approximately as accurate as the exact method but orders of magnitude faster on large data.</p>
+  <p>LightGBM was built from the ground up around histogram-based splitting and uses it by default — this is one of the main reasons LightGBM is faster than XGBoost on large datasets. The XGBoost team eventually adopted the same approach, and <code>tree_method='hist'</code> is the recommended default for any dataset larger than ~100k samples. The <code>max_bin</code> hyperparameter controls the number of bins (default 256); raising it can improve accuracy slightly at the cost of speed.</p>
+  <p>If you are working with very large data (>1M samples) and need maximum speed, consider LightGBM's <code>tree_method='goss'</code> (Gradient-based One-Side Sampling) or <code>'dart'</code> (Dropouts meet Multiple Additive Regression Trees). These are more advanced variants that subsample based on gradient magnitude or randomly drop trees during training, respectively.</p>
+</section>
+<section id="section-10">
+  <h2>10. LightGBM Differences: <code>num_leaves</code>, <code>min_child_samples</code>, <code>bagging_fraction</code></h2>
+  <p>LightGBM grows trees <em>leaf-wise</em> (best-first) rather than <em>depth-wise</em> (level-by-level) like XGBoost. This means LightGBM can produce deeper, more asymmetric trees for the same number of leaves. The main structural hyperparameter is <code>num_leaves</code>, which replaces <code>max_depth</code> as the primary complexity knob. The recommended relationship is <code>num_leaves ≤ 2^max_depth</code>; with <code>max_depth=8</code>, <code>num_leaves</code> should be at most 256, and typically much less (31–127 is the common range).</p>
+  <p>LightGBM renames several XGBoost hyperparameters. <code>min_child_weight</code> becomes <code>min_child_samples</code> (which is more intuitive — it is the minimum number of samples in a child, not a sum of Hessians). <code>subsample</code> becomes <code>bagging_fraction</code>, and <code>colsample_bytree</code> becomes <code>feature_fraction</code>. LightGBM also requires <code>bagging_freq</code> to be set to a positive integer (typically 1) for <code>bagging_fraction</code> to take effect — this is a frequent source of confusion.</p>
+  <p>LightGBM also has excellent built-in support for categorical features. Pass <code>categorical_feature=['col1', 'col2', ...]</code> to the constructor (or set <code>dtype='category'</code> on pandas columns) and LightGBM will treat them as categorical rather than one-hot expanding them. This is faster and often more accurate than one-hot encoding for high-cardinality categoricals.</p>
+<div class="callout tip"><div class="callout-icon">💡</div><div class="callout-body"><div class="callout-title">LightGBM defaults are aggressive — always set num_leaves</div><p>LightGBM's default <code>num_leaves=31</code> combined with leaf-wise growth can produce very deep trees on small datasets, leading to overfitting. Always set <code>num_leaves</code> explicitly based on your dataset size, and pair it with a reasonable <code>min_child_samples</code> (20–100 is typical). On small datasets (<10k samples), use <code>num_leaves=15–31</code>; on large datasets (>100k), <code>num_leaves=63–255</code> is fine.</p></div></div>
+</section>
+<section id="section-11">
+  <h2>11. Full Optuna Tuning Example for XGBoost</h2>
+  <p>Optuna is the modern standard for hyperparameter optimization of gradient boosting models. It uses Tree-structured Parzen Estimators (TPE) by default, which is much more sample-efficient than random search for high-dimensional spaces. Below is a complete Optuna tuning script that searches over all nine key XGBoost hyperparameters using 5-fold cross-validation with early stopping per fold.</p>
+<div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">xgb_optuna_tuning.py</span></div><pre># ─── xgb_optuna_tuning.py ─────────────────────────────────────────────────────
+# Tune all 9 key XGBoost hyperparameters with Optuna using TPE. Each trial
+# uses 5-fold CV with early stopping to find the optimal n_estimators
+# automatically. The objective is mean CV logloss.
+
+import numpy as np
+import optuna
+import xgboost as xgb
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import StratifiedKFold, train_test_split
+from sklearn.metrics import log_loss
+
+X, y = load_breast_cancer(return_X_y=True)
+X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2,
+                                           stratify=y, random_state=42)
+
+def objective(trial: optuna.Trial) -&gt; float:
+    params = {
+        &quot;objective&quot;:         &quot;binary:logistic&quot;,
+        &quot;eval_metric&quot;:       &quot;logloss&quot;,
+        &quot;tree_method&quot;:       &quot;hist&quot;,
+        &quot;verbosity&quot;:         0,
+        &quot;learning_rate&quot;:     trial.suggest_float(&quot;learning_rate&quot;, 0.01, 0.3, log=True),
+        &quot;max_depth&quot;:         trial.suggest_int(&quot;max_depth&quot;, 3, 10),
+        &quot;min_child_weight&quot;:  trial.suggest_int(&quot;min_child_weight&quot;, 1, 20),
+        &quot;subsample&quot;:         trial.suggest_float(&quot;subsample&quot;, 0.5, 1.0),
+        &quot;colsample_bytree&quot;:  trial.suggest_float(&quot;colsample_bytree&quot;, 0.4, 1.0),
+        &quot;gamma&quot;:             trial.suggest_float(&quot;gamma&quot;, 0.0, 5.0),
+        &quot;reg_alpha&quot;:         trial.suggest_float(&quot;reg_alpha&quot;, 1e-3, 10.0, log=True),
+        &quot;reg_lambda&quot;:        trial.suggest_float(&quot;reg_lambda&quot;, 1e-3, 10.0, log=True),
+        &quot;seed&quot;:              42,
+    }
+
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    fold_loglosses = []
+    for tr_idx, va_idx in cv.split(X_tr, y_tr):
+        dtr = xgb.DMatrix(X_tr[tr_idx], label=y_tr[tr_idx])
+        dva = xgb.DMatrix(X_tr[va_idx], label=y_tr[va_idx])
+        bst = xgb.train(
+            params, dtr,
+            num_boost_round=2000,
+            evals=[(dva, &quot;valid&quot;)],
+            early_stopping_rounds=50,
+            verbose_eval=False,
+        )
+        y_va_proba = bst.predict(dva, iteration_range=(0, bst.best_iteration + 1))
+        fold_loglosses.append(log_loss(y_tr[va_idx], y_va_proba))
+
+    # Mean CV logloss across folds (lower is better)
+    return float(np.mean(fold_loglosses))
+
+# Run 50 trials with TPE
+study = optuna.create_study(direction=&quot;minimize&quot;,
+                            sampler=optuna.samplers.TPESampler(seed=42))
+study.optimize(objective, n_trials=50, show_progress_bar=True)
+
+print(f&quot;\nBest trial value (mean CV logloss): {study.best_value:.4f}&quot;)
+print(f&quot;Best params:&quot;)
+for k, v in study.best_params.items():
+    print(f&quot;  {k:20s} = {v}&quot;)
+
+# Retrain on full training set with best params + early stopping
+best_params = {**study.best_params,
+               &quot;objective&quot;: &quot;binary:logistic&quot;,
+               &quot;eval_metric&quot;: &quot;logloss&quot;,
+               &quot;tree_method&quot;: &quot;hist&quot;,
+               &quot;verbosity&quot;: 0,
+               &quot;seed&quot;: 42}
+dtrain_full = xgb.DMatrix(X_tr, label=y_tr)
+dtest = xgb.DMatrix(X_te, label=y_te)
+final = xgb.train(
+    best_params, dtrain_full,
+    num_boost_round=2000,
+    evals=[(dtest, &quot;test&quot;)],
+    early_stopping_rounds=50,
+    verbose_eval=False,
+)
+y_te_proba = final.predict(dtest, iteration_range=(0, final.best_iteration + 1))
+test_logloss = log_loss(y_te, y_te_proba)
+test_acc = ((y_te_proba &gt; 0.5).astype(int) == y_te).mean()
+print(f&quot;\nFinal test logloss: {test_logloss:.4f}&quot;)
+print(f&quot;Final test accuracy: {test_acc:.4f}&quot;)
+</pre></div>
+  <p>Fifty Optuna trials on breast_cancer typically take 5–15 minutes (depending on hardware) and find a configuration that beats a default-tuned XGBoost by 0.5–1.5 percentage points of test accuracy. The same script scales to larger datasets; you just need to increase the timeout or n_trials. Optuna also supports pruning (via <code>MedianPruner</code>) to terminate bad trials early, which can dramatically speed up search on expensive-to-evaluate problems.</p>
+<div class="quiz-box">
+  <div class="quiz-label">🧠 Quick Check</div>
+  <p class="quiz-question">You trained an XGBoost model with learning_rate=0.3 and n_estimators=1000. Training logloss is 0.05; validation logloss is 0.45. What single change is most likely to reduce the train-validation gap, and why?</p>
+  <details class="quiz-answer">
+    <summary>Show Answer</summary>
+    <p>Lower the learning rate to 0.05 and use early_stopping_rounds=50. The 0.40 train-val gap is the signature of overfitting caused by too-aggressive trees (high LR makes each tree contribute too much). Lowering LR forces the model to take smaller steps, which smooths the prediction surface and reduces overfitting. Early stopping then finds the optimal number of trees automatically — usually far fewer than 1000 — preventing the late trees from fitting residual noise.</p>
+  </details>
+</div>
+</section>
+<div class="summary-box"><h3>Key Takeaways — XGBoost and LightGBM</h3><ul><li><strong>The triad dominates</strong>: <code>learning_rate</code>, <code>n_estimators</code>, and <code>max_depth</code> account for ~80% of the tuning effect.</li><li><strong>Always use early stopping</strong>: it determines the optimal <code>n_estimators</code> automatically, eliminating a costly 2D search.</li><li><strong>Shallow trees work best</strong>: depth 3–8 is typical for XGBoost; deeper trees require stronger regularization to avoid overfitting residuals.</li><li><strong><code>subsample</code> and <code>colsample_bytree</code> around 0.8</strong> are near-universal defaults that reduce variance.</li><li><strong><code>min_child_weight</code> is the most under-tuned knob</strong>: always include it in the search space.</li><li><strong>LightGBM swaps <code>max_depth</code> for <code>num_leaves</code></strong> and grows leaf-wise, which is faster but more prone to overfitting on small data.</li><li><strong>Use <code>tree_method='hist'</code></strong> for any dataset > 100k samples — orders of magnitude faster with negligible accuracy loss.</li></ul></div>
+<section id="resources"><h2>Useful Resources</h2><ul class="resource-list"><li><a href="https://xgboost.readthedocs.io/en/latest/parameter.html">XGBoost documentation — XGBoost Parameters</a></li><li><a href="https://arxiv.org/abs/1603.02754">Chen &amp; Guestrin (2016) — XGBoost: A Scalable Tree Boosting System</a></li><li><a href="https://papers.nips.cc/paper/6907-lightgbm-a-highly-efficient-gradient-boosting-decision-tree">Ke et al. (2017) — LightGBM: A Highly Efficient Gradient Boosting Decision Tree</a></li><li><a href="https://lightgbm.readthedocs.io/en/latest/Parameters.html">LightGBM documentation — Parameters</a></li><li><a href="https://optuna.readthedocs.io/">Optuna documentation</a></li><li><a href="https://projecteuclid.org/journals/annals-of-statistics/volume-29/issue-5/Greedy-function-approximation-A-gradient-boostingmachine/10.1214/aos/1013203451.full">Friedman (2001) — Greedy Function Approximation: A Gradient Boosting Machine</a></li><li><a href="https://arxiv.org/abs/1802.09596">Probst, Boulesteix, Bischl (2019) — Tunability: Importance of Hyperparameters of Machine Learning Algorithms</a></li><li><a href="https://catboost.ai/docs/">CatBoost documentation (cross-reference for categorical handling)</a></li></ul></section>
+  </article>
+</div>
+<div class="page-nav"><a href="part2_random_forest.html" class="page-nav-btn prev"><span class="nav-dir">← Previous</span><span class="nav-title">Random Forest</span></a><a href="part4_svm_logistic.html" class="page-nav-btn next"><span class="nav-dir">Next →</span><span class="nav-title">SVM and Logistic Regression</span></a></div>
+<footer>
+  <div class="container">
+    <div style="font-size:1.5rem;font-weight:800;font-family:var(--display);color:var(--accent);margin-bottom:0.5rem">HyperTune</div>
+    <p style="color:var(--muted2);font-size:0.85rem;max-width:500px;margin:0 auto">The complete hyperparameter tuning reference for ML &amp; DL engineers. Covers scikit-learn, XGBoost, LightGBM, PyTorch, Optuna, Ray Tune, and beyond — from first principles to production.</p>
+    <div style="margin-top:2rem;font-size:0.78rem;color:var(--muted2)">Built for learning · Python 3.10+ · scikit-learn 1.4+ · Optuna 3.0+</div>
+  </div>
+</footer>
+<script>
+(function() {
+  const links = Array.from(document.querySelectorAll('.toc-link'));
+  const sections = links
+    .map(l => document.querySelector(l.getAttribute('href')))
+    .filter(Boolean);
+  if (!('IntersectionObserver' in window) || sections.length === 0) return;
+  const setActive = id => {
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+  };
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  sections.forEach(s => observer.observe(s));
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grid Search Deep Dive — HyperTune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<style>
+
+:root {
+  --bg: #070b14; --bg2: #0c1220; --bg3: #111827;
+  --card: #131d2e; --card2: #1a2640;
+  --border: rgba(99,179,237,0.12); --border2: rgba(99,179,237,0.22);
+  --accent: #38bdf8; --accent2: #818cf8; --accent3: #34d399;
+  --accent4: #f59e0b; --accent5: #f472b6;
+  --text: #f0f6fc; --muted: #8899aa; --muted2: #64748b;
+  --code-bg: #0d1117;
+  --ff: 'Inter', sans-serif; --mono: 'JetBrains Mono', monospace;
+  --display: 'Sora', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,11,20,0.85);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:var(--display);font-weight:800;font-size:1.25rem;color:var(--accent);letter-spacing:-0.03em;text-decoration:none}
+.logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#000;padding:7px 18px;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85}
+
+/* LAYOUT */
+.page-layout { display: grid; grid-template-columns: 280px 1fr; gap: 3rem; max-width: 1200px; margin: 0 auto; padding: 5rem 2rem 5rem; padding-top: 80px; }
+@media(max-width: 900px) { .page-layout { grid-template-columns: 1fr; } .toc-sidebar { display: none; } }
+
+/* TOC SIDEBAR */
+.toc-sidebar { position: sticky; top: 80px; height: fit-content; max-height: calc(100vh - 100px); overflow-y: auto; }
+.toc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.75rem; }
+.toc-nav { display: flex; flex-direction: column; gap: 2px; }
+.toc-link { color: var(--muted); font-size: 0.82rem; text-decoration: none; padding: 4px 10px; border-left: 2px solid transparent; transition: all 0.15s; border-radius: 0 4px 4px 0; }
+.toc-link:hover, .toc-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(56,189,248,0.05); }
+.toc-link.toc-sub { font-size: 0.78rem; padding-left: 22px; }
+
+/* ARTICLE BODY */
+.article-body { min-width: 0; }
+.breadcrumb { font-size: 0.78rem; color: var(--muted2); margin-bottom: 1.5rem; }
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--accent); }
+.module-badge { display: inline-block; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: var(--accent); padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 1rem; }
+.article-title { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
+.article-meta { font-size: 0.83rem; color: var(--muted); margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+
+/* OUTLINE BOX */
+.outline-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 3rem; }
+.outline-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.75rem; color: var(--text); }
+.outline-list { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.85rem; }
+.outline-list a { color: var(--accent); text-decoration: none; }
+.outline-list a:hover { text-decoration: underline; }
+.outline-list li { margin: 4px 0; }
+.outline-list ul { margin: 4px 0; padding-left: 1rem; }
+
+/* ARTICLE PROSE */
+.article-body h2 { font-family: var(--display); font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; margin: 3rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); scroll-margin-top: 80px; }
+.article-body h3 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 80px; }
+.article-body h4 { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.article-body p { margin-bottom: 1.25rem; color: var(--muted); font-size: 0.97rem; line-height: 1.85; }
+.article-body strong { color: var(--text); font-weight: 600; }
+.article-body em { color: var(--accent3); font-style: italic; }
+.article-body ul, .article-body ol { margin: 0 0 1.25rem 1.5rem; color: var(--muted); font-size: 0.95rem; }
+.article-body li { margin-bottom: 6px; line-height: 1.75; }
+.article-body code { font-family: var(--mono); font-size: 0.82em; background: rgba(56,189,248,0.08); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
+.article-body a { color: var(--accent2); text-decoration: none; }
+.article-body a:hover { text-decoration: underline; }
+
+/* CODE BLOCKS */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+.code-block-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot.r { background: #ff5f57; } .code-dot.y { background: #ffbd2e; } .code-dot.g { background: #28c840; }
+.code-filename { font-family: var(--mono); font-size: 0.73rem; color: var(--muted2); margin-left: 8px; }
+.code-block pre { padding: 1.5rem; overflow-x: auto; margin: 0; font-family: var(--mono); font-size: 0.82rem; line-height: 1.8; color: #e2e8f0; }
+/* Syntax colors */
+.kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; }
+.num { color: #f78c6c; } .cm { color: #546e7a; font-style: italic; }
+.cls { color: #ffcb6b; } .imp { color: #89ddff; } .op { color: #89ddff; }
+
+/* CALLOUT BOXES */
+.callout { display: flex; gap: 1rem; border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; border-width: 1px; border-style: solid; }
+.callout-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+.callout-body { font-size: 0.88rem; line-height: 1.75; }
+.callout-body strong { font-weight: 600; }
+.callout-title { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+.callout.note { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.22); color: var(--muted); }
+.callout.note .callout-title, .callout.note strong { color: var(--accent); }
+.callout.warning { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.22); color: var(--muted); }
+.callout.warning .callout-title, .callout.warning strong { color: var(--accent4); }
+.callout.tip { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); color: var(--muted); }
+.callout.tip .callout-title, .callout.tip strong { color: var(--accent3); }
+.callout.important { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.22); color: var(--muted); }
+.callout.important .callout-title, .callout.important strong { color: var(--accent5); }
+
+/* MATH DISPLAY */
+.math-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.75rem; margin: 1.25rem 0; overflow-x: auto; font-size: 1.05rem; text-align: center; }
+.math-label { font-size: 0.72rem; color: var(--muted2); font-family: var(--mono); margin-top: 0.5rem; text-align: right; }
+
+/* INLINE FIGURE / DIAGRAM */
+.figure { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; margin: 2rem 0; text-align: center; }
+.figure-caption { font-size: 0.8rem; color: var(--muted2); margin-top: 1rem; font-style: italic; }
+
+/* DATA TABLE */
+.data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.85rem; }
+.data-table th { padding: 10px 14px; background: var(--card2); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); text-align: left; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(99,179,237,0.03); }
+
+/* SUMMARY BOX */
+.summary-box { background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(129,140,248,0.07)); border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 1.75rem 2rem; margin: 3rem 0 2rem; }
+.summary-box h3 { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+.summary-box ul { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.88rem; }
+.summary-box li { margin-bottom: 6px; line-height: 1.7; }
+
+/* RESOURCE LIST */
+.resource-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.resource-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.resource-list li::before { content: '\2192'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.resource-list a { color: var(--accent2); }
+
+/* PREV/NEXT NAV */
+.page-nav { display: flex; justify-content: space-between; gap: 1rem; padding: 2rem; max-width: 1200px; margin: 0 auto; border-top: 1px solid var(--border); }
+.page-nav-btn { display: flex; flex-direction: column; gap: 4px; padding: 1rem 1.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; transition: all 0.2s; max-width: 45%; }
+.page-nav-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.page-nav-btn .nav-dir { font-size: 0.72rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; }
+.page-nav-btn .nav-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.page-nav-btn.next { text-align: right; margin-left: auto; }
+
+/* QUIZ/EXERCISE BOX */
+.exercise-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin: 2rem 0; }
+.exercise-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent4); margin-bottom: 0.5rem; }
+.exercise-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; }
+.exercise-body { font-size: 0.88rem; color: var(--muted); line-height: 1.75; }
+
+/* QUIZ BOX */
+.quiz-box { background: rgba(129,140,248,0.06); border: 1px solid rgba(129,140,248,0.22); border-radius: 14px; padding: 1.5rem; margin: 1.5rem 0; }
+.quiz-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.5rem; }
+.quiz-question { font-size: 0.93rem; color: var(--text); margin-bottom: 0.75rem; font-weight: 500; }
+.quiz-answer { margin-top: 0.5rem; }
+.quiz-answer summary { cursor: pointer; font-size: 0.82rem; color: var(--accent2); font-weight: 600; }
+.quiz-answer p { margin-top: 0.5rem; font-size: 0.86rem; color: var(--muted); }
+
+/* CELL (for assignment files - jupyter style) */
+.jupyter-cell { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin: 1.5rem 0; overflow: hidden; }
+.cell-header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted2); font-family: var(--mono); }
+.cell-input-label { color: var(--accent4); font-weight: 600; }
+.cell-body { padding: 1rem 1.25rem; }
+.jupyter-cell pre { padding: 1rem 1.25rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; background: var(--code-bg); margin: 0; }
+.cell-prompt { color: var(--accent3); font-weight: 700; }
+
+/* GRADING RUBRIC */
+.rubric-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+.rubric-table th { background: var(--card2); padding: 10px 14px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); }
+.rubric-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+
+/* DETAILS (collapsible hints) */
+details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; }
+details summary { cursor: pointer; font-size: 0.85rem; color: var(--accent2); font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
+
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">Hyper<span>Tune</span></a>
+    <ul class="nav-links">
+
+    </ul>
+    <a href="../index.html#curriculum" class="nav-cta">Start Learning</a>
+  </div>
+</nav>
+<div class="page-layout">
+  <aside class="toc-sidebar">
+    <div class="toc-label">On this page</div>
+    <nav class="toc-nav">
+<a href="#section-1" class="toc-link">1. The Combinatorial Explosion</a>
+<a href="#section-2" class="toc-link">2. The Coverage Argument</a>
+<a href="#section-3" class="toc-link">3. Designing Good Grids</a>
+<a href="#section-4" class="toc-link">4. Curse of Dimensionality</a>
+<a href="#section-5" class="toc-link">5. Practical Walkthrough</a>
+<a href="#section-6" class="toc-link">6. refit=True</a>
+<a href="#section-7" class="toc-link">7. return_train_score</a>
+<a href="#section-8" class="toc-link">8. Multi-Metric Scoring</a>
+<a href="#section-9" class="toc-link">9. When to Use Grid Search</a>
+<a href="#section-10" class="toc-link">10. Parallel Execution</a>
+<a href="#resources" class="toc-link">Useful Resources</a>
+    </nav>
+  </aside>
+  <article class="article-body">
+    <div class="breadcrumb"><a href="../index.html">HyperTune</a> › <a href="intro.html">Module 02</a> › Grid Search Deep Dive</div>
+    <div class="article-header">
+      <div class="module-badge">Module 02 · Grid Search</div>
+      <h1 class="article-title">Grid Search: When Exhaustive Is the Right Choice (and When It Isn't)</h1>
+      <div class="article-meta">Part of the <strong>HyperTune</strong> open course · Estimated read time: 16 min · Python 3.10+ · scikit-learn 1.4+</div>
+    </div>
+    <div class="outline-box">
+      <div class="outline-title">📋 Article Outline</div>
+      <ol class="outline-list">
+
+<li><a href="#section-1">1. The Combinatorial Explosion, Quantified</a></li>
+<li><a href="#section-2">2. The Coverage Argument: Why Grid Search Can Still Win</a></li>
+<li><a href="#section-3">3. Designing Good Grids: Coarse-to-Fine</a></li>
+<li><a href="#section-4">4. The Curse of Dimensionality</a></li>
+<li><a href="#section-5">5. A Practical GridSearchCV Walkthrough</a></li>
+<li><a href="#section-6">6. refit=True: Why the Best Estimator Is Retrained</a></li>
+<li><a href="#section-7">7. return_train_score=True</a></li>
+<li><a href="#section-8">8. Multi-Metric Scoring</a></li>
+<li><a href="#section-9">9. When to Use Grid Search</a></li>
+<li><a href="#section-10">10. Parallel Execution with n_jobs=-1</a></li>
+<li><a href="#resources">Useful Resources</a></li>
+      </ol>
+    </div>
+
+<section id="section-1">
+  <h2>1. The Combinatorial Explosion, Quantified</h2>
+  <p>Grid search is the simplest hyperparameter optimization strategy that is worth taking seriously: you specify a finite set of candidate values for each hyperparameter, the search evaluates every combination, and you keep the best one. The strategy is exhaustive within the grid you defined — if the true optimum happens to lie on one of the grid points, grid search will find it. The problem is the cost. With $k$ hyperparameters and $n_i$ values for hyperparameter $i$, the total number of evaluations is $\prod_{i=1}^{k} n_i$, and that product grows scarily fast.</p>
+  <p>Concretely: tune 4 hyperparameters with 4 values each and you have $4^4 = 256$ combinations. With 5-fold CV, that is 1,280 model fits. If each fit takes 30 seconds, the total search takes 10 hours and 40 minutes. Add a fifth hyperparameter with 3 values and you are at $4^4 \times 3 = 768$ combinations — 3,840 fits — 32 hours. By the time you are tuning 6+ hyperparameters with 4+ values each, grid search is no longer practical on a single machine, no matter how fast each fit is.</p>
+  <div class="math-block">$$ \text{{Total fits}} = \left(\prod_{{i=1}}^{{k}} n_i\right) \times k_{{\text{{cv}}}}\times n_{{\text{{repeats}}}} $$ <div class="math-label">Eq. 1 — Total model evaluations in a grid search.</div></div>
+  <p>This multiplicative cost is the entire reason alternatives exist. Random search (Module 03) reduces the constant factor by sampling. Bayesian optimization (Module 06) reduces the number of evaluations needed by learning which regions of the space are promising. Hyperband (Module 07) reduces the cost per evaluation by killing bad configs early. But for small search spaces — 2 or 3 hyperparameters, a handful of values each — grid search is still the right answer, because the alternatives add complexity without saving much.</p>
+</section>
+
+<section id="section-2">
+  <h2>2. The Coverage Argument: Why Grid Search Can Still Win</h2>
+  <p>The killer feature of grid search is its <em>coverage</em>. If you set <code>C ∈ [0.1, 1, 10, 100]</code> and <code>gamma ∈ [0.001, 0.01, 0.1, 1]</code>, you can be certain you have explored every corner of the 4×4 grid. You have not skipped a cell, you have not over-sampled one region at the expense of another, and the best configuration in the grid is the best configuration <em>in the grid</em> — not an estimate of the best, but the actual best, given the discrete candidate values you supplied.</p>
+  <p>This guarantee is genuinely valuable when your search space is small and the hyperparameters interact strongly. SVM's <code>C</code> and <code>gamma</code> are the textbook example: the best <code>C</code> depends on the best <code>gamma</code> and vice versa, so you really do need to evaluate all 16 combinations to know which pair is best. Random sampling might miss the (C=10, gamma=0.01) cell that turns out to be the sweet spot, especially with only 16 total combinations.</p>
+  <div class="figure">
+<svg viewBox="0 0 560 280" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:Inter;">
+  <!-- Grid Search coverage: 3x3 = 9 points on a 2D grid -->
+  <text x="140" y="20" text-anchor="middle" fill="#38bdf8" font-size="13" font-weight="600">Grid Search (9 evals)</text>
+  <rect x="30" y="30" width="220" height="220" stroke="#8899aa" stroke-width="1" fill="none"/>
+  <g fill="#38bdf8">
+    <circle cx="65" cy="65" r="6"/><circle cx="140" cy="65" r="6"/><circle cx="215" cy="65" r="6"/>
+    <circle cx="65" cy="140" r="6"/><circle cx="140" cy="140" r="6"/><circle cx="215" cy="140" r="6"/>
+    <circle cx="65" cy="215" r="6"/><circle cx="140" cy="215" r="6"/><circle cx="215" cy="215" r="6"/>
+  </g>
+  <!-- Highlight "important" axis X — note only 3 distinct values sampled -->
+  <text x="140" y="270" text-anchor="middle" fill="#8899aa" font-size="11">Only 3 distinct X values explored</text>
+  
+  <!-- Random Search coverage: 9 random points -->
+  <text x="420" y="20" text-anchor="middle" fill="#34d399" font-size="13" font-weight="600">Random Search (9 evals)</text>
+  <rect x="310" y="30" width="220" height="220" stroke="#8899aa" stroke-width="1" fill="none"/>
+  <g fill="#34d399">
+    <circle cx="340" cy="80" r="6"/><circle cx="380" cy="60" r="6"/><circle cx="425" cy="105" r="6"/>
+    <circle cx="350" cy="170" r="6"/><circle cx="410" cy="200" r="6"/><circle cx="475" cy="75" r="6"/>
+    <circle cx="500" cy="160" r="6"/><circle cx="335" cy="225" r="6"/><circle cx="460" cy="220" r="6"/>
+  </g>
+  <text x="420" y="270" text-anchor="middle" fill="#8899aa" font-size="11">9 distinct X values explored</text>
+  
+  <!-- Labels for axes -->
+  <text x="540" y="140" fill="#8899aa" font-size="10" transform="rotate(90 540 140)">unimportant axis Y</text>
+</svg>
+<div class="figure-caption">Figure 1 — Grid vs Random coverage on a 2D space. With 9 evaluations, grid search explores only 3 distinct values on each axis; random search explores 9 distinct values on each axis. If only one axis matters, random wins; if both matter and interact, grid wins.</div></div>
+  <p>The trade-off is asymmetric: grid search is better when both axes matter and interact, random search is better when only one axis matters (because random covers more distinct values of that axis with the same budget). The Bergstra-Bengio result we explore in Module 03 is precisely that, in practice, the "only a few axes matter" case is far more common than people assume — which is why random search usually wins or ties.</p>
+</section>
+
+<section id="section-3">
+  <h2>3. Designing Good Grids: Coarse-to-Fine</h2>
+  <p>The naive way to design a grid is to specify a wide range with many values for every hyperparameter and let the search grind through it. This is almost always wasteful. A better approach is <strong>coarse-to-fine</strong>: start with a wide, coarse grid to identify the rough region of the optimum, then run a second, finer grid focused on that region. Two small grids are cheaper than one big grid, and they usually find a better optimum.</p>
+  <p>For example, suppose you are tuning <code>C</code> in an SVM. Your first grid might be <code>C ∈ [0.001, 0.01, 0.1, 1, 10, 100, 1000]</code> — log-spaced across four orders of magnitude, 7 values. Suppose the coarse search picks <code>C=10</code>. Your second grid would then be <code>C ∈ [3, 5, 7, 10, 15, 20, 30]</code> — a fine-grained exploration around 10. Total: 14 evaluations instead of 49, and you have explored the relevant region much more thoroughly than a single 49-value log-spaced grid would have.</p>
+  <div class="callout tip"><div class="callout-icon">💡</div><div class="callout-body"><div class="callout-title">Always log-space scale-sensitive hyperparameters</div><p>For hyperparameters that span multiple orders of magnitude — <code>C</code>, <code>gamma</code>, <code>alpha</code>, <code>learning_rate</code> — always use log-spaced grids. A linear grid of <code>[0.001, 0.25, 0.5, 0.75, 1.0]</code> spends 4 of 5 evaluations in the [0.25, 1.0] range and only 1 in the [0.001, 0.25] range, even though the latter is 250x wider on a log scale. Use <code>np.logspace(np.log10(0.001), np.log10(1000), 7)</code> or <code>scipy.stats.loguniform</code> for random search.</p></div></div>
+</section>
+
+<section id="section-4">
+  <h2>4. The Curse of Dimensionality for Grid Search</h2>
+  <p>Grid search breaks down not because the constant factor is bad, but because the cost grows exponentially in the number of hyperparameters. With $k$ hyperparameters and $n$ values each, the cost is $n^k$. Going from 3 hyperparameters to 4 with 4 values each increases cost from $4^3 = 64$ to $4^4 = 256$ — a 4× increase for one extra dimension. Going from 4 to 5 is another 4× increase.</p>
+  <p>In practice, grid search is comfortable up to 3–4 hyperparameters. Beyond that, random search (Module 03) and Bayesian methods (Module 06) are almost always better choices. The reason is empirical: in nearly all real-world tuning problems, only a handful of hyperparameters matter — the rest have flat loss surfaces. Grid search wastes most of its budget exploring unimportant dimensions, while random search spreads its budget across all dimensions and gets more distinct values on each.</p>
+  <p>There is a hybrid strategy worth knowing about: combine grid and random by grid-searching the 2–3 hyperparameters you know interact strongly, and fixing the others at sensible defaults. This captures the coverage benefit of grid search where it matters and avoids the cost where it doesn't. In scikit-learn, you can pass a list of dicts to <code>param_grid</code> to do exactly this — each dict is a sub-grid, and the search evaluates the union of all sub-grids.</p>
+</section>
+
+<section id="section-5">
+  <h2>5. A Practical GridSearchCV Walkthrough</h2>
+  <p>Let's see the whole machinery end-to-end on a real example: tuning an SVM with RBF kernel on the breast cancer dataset. We will use a coarse-to-fine strategy: a wide 4×4 log-spaced grid first, then a fine 5×5 grid focused on the best region.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── grid_search_walkthrough.py ────────────────────────────────────────────────
+# Coarse-to-fine grid search on SVM RBF, breast_cancer dataset.
+# Includes heatmap visualization of the result grid.
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.datasets import load_breast_cancer
+from sklearn.svm import SVC
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
+
+X, y = load_breast_cancer(return_X_y=True)
+
+# ─── Step 1: coarse grid — wide range, log-spaced ────────────────────────────
+coarse_grid = {
+    &quot;svc__C&quot;:     [0.1, 1, 10, 100],
+    &quot;svc__gamma&quot;: [0.001, 0.01, 0.1, 1],
+}
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+coarse = GridSearchCV(
+    make_pipeline(StandardScaler(), SVC(kernel=&quot;rbf&quot;, random_state=42)),
+    param_grid=coarse_grid,
+    cv=cv,
+    scoring=&quot;accuracy&quot;,
+    n_jobs=-1,
+    return_train_score=True,
+)
+coarse.fit(X, y)
+print(&quot;Coarse best:&quot;, coarse.best_params_, f&quot;CV acc = {coarse.best_score_:.4f}&quot;)
+
+# ─── Step 2: fine grid — narrow range around the coarse optimum ──────────────
+best_C = coarse.best_params_[&quot;svc__C&quot;]
+best_gamma = coarse.best_params_[&quot;svc__gamma&quot;]
+fine_grid = {
+    &quot;svc__C&quot;:     np.logspace(np.log10(best_C / 3), np.log10(best_C * 3), 5),
+    &quot;svc__gamma&quot;: np.logspace(np.log10(best_gamma / 3), np.log10(best_gamma * 3), 5),
+}
+fine = GridSearchCV(
+    make_pipeline(StandardScaler(), SVC(kernel=&quot;rbf&quot;, random_state=42)),
+    param_grid=fine_grid,
+    cv=cv,
+    scoring=&quot;accuracy&quot;,
+    n_jobs=-1,
+    return_train_score=True,
+)
+fine.fit(X, y)
+print(&quot;Fine best:  &quot;, fine.best_params_, f&quot;CV acc = {fine.best_score_:.4f}&quot;)
+
+# ─── Step 3: visualize the fine grid as a heatmap ────────────────────────────
+results = pd.DataFrame(fine.cv_results_)
+pivot = results.pivot_table(
+    index=&quot;param_svc__C&quot;, columns=&quot;param_svc__gamma&quot;,
+    values=&quot;mean_test_score&quot;, aggfunc=&quot;mean&quot;
+)
+plt.figure(figsize=(7, 5.5), constrained_layout=True)
+sns.heatmap(pivot, annot=True, fmt=&quot;.3f&quot;, cmap=&quot;viridis&quot;,
+            cbar_kws={&quot;label&quot;: &quot;CV accuracy&quot;})
+plt.title(&quot;Fine grid search: SVC(C, gamma) on breast_cancer&quot;)
+plt.xlabel(&quot;gamma&quot;)
+plt.ylabel(&quot;C&quot;)
+plt.savefig(&quot;grid_search_heatmap.png&quot;, dpi=120)
+plt.show()
+</pre></div>
+  <p>The heatmap makes the optimum jump out visually. On breast_cancer, the coarse search typically picks <code>C=10, gamma=0.01</code>, and the fine search refines this to something like <code>C=14, gamma=0.013</code>. The total cost is 16 + 25 = 41 evaluations — much cheaper than a single 7×7 = 49 grid, and the result is more precise.</p>
+</section>
+
+<section id="section-6">
+  <h2>6. <code>refit=True</code>: Why the Best Estimator Is Retrained</h2>
+  <p>By default, <code>GridSearchCV</code> has <code>refit=True</code>. After the search completes, it takes the best hyperparameters, re-trains a fresh estimator on the <em>entire</em> dataset (not just the training folds), and stores the result in <code>best_estimator_</code>. This is the right default for almost every use case, because the model you actually deploy should be trained on as much data as possible — and the CV scores were estimates of "what accuracy would you get if you trained on 80% of the data," not "what accuracy will you get when you retrain on 100%."</p>
+  <p>The subtle point is that the CV score reported by <code>best_score_</code> is <em>not</em> a clean estimate of the retrained model's accuracy. It is the average accuracy of the 5 fold-specific models that used 80% of the data each, which is a slightly pessimistic estimate of the 100%-data model. The gap is usually small (under 1%) but it is real, and it is one of the reasons you should hold out a final test set that the search never touched if you need a clean generalization estimate.</p>
+  <p>If you are doing nested CV (Module 10), you set <code>refit=False</code> on the inner search, because the outer CV loop will refit the best estimator on each outer training fold itself.</p>
+</section>
+
+<section id="section-7">
+  <h2>7. <code>return_train_score=True</code>: Detecting Overfitting in the Search</h2>
+  <p>By default, scikit-learn sets <code>return_train_score=False</code> for memory reasons — the train scores can be large and most users don't look at them. But for serious tuning work, you should always set it to <code>True</code>. The train-vs-validation gap reveals whether your best hyperparameters are overfitting to the validation folds, which is a real and underappreciated failure mode of hyperparameter search.</p>
+  <p>The failure mode is subtle: if you evaluate enough configurations, some of them will look good on the validation folds by sheer luck. The more configurations you evaluate, the more luck you need to be the "best," and the more optimistic your reported best CV score becomes. This is exactly the same overfitting problem as training a model on too many features, except here the "features" are the configurations you tried and the "labels" are the validation scores.</p>
+  <div class="callout warning"><div class="callout-icon">⚠️</div><div class="callout-body"><div class="callout-title">A 100-config search will overfit the validation set</div><p>If you run a 100-configuration grid search with 5-fold CV, you are effectively evaluating 100 models on a 5-row validation dataset (per-fold). The "best" configuration will, on average, have its CV score inflated by 1–3% purely due to selection bias. The fix is <strong>nested CV</strong> (Module 10), which uses an outer CV loop to get an unbiased estimate of the search procedure's performance.</p></div></div>
+</section>
+
+<section id="section-8">
+  <h2>8. Multi-Metric Scoring</h2>
+  <p>In real problems you almost never care about a single metric. You want high accuracy <em>and</em> reasonable recall <em>and</em> inference under 50ms. <code>GridSearchCV</code> supports multi-metric scoring: pass a dict like <code>scoring={'accuracy': 'accuracy', 'recall': 'recall', 'roc_auc': 'roc_auc'}</code>, and the search will compute all three for every configuration. You then pick the metric to optimize via <code>refit='roc_auc'</code>, and the search refits the best estimator according to that metric. The other metrics are still in <code>cv_results_</code> for you to inspect.</p>
+  <p>Multi-metric is also the entry point to multi-objective optimization, which we cover in Module 12. The basic idea: if you have a Pareto front of (accuracy, latency) pairs, you can pick the configuration that gives the highest accuracy subject to a latency constraint. Scikit-learn's <code>GridSearchCV</code> does not natively support Pareto front selection, but you can post-process the <code>cv_results_</code> dict to compute it manually.</p>
+</section>
+
+<section id="section-9">
+  <h2>9. When to Use Grid Search (and When Not To)</h2>
+  <p>Grid search is the right choice when:</p>
+  <ul>
+    <li><strong>You have 2–4 hyperparameters to tune.</strong> Beyond that, the combinatorial explosion kills you.</li>
+    <li><strong>The hyperparameters are categorical</strong> (e.g., <code>kernel</code>, <code>penalty</code>, <code>solver</code>). For categoricals there is no notion of "near" values, so random sampling offers no efficiency gain.</li>
+    <li><strong>You want exhaustive coverage of a small space.</strong> If the space is small enough to enumerate, exhaustive search is the only strategy that guarantees finding the true optimum in the grid.</li>
+    <li><strong>Each fit is fast</strong> (under a minute). With 5-fold CV and 100 configurations, that is 500 fits — 8 hours at 1 minute each, which is tolerable.</li>
+  </ul>
+  <p>Grid search is the wrong choice when:</p>
+  <ul>
+    <li><strong>You have 5+ hyperparameters</strong>. Switch to random search or Bayesian optimization.</li>
+    <li><strong>Each fit takes more than 5 minutes</strong>. Even a 4×4 grid becomes painful (5h × 5-fold = 25 hours).</li>
+    <li><strong>You have continuous hyperparameters over wide ranges</strong> (e.g., <code>learning_rate ∈ [1e-5, 1]</code>). Log-spaced grids work but random search with a <code>loguniform</code> distribution is more efficient.</li>
+    <li><strong>You need to optimize multiple objectives</strong> with trade-offs. Use Optuna's NSGAIISampler (Module 12).</li>
+  </ul>
+  <div class="quiz-box">
+  <div class="quiz-label">🧠 Quick Check</div>
+  <p class="quiz-question">You are tuning a RandomForestClassifier with 6 hyperparameters (n_estimators, max_depth, max_features, min_samples_split, min_samples_leaf, bootstrap), each with 4 candidate values. How many model fits will GridSearchCV with cv=5 perform, and what&#x27;s the right strategy?</p>
+  <details class="quiz-answer">
+    <summary>Show Answer</summary>
+    <p>4^6 × 5 = 4096 × 5 = 20,480 fits. This is far too many for grid search. The right strategy is: (1) fix n_estimators to 300 (a reasonable default — it rarely matters much past 300), (2) use RandomizedSearchCV with n_iter=50 over the remaining 5 hyperparameters — that&#x27;s 250 fits, not 20,480. If even 250 is too many, drop max_features and bootstrap to defaults too and tune only max_depth/min_samples_split/min_samples_leaf.</p>
+  </details>
+</div>
+</section>
+
+<section id="section-10">
+  <h2>10. Parallel Execution with <code>n_jobs=-1</code></h2>
+  <p><code>GridSearchCV</code> parallelizes across both CV folds and parameter combinations. With <code>n_jobs=-1</code>, it uses every available CPU core. The parallelism is implemented with <code>joblib.Parallel</code>, which means each worker process gets a pickled copy of the estimator and a chunk of the configurations to evaluate. Memory usage scales linearly with the number of workers — for large datasets this can be a problem.</p>
+  <p>Two practical gotchas: (1) some estimators (notably XGBoost) have their own <code>n_jobs</code> parameter, and nesting <code>GridSearchCV(n_jobs=-1)</code> around <code>XGBClassifier(n_jobs=-1)</code> causes oversubscription — every worker tries to use all cores, which slows everything down. Set the outer <code>n_jobs=-1</code> and the inner <code>n_jobs=1</code>. (2) Pickling can fail if your estimator has unpicklable attributes (lambdas, open file handles, etc.) — use <code>joblib.delayed</code> with a top-level function instead of a lambda.</p>
+</section>
+
+<div class="summary-box"><h3>🎯 Key Takeaways</h3><ul><li><strong>Grid search cost = product of all candidate counts × k_cv</strong> — exponential in the number of hyperparameters.</li><li><strong>Coverage is grid search's killer feature</strong> — it finds the true optimum within the grid, not an estimate.</li><li><strong>Always use coarse-to-fine</strong>: a wide coarse grid followed by a fine grid around the best region is cheaper than one big grid.</li><li><strong>Log-space scale-sensitive hyperparameters</strong> — C, gamma, alpha, learning_rate need log-spaced grids.</li><li><strong>Always set return_train_score=True</strong> and check the train-CV gap to detect overfitting in the search itself.</li><li><strong>Switch to random/Bayesian</strong> when you have 5+ hyperparameters or each fit takes more than 5 minutes.</li></ul></div>
+
+<section id="resources"><h2>Useful Resources</h2><ul class="resource-list"><li><a href="https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html">scikit-learn GridSearchCV documentation</a></li><li><a href="https://scikit-learn.org/stable/modules/grid_search.html">scikit-learn tuning hyperparameters guide</a></li><li><a href="https://www.jmlr.org/papers/v13/bergstra12a.html">Bergstra &amp; Bengio (2012) — Random Search for Hyper-Parameter Optimization (the paper that motivated alternatives to grid search)</a></li><li><a href="https://www.springer.com/gp/book/9783030053175">Hutter, Kotthoff, Vanschoren (eds.) — Automated Machine Learning (chapter 1 on CASH)</a></li><li><a href="https://jmlr.org/papers/v12/pedregosa11a.html">Pedregosa et al. — Scikit-learn: Machine Learning in Python</a></li></ul></section>
+
+  </article>
+</div>
+<div class="page-nav"><a href="intro.html" class="page-nav-btn prev"><span class="nav-dir">← Previous</span><span class="nav-title">Module 02 — Grid Search</span></a><a href="part2_gridsearchcv_internals.html" class="page-nav-btn next"><span class="nav-dir">Next →</span><span class="nav-title">Inside GridSearchCV</span></a></div>
+<footer>
+  <div class="container">
+    <div style="font-size:1.5rem;font-weight:800;font-family:var(--display);color:var(--accent);margin-bottom:0.5rem">HyperTune</div>
+    <p style="color:var(--muted2);font-size:0.85rem;max-width:500px;margin:0 auto">The complete hyperparameter tuning reference for ML &amp; DL engineers. Covers scikit-learn, XGBoost, LightGBM, PyTorch, Optuna, Ray Tune, and beyond — from first principles to production.</p>
+    <div style="margin-top:2rem;font-size:0.78rem;color:var(--muted2)">Built for learning · Python 3.10+ · scikit-learn 1.4+ · Optuna 3.0+</div>
+  </div>
+</footer>
+<script>
+(function() {
+  const links = Array.from(document.querySelectorAll('.toc-link'));
+  const sections = links
+    .map(l => document.querySelector(l.getAttribute('href')))
+    .filter(Boolean);
+  if (!('IntersectionObserver' in window) || sections.length === 0) return;
+  const setActive = id => {
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+  };
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  sections.forEach(s => observer.observe(s));
+})();
+</script>
+</body>
+</html>

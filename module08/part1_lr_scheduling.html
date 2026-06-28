@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Learning Rate Schedules — HyperTune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<style>
+
+:root {
+  --bg: #070b14; --bg2: #0c1220; --bg3: #111827;
+  --card: #131d2e; --card2: #1a2640;
+  --border: rgba(99,179,237,0.12); --border2: rgba(99,179,237,0.22);
+  --accent: #38bdf8; --accent2: #818cf8; --accent3: #34d399;
+  --accent4: #f59e0b; --accent5: #f472b6;
+  --text: #f0f6fc; --muted: #8899aa; --muted2: #64748b;
+  --code-bg: #0d1117;
+  --ff: 'Inter', sans-serif; --mono: 'JetBrains Mono', monospace;
+  --display: 'Sora', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,11,20,0.85);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:var(--display);font-weight:800;font-size:1.25rem;color:var(--accent);letter-spacing:-0.03em;text-decoration:none}
+.logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#000;padding:7px 18px;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85}
+
+/* LAYOUT */
+.page-layout { display: grid; grid-template-columns: 280px 1fr; gap: 3rem; max-width: 1200px; margin: 0 auto; padding: 5rem 2rem 5rem; padding-top: 80px; }
+@media(max-width: 900px) { .page-layout { grid-template-columns: 1fr; } .toc-sidebar { display: none; } }
+
+/* TOC SIDEBAR */
+.toc-sidebar { position: sticky; top: 80px; height: fit-content; max-height: calc(100vh - 100px); overflow-y: auto; }
+.toc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.75rem; }
+.toc-nav { display: flex; flex-direction: column; gap: 2px; }
+.toc-link { color: var(--muted); font-size: 0.82rem; text-decoration: none; padding: 4px 10px; border-left: 2px solid transparent; transition: all 0.15s; border-radius: 0 4px 4px 0; }
+.toc-link:hover, .toc-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(56,189,248,0.05); }
+.toc-link.toc-sub { font-size: 0.78rem; padding-left: 22px; }
+
+/* ARTICLE BODY */
+.article-body { min-width: 0; }
+.breadcrumb { font-size: 0.78rem; color: var(--muted2); margin-bottom: 1.5rem; }
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--accent); }
+.module-badge { display: inline-block; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: var(--accent); padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 1rem; }
+.article-title { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
+.article-meta { font-size: 0.83rem; color: var(--muted); margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+
+/* OUTLINE BOX */
+.outline-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 3rem; }
+.outline-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.75rem; color: var(--text); }
+.outline-list { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.85rem; }
+.outline-list a { color: var(--accent); text-decoration: none; }
+.outline-list a:hover { text-decoration: underline; }
+.outline-list li { margin: 4px 0; }
+.outline-list ul { margin: 4px 0; padding-left: 1rem; }
+
+/* ARTICLE PROSE */
+.article-body h2 { font-family: var(--display); font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; margin: 3rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); scroll-margin-top: 80px; }
+.article-body h3 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 80px; }
+.article-body h4 { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.article-body p { margin-bottom: 1.25rem; color: var(--muted); font-size: 0.97rem; line-height: 1.85; }
+.article-body strong { color: var(--text); font-weight: 600; }
+.article-body em { color: var(--accent3); font-style: italic; }
+.article-body ul, .article-body ol { margin: 0 0 1.25rem 1.5rem; color: var(--muted); font-size: 0.95rem; }
+.article-body li { margin-bottom: 6px; line-height: 1.75; }
+.article-body code { font-family: var(--mono); font-size: 0.82em; background: rgba(56,189,248,0.08); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
+.article-body a { color: var(--accent2); text-decoration: none; }
+.article-body a:hover { text-decoration: underline; }
+
+/* CODE BLOCKS */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+.code-block-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot.r { background: #ff5f57; } .code-dot.y { background: #ffbd2e; } .code-dot.g { background: #28c840; }
+.code-filename { font-family: var(--mono); font-size: 0.73rem; color: var(--muted2); margin-left: 8px; }
+.code-block pre { padding: 1.5rem; overflow-x: auto; margin: 0; font-family: var(--mono); font-size: 0.82rem; line-height: 1.8; color: #e2e8f0; }
+/* Syntax colors */
+.kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; }
+.num { color: #f78c6c; } .cm { color: #546e7a; font-style: italic; }
+.cls { color: #ffcb6b; } .imp { color: #89ddff; } .op { color: #89ddff; }
+
+/* CALLOUT BOXES */
+.callout { display: flex; gap: 1rem; border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; border-width: 1px; border-style: solid; }
+.callout-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+.callout-body { font-size: 0.88rem; line-height: 1.75; }
+.callout-body strong { font-weight: 600; }
+.callout-title { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+.callout.note { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.22); color: var(--muted); }
+.callout.note .callout-title, .callout.note strong { color: var(--accent); }
+.callout.warning { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.22); color: var(--muted); }
+.callout.warning .callout-title, .callout.warning strong { color: var(--accent4); }
+.callout.tip { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); color: var(--muted); }
+.callout.tip .callout-title, .callout.tip strong { color: var(--accent3); }
+.callout.important { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.22); color: var(--muted); }
+.callout.important .callout-title, .callout.important strong { color: var(--accent5); }
+
+/* MATH DISPLAY */
+.math-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.75rem; margin: 1.25rem 0; overflow-x: auto; font-size: 1.05rem; text-align: center; }
+.math-label { font-size: 0.72rem; color: var(--muted2); font-family: var(--mono); margin-top: 0.5rem; text-align: right; }
+
+/* INLINE FIGURE / DIAGRAM */
+.figure { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; margin: 2rem 0; text-align: center; }
+.figure-caption { font-size: 0.8rem; color: var(--muted2); margin-top: 1rem; font-style: italic; }
+
+/* DATA TABLE */
+.data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.85rem; }
+.data-table th { padding: 10px 14px; background: var(--card2); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); text-align: left; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(99,179,237,0.03); }
+
+/* SUMMARY BOX */
+.summary-box { background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(129,140,248,0.07)); border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 1.75rem 2rem; margin: 3rem 0 2rem; }
+.summary-box h3 { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+.summary-box ul { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.88rem; }
+.summary-box li { margin-bottom: 6px; line-height: 1.7; }
+
+/* RESOURCE LIST */
+.resource-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.resource-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.resource-list li::before { content: '\2192'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.resource-list a { color: var(--accent2); }
+
+/* PREV/NEXT NAV */
+.page-nav { display: flex; justify-content: space-between; gap: 1rem; padding: 2rem; max-width: 1200px; margin: 0 auto; border-top: 1px solid var(--border); }
+.page-nav-btn { display: flex; flex-direction: column; gap: 4px; padding: 1rem 1.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; transition: all 0.2s; max-width: 45%; }
+.page-nav-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.page-nav-btn .nav-dir { font-size: 0.72rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; }
+.page-nav-btn .nav-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.page-nav-btn.next { text-align: right; margin-left: auto; }
+
+/* QUIZ/EXERCISE BOX */
+.exercise-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin: 2rem 0; }
+.exercise-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent4); margin-bottom: 0.5rem; }
+.exercise-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; }
+.exercise-body { font-size: 0.88rem; color: var(--muted); line-height: 1.75; }
+
+/* QUIZ BOX */
+.quiz-box { background: rgba(129,140,248,0.06); border: 1px solid rgba(129,140,248,0.22); border-radius: 14px; padding: 1.5rem; margin: 1.5rem 0; }
+.quiz-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.5rem; }
+.quiz-question { font-size: 0.93rem; color: var(--text); margin-bottom: 0.75rem; font-weight: 500; }
+.quiz-answer { margin-top: 0.5rem; }
+.quiz-answer summary { cursor: pointer; font-size: 0.82rem; color: var(--accent2); font-weight: 600; }
+.quiz-answer p { margin-top: 0.5rem; font-size: 0.86rem; color: var(--muted); }
+
+/* CELL (for assignment files - jupyter style) */
+.jupyter-cell { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin: 1.5rem 0; overflow: hidden; }
+.cell-header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted2); font-family: var(--mono); }
+.cell-input-label { color: var(--accent4); font-weight: 600; }
+.cell-body { padding: 1rem 1.25rem; }
+.jupyter-cell pre { padding: 1rem 1.25rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; background: var(--code-bg); margin: 0; }
+.cell-prompt { color: var(--accent3); font-weight: 700; }
+
+/* GRADING RUBRIC */
+.rubric-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+.rubric-table th { background: var(--card2); padding: 10px 14px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); }
+.rubric-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+
+/* DETAILS (collapsible hints) */
+details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; }
+details summary { cursor: pointer; font-size: 0.85rem; color: var(--accent2); font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
+
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">Hyper<span>Tune</span></a>
+    <ul class="nav-links">
+
+    </ul>
+    <a href="../index.html#curriculum" class="nav-cta">Start Learning</a>
+  </div>
+</nav>
+<div class="page-layout">
+  <aside class="toc-sidebar">
+    <div class="toc-label">On this page</div>
+    <nav class="toc-nav">
+<a href="#section-1" class="toc-link">1. Why Fixed LR Is Suboptimal</a>
+<a href="#section-2" class="toc-link">2. Step Decay</a>
+<a href="#section-3" class="toc-link">3. Exponential Decay</a>
+<a href="#section-4" class="toc-link">4. Polynomial Decay</a>
+<a href="#section-5" class="toc-link">5. Cosine Annealing</a>
+<a href="#section-6" class="toc-link">6. SGDR (Warm Restarts)</a>
+<a href="#section-7" class="toc-link">7. Warmup + Cosine Decay</a>
+<a href="#section-8" class="toc-link">8. ReduceLROnPlateau</a>
+<a href="#section-9" class="toc-link">9. One Cycle Policy</a>
+<a href="#section-10" class="toc-link">10. All Seven Overlaid</a>
+<a href="#section-11" class="toc-link">11. Practical Recommendations</a>
+<a href="#resources" class="toc-link">Useful Resources</a>
+    </nav>
+  </aside>
+  <article class="article-body">
+    <div class="breadcrumb"><a href="../index.html">HyperTune</a> › <a href="intro.html">Module 08</a> › LR Schedules</div>
+    <div class="article-header">
+      <div class="module-badge">Module 08 · LR Scheduling</div>
+      <h1 class="article-title">Learning Rate Schedules: From Step Decay to Cosine Warmup</h1>
+      <div class="article-meta">Part of the <strong>HyperTune</strong> open course · Estimated read time: 20 min · Python 3.10+ · PyTorch 2.0+</div>
+    </div>
+    <div class="outline-box">
+      <div class="outline-title">📋 Article Outline</div>
+      <ol class="outline-list">
+
+<li><a href="#section-1">1. Why a Fixed Learning Rate Is Suboptimal</a></li>
+<li><a href="#section-2">2. Step Decay</a></li>
+<li><a href="#section-3">3. Exponential Decay</a></li>
+<li><a href="#section-4">4. Polynomial Decay</a></li>
+<li><a href="#section-5">5. Cosine Annealing</a></li>
+<li><a href="#section-6">6. Cosine Annealing Warm Restarts (SGDR)</a></li>
+<li><a href="#section-7">7. Linear Warmup + Cosine Decay</a></li>
+<li><a href="#section-8">8. ReduceLROnPlateau</a></li>
+<li><a href="#section-9">9. One Cycle Policy</a></li>
+<li><a href="#section-10">10. All Seven Schedules Overlaid</a></li>
+<li><a href="#section-11">11. Practical Recommendations</a></li>
+<li><a href="#resources">Useful Resources</a></li>
+      </ol>
+    </div>
+
+<section id="section-1">
+  <h2>1. Why a Fixed Learning Rate Is Suboptimal</h2>
+  <p>The learning rate is the single most important hyperparameter in deep learning. Empirically, a model trained with a slightly wrong LR can lose tens of percentage points of final accuracy; a model trained with the right LR schedule can match it in a fraction of the epochs. Every modern training pipeline — from a five-line Keras example to the BERT pretraining codebase — uses some form of learning rate schedule, and the choice of schedule is often as consequential as the choice of optimizer.</p>
+  <p>Why is a fixed LR suboptimal? The intuition is that the optimizer's job changes character over the course of training. Early on, the model is far from any good solution and the loss landscape is mostly smooth; large steps let you cover ground quickly and escape shallow local minima. Late in training, the model is near a minimum and the loss landscape is sharply curved; large steps now would overshoot the minimum and bounce around it forever. A fixed LR forces you to pick a single value that is a compromise between these two regimes — too large for fine-grained convergence, too small for fast early progress.</p>
+  <p>The right solution is to start large and decay. The remaining question — exactly <em>how</em> to decay — is what this article is about. We will walk through seven schedules that span the practical landscape: step decay, exponential decay, polynomial decay, cosine annealing, cosine annealing with warm restarts (SGDR), linear warmup + cosine decay (the Transformer standard), and the One Cycle policy. We will implement each in PyTorch, derive the closed-form formula, and end with a single plot that overlays all seven so you can see at a glance which schedule fits your problem.</p>
+  <div class="callout note"><div class="callout-icon">📌</div><div class="callout-body"><div class="callout-title">LR schedules vs adaptive optimizers</div><p>Adam, RMSProp, and friends adapt the per-parameter effective LR based on historical gradient magnitudes. That is <em>orthogonal</em> to LR scheduling — adaptive optimizers adapt the <em>relative</em> LRs across parameters, while scheduling controls the <em>global</em> LR magnitude over time. You should use both: AdamW + cosine-decay schedule is the default combination for almost every modern Transformer training run, and the same logic applies to CNNs and RNNs.</p></div></div>
+</section>
+
+<section id="section-2">
+  <h2>2. Step Decay</h2>
+  <p>Step decay is the oldest schedule in deep learning. Every <code>k</code> epochs, multiply the LR by a fixed factor <code>γ &lt; 1</code>. The formula is dead simple:</p>
+  <div class="math-block">$$ \eta_t = \eta_0 \cdot \gamma^{\,\lfloor t / k \rfloor} $$ <div class="math-label">Eq. 1 — Step decay. η_0 is the initial LR, γ is the per-step multiplicative factor (typically 0.1 or 0.5), k is the epoch interval between reductions, and t is the current epoch.</div></div>
+  <p>This was the schedule used by AlexNet (Krizhevsky et al. 2012), VGG (Simonyan &amp; Zisserman 2014), and ResNet (He et al. 2015). The standard recipe in those papers was <code>γ=0.1</code> every 30 epochs (for a 90-epoch run) or every 20 epochs (for a 60-epoch run). The discrete drops produce visible "step" patterns in the loss curve: training loss plateaus for ~15 epochs, then suddenly drops by 2-5x when the LR is reduced, then plateaus again. This staircase behavior is sometimes desirable (each plateau lets the model fully converge at that LR before you let it explore further) and sometimes wasteful (you spend many epochs near a local minimum that a smoother schedule would have escaped earlier).</p>
+  <p>In PyTorch, step decay is <code>torch.optim.lr_scheduler.StepLR(optimizer, step_size=k, gamma=γ)</code>. The implementation is one line of code and the schedule is fully determined by two hyperparameters, which makes it easy to reason about — but it also means you have to manually pick <code>k</code> and <code>γ</code> for your problem, which is itself a hyperparameter search.</p>
+  <div class="callout warning"><div class="callout-icon">⚠️</div><div class="callout-body"><div class="callout-title">Step decay needs problem-specific tuning</div><p>The choice of <code>k</code> is the awkward part of step decay. Too small <code>k</code> and you decay before the model has converged at the current LR; too large <code>k</code> and you waste epochs at an LR that is too high to make progress. Cosine annealing (Section 5) is essentially step decay with infinitely many infinitesimal steps — it gets the smoothness benefits without requiring you to tune <code>k</code>.</p></div></div>
+</section>
+
+<section id="section-3">
+  <h2>3. Exponential Decay</h2>
+  <p>Exponential decay is step decay's smooth cousin: instead of dropping the LR by <code>γ</code> every <code>k</code> steps, you multiply it by <code>γ</code> every step.</p>
+  <div class="math-block">$$ \eta_t = \eta_0 \cdot \gamma^{\,t} $$ <div class="math-label">Eq. 2 — Exponential decay. With γ=0.95 per epoch, the LR halves every ~13.5 epochs and reaches 1% of its initial value after ~90 epochs.</div></div>
+  <p>The smoothness is both the benefit and the cost. The benefit is that there are no plateaus — the LR is constantly dropping, so the model is constantly being pushed toward finer-grained convergence. The cost is that the decay is the same shape regardless of where you are in training: the LR drops by the same fraction in the first epoch as in the last. This is usually wrong. Early in training you want the LR to stay roughly constant (you are exploring); late in training you want it to drop fast (you are refining). Cosine annealing does this naturally; exponential decay does not.</p>
+  <p>In practice, exponential decay is most useful as a baseline — it is what you compare other schedules against to show they are better. In PyTorch, it is <code>torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=γ)</code>, where <code>γ</code> is typically 0.95-0.99 per epoch depending on total training length.</p>
+</section>
+
+<section id="section-4">
+  <h2>4. Polynomial Decay</h2>
+  <p>Polynomial decay raises the decay to a power <code>p</code>, controlling how aggressively the LR drops as training nears completion:</p>
+  <div class="math-block">$$ \eta_t = \eta_{\min} + (\eta_0 - \eta_{\min}) \cdot \left(1 - \frac{t}{T}\right)^{p} $$ <div class="math-label">Eq. 3 — Polynomial decay. T is the total number of steps, p controls the curvature (p=1 is linear, p=2 is quadratic, etc.). η_min is a small floor that the LR asymptotes to.</div></div>
+  <p>With <code>p=1</code> the schedule is a straight line from <code>η_0</code> to <code>η_min</code>. With <code>p=2</code> it is a parabola that stays near <code>η_0</code> for the first third of training, then drops quickly to <code>η_min</code>. Higher <code>p</code> values concentrate more of the LR budget early in training and crash to near-zero at the end.</p>
+  <p>This is the schedule used for BERT pretraining (Devlin et al. 2018), with <code>p=1</code> (linear decay) and a 10,000-step linear warmup prefix. The choice of linear decay for BERT is partly historical — the original implementation used <code>p=1</code>, and every BERT derivative has inherited it for reproducibility — but it is also reasonable: linear decay is the smoothest possible schedule that reaches zero exactly at the end of training, which is what you want for a fixed-budget pretraining run.</p>
+  <p>In PyTorch, polynomial decay is implemented via <code>LambdaLR</code> with a closure that computes <code>(1 - t/T)**p</code>. There is no built-in <code>PolynomialLR</code> with a min_lr parameter in older PyTorch versions, but PyTorch 1.11+ has <code>torch.optim.lr_scheduler.PolynomialLR(optimizer, total_iters, power)</code> which does the basic version without the floor.</p>
+</section>
+
+<section id="section-5">
+  <h2>5. Cosine Annealing</h2>
+  <p>Cosine annealing is, in practice, the most popular schedule in modern deep learning. The LR follows a cosine curve from <code>η_max</code> down to <code>η_min</code> over <code>T_max</code> steps:</p>
+  <div class="math-block">$$ \eta_t = \eta_{\min} + \frac{1}{2}(\eta_{\max} - \eta_{\min})\left(1 + \cos\!\left(\frac{\pi t}{T_{\max}}\right)\right) $$ <div class="math-label">Eq. 4 — Cosine annealing. At t=0 the LR is η_max; at t=T_max/2 the LR is the midpoint (η_min + η_max)/2; at t=T_max the LR is η_min. The curve is symmetric and smooth at both endpoints.</div></div>
+  <p>The key property of the cosine is its <strong>derivative</strong>. The LR drops slowly at the start (the cosine's slope is shallow near <code>t=0</code>), drops fastest in the middle (the cosine's slope is steepest near <code>t=T_max/2</code>), and drops slowly again at the end (the cosine's slope is shallow near <code>t=T_max</code>). This is exactly the shape you want: hold the LR roughly constant early to allow exploration, drop it fast in the middle as the model converges, and slow down near the end for fine-grained convergence.</p>
+  <p>Compare this to step decay (which has plateau-then-crash behavior, requiring manual tuning of when to crash) and exponential decay (which has a constant fractional drop, too aggressive early and too gentle late). Cosine annealing gets the right shape for free with one parameter (<code>T_max</code>), which is why it has displaced step decay as the default for image classification and many other tasks.</p>
+  <p>In PyTorch, cosine annealing is <code>torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max, eta_min=0)</code>. The default <code>eta_min=0</code> drops the LR all the way to zero at <code>t=T_max</code>; for some tasks a small floor like <code>eta_min=1e-6</code> is preferred to avoid completely freezing the optimizer at the end.</p>
+  <div class="quiz-box">
+  <div class="quiz-label">🧠 Quick Check</div>
+  <p class="quiz-question">You are training a ResNet-50 on ImageNet for 90 epochs. You have two candidate schedules: (a) StepLR with γ=0.1 every 30 epochs, or (b) CosineAnnealingLR with T_max=90 and eta_min=0. Both start at the same initial LR. Which one usually produces higher final accuracy, and why?</p>
+  <details class="quiz-answer">
+    <summary>Show Answer</summary>
+    <p>Cosine annealing usually wins by 0.5-1.5 percentage points on ImageNet. The reason is that step decay wastes ~10-15 epochs per step at an LR that is too high to make progress before the step drop, while cosine annealing is constantly decaying and so the model is always at the right LR for its current state. The empirical advantage of cosine was first reported by Loshchilov &amp; Hutter (2017) and has been reproduced in most subsequent image-classification papers.</p>
+  </details>
+</div>
+</section>
+
+<section id="section-6">
+  <h2>6. Cosine Annealing Warm Restarts (SGDR)</h2>
+  <p>SGDR (Stochastic Gradient Descent with Warm Restarts, Loshchilov &amp; Hutter 2017) adds one twist to cosine annealing: instead of running the cosine once to <code>T_max</code> and stopping, you run it multiple times, restarting the LR back to <code>η_max</code> at the end of each cycle. The cycle length grows by a factor <code>T_mult</code> at each restart.</p>
+  <div class="math-block">$$ \eta_t = \eta_{\min} + \frac{1}{2}(\eta_{\max} - \eta_{\min})\left(1 + \cos\!\left(\frac{\pi \, (t \bmod T_i)}{T_i}\right)\right), \quad T_i = T_0 \cdot T_{\mathrm{mult}}^{\,i} $$ <div class="math-label">Eq. 5 — SGDR. T_0 is the first cycle length, T_mult is the growth factor per cycle, and (t mod T_i) is the position within the current cycle. The LR restarts to η_max at the end of each cycle.</div></div>
+  <p>The intuition is that warm restarts let the optimizer escape sharp local minima and explore other basins. After each restart, the high LR kicks the model out of whatever basin it had settled into; if the new basin is better, the model settles there at the next low-LR phase. Empirically, SGDR finds solutions that generalize slightly better than vanilla cosine annealing on a wide range of tasks, and the model can be ensemble-averaged across the cycles (taking snapshots at each cycle's minimum LR) for a free 0.5-1% accuracy boost via the "snapshot ensembles" trick (Huang et al. 2017).</p>
+  <p>The typical hyperparameters are <code>T_0=10</code> epochs and <code>T_mult=1</code> (cycles of constant length) or <code>T_mult=2</code> (cycles double each time: 10, 20, 40, ...). With <code>T_mult=2</code> and <code>T_0=10</code>, a 90-epoch run would have cycles of length 10, 20, 40, 20 — the last partial cycle is shorter than its "natural" length but still useful.</p>
+  <p>In PyTorch, SGDR is <code>torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0, T_mult=1, eta_min=0)</code>. One subtlety: <code>step()</code> can be called either per-epoch (the usual case) or per-batch (needed if you want cycle lengths finer than one epoch); the <code>T_0</code>, <code>T_mult</code>, and <code>t</code> arguments must be in consistent units.</p>
+</section>
+
+<section id="section-7">
+  <h2>7. Linear Warmup + Cosine Decay</h2>
+  <p>This is the schedule used by BERT (Devlin et al. 2018), GPT (Radford et al. 2018), ViT (Dosovitskiy et al. 2020), and almost every Transformer trained since 2018. It is two phases glued together:</p>
+  <div class="math-block">$$ \eta_t = \begin{cases} \eta_{\max} \cdot \dfrac{t}{T_{\mathrm{warmup}}} & t < T_{\mathrm{warmup}} \\[6pt] \eta_{\min} + \frac{1}{2}(\eta_{\max} - \eta_{\min})\left(1 + \cos\!\left(\pi \cdot \frac{t - T_{\mathrm{warmup}}}{T - T_{\mathrm{warmup}}}\right)\right) & t \geq T_{\mathrm{warmup}} \end{cases} $$ <div class="math-label">Eq. 6 — Linear warmup + cosine decay. T_warmup is the length of the linear ramp (typically 1-10% of total steps T); the second branch is just cosine annealing run on the post-warmup interval.</div></div>
+  <p>Why warmup? Transformers are extremely sensitive to the initial LR. Adam's variance estimate is poorly calibrated in the first few hundred steps (the moving averages haven't converged yet), so a large initial LR can produce destructive gradient updates that permanently damage the embeddings. Linear warmup gives the variance estimate time to converge while the LR is still small, then ramps the LR up to its working value once the optimizer is calibrated. Without warmup, Transformer training frequently diverges in the first 100 steps; with warmup, it is rock-solid.</p>
+  <p>How much warmup? The rule of thumb is <code>10% of total steps</code> for pretraining (BERT used 10,000 of 1,000,000 steps; GPT-3 used similar proportions) and <code>0-1 epoch</code> for fine-tuning (fine-tuning is more stable because the model is already initialized well). For ResNet on ImageNet, warmup is rarely used because BatchNorm provides regularization that makes early training stable; for Transformers, warmup is essentially mandatory.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">warmup_cosine_bert_style.py</span></div><pre># ─── warmup_cosine_bert_style.py ───────────────────────────────────────────────
+# A from-scratch implementation of linear-warmup + cosine-decay, the schedule
+# used by BERT, GPT, ViT, and most Transformer pretraining pipelines. Built
+# on LambdaLR so it is fully PyTorch-native and serializable.
+
+import math
+import torch
+import torch.nn as nn
+from torch.optim.lr_scheduler import LambdaLR
+
+def get_warmup_cosine_schedule(optimizer, num_warmup_steps, num_training_steps,
+                               min_lr_ratio=0.0):
+    &quot;&quot;&quot;Linear warmup for `num_warmup_steps`, then cosine decay to
+    `min_lr_ratio * base_lr` over the remaining `num_training_steps`.
+
+    Args:
+        optimizer:           torch.optim.Optimizer
+        num_warmup_steps:    int, length of the linear warmup phase
+        num_training_steps:  int, total optimizer steps in the run
+        min_lr_ratio:        float in [0, 1], final LR as fraction of base_lr
+
+    Returns:
+        LambdaLR scheduler.
+    &quot;&quot;&quot;
+    def lr_lambda(current_step):
+        if current_step &lt; num_warmup_steps:
+            # Linear warmup: 0 -&gt; 1
+            return float(current_step) / float(max(1, num_warmup_steps))
+        # Cosine decay: 1 -&gt; min_lr_ratio
+        progress = float(current_step - num_warmup_steps) / float(
+            max(1, num_training_steps - num_warmup_steps)
+        )
+        cosine = 0.5 * (1.0 + math.cos(math.pi * progress))
+        return min_lr_ratio + (1.0 - min_lr_ratio) * cosine
+
+    return LambdaLR(optimizer, lr_lambda=lr_lambda)
+
+# ─── Usage example: BERT-base pretraining, 1M steps, 10k warmup ──────────────
+model = nn.Linear(768, 768)                       # stand-in for BERT-base
+optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4,
+                              betas=(0.9, 0.999), weight_decay=0.01)
+TOTAL_STEPS = 1_000_000
+WARMUP_STEPS = 10_000
+scheduler = get_warmup_cosine_schedule(optimizer, WARMUP_STEPS, TOTAL_STEPS,
+                                       min_lr_ratio=0.1)
+
+# Training loop (sketch):
+# for step in range(TOTAL_STEPS):
+#     loss = forward_batch()
+#     loss.backward()
+#     optimizer.step()
+#     scheduler.step()
+#     optimizer.zero_grad()
+
+# ─── Verify the schedule looks right at key checkpoints ──────────────────────
+checkpoints = [0, WARMUP_STEPS // 2, WARMUP_STEPS, 250_000, 500_000,
+               750_000, TOTAL_STEPS - 1]
+for step in checkpoints:
+    # We can&#x27;t easily step the scheduler 1M times for a sanity check,
+    # so we evaluate the lambda directly.
+    s = get_warmup_cosine_schedule(optimizer, WARMUP_STEPS, TOTAL_STEPS)
+    lr_mult = s.lr_lambdas[0](step)
+    print(f&quot;step={step:&gt;8d}  lr_mult={lr_mult:.4f}  lr={lr_mult * 1e-4:.2e}&quot;)
+</pre></div>
+  <p>The <code>LambdaLR</code> pattern is the most flexible way to implement a custom schedule in PyTorch: you provide a function from <code>step</code> to <code>lr_multiplier</code>, and PyTorch handles the bookkeeping. This is how HuggingFace's transformers library implements every schedule it ships — see <code>transformers.get_cosine_schedule_with_warmup</code> for a near-identical implementation to the one above.</p>
+</section>
+
+<section id="section-8">
+  <h2>8. ReduceLROnPlateau</h2>
+  <p>All the schedules above are <em>predefined</em>: they are functions of <code>t</code> alone, decided before training starts. <code>ReduceLROnPlateau</code> is different — it adapts the LR to the training trajectory itself. You give it a metric to monitor (typically validation loss), and when the metric stops improving for <code>patience</code> consecutive evaluations, it multiplies the LR by <code>factor</code> and resets the patience counter.</p>
+  <p>The pseudocode is:</p>
+  <div class="math-block">$$ \text{if } \mathrm{metric}_t < \mathrm{best} - \mathrm{threshold}: \quad \mathrm{best} \leftarrow \mathrm{metric}_t,\ \ \mathrm{wait} \leftarrow 0 \\[4pt] \text{else: } \quad \mathrm{wait} \leftarrow \mathrm{wait} + 1,\ \ \text{if } \mathrm{wait} > \mathrm{patience}: \ \ \eta \leftarrow \eta \cdot \mathrm{factor},\ \ \mathrm{wait} \leftarrow 0 $$ <div class="math-label">Eq. 7 — ReduceLROnPlateau decision rule. &#x27;metric&#x27; is the monitored quantity (e.g. val_loss). &#x27;best&#x27; is the running best. &#x27;wait&#x27; counts consecutive non-improving evaluations. &#x27;patience&#x27; is the tolerance. &#x27;factor&#x27; is the multiplicative reduction (typically 0.5 or 0.1).</div></div>
+  <p>The advantage of <code>ReduceLROnPlateau</code> is that it does not require you to know in advance how many epochs you will train or when the model will plateau — it adapts. The disadvantage is that it is reactive rather than proactive: it can only reduce the LR after the plateau has already cost you several epochs of wasted training. It is most useful when training length is unknown or when the loss landscape has unpredictable plateaus (common in GAN training, RL, and some scientific ML tasks).</p>
+  <p>One API gotcha: unlike every other scheduler in PyTorch, <code>ReduceLROnPlateau.step()</code> takes an argument — the value of the monitored metric. Calling <code>scheduler.step()</code> without the metric is a no-op (and PyTorch will warn you). The correct call is <code>scheduler.step(val_loss)</code> after each validation pass.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">reduce_lr_on_plateau.py</span></div><pre># ─── reduce_lr_on_plateau.py ───────────────────────────────────────────────────
+# ReduceLROnPlateau: monitor a metric (typically val loss), and when it stops
+# improving for `patience` consecutive epochs, multiply LR by `factor`.
+
+import torch
+import torch.nn as nn
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+
+model = nn.Linear(64, 10)
+optimizer = torch.optim.SGD(model.parameters(), lr=0.1, momentum=0.9)
+scheduler = ReduceLROnPlateau(
+    optimizer,
+    mode=&quot;min&quot;,          # we want val_loss to DECREASE
+    factor=0.5,          # on plateau: lr *= 0.5
+    patience=3,          # tolerate 3 epochs of no improvement before reducing
+    threshold=1e-4,      # only count as &quot;no improvement&quot; if delta &lt; threshold
+    cooldown=1,          # after a reduction, wait 1 epoch before re-arming
+    min_lr=1e-6,         # never go below this
+    verbose=True,
+)
+
+# Sketch of the training loop:
+# for epoch in range(EPOCHS):
+#     train_one_epoch(model, train_loader, optimizer)
+#     val_loss = evaluate(model, val_loader)
+#     scheduler.step(val_loss)     # NOTE: takes the metric, unlike other schedulers
+
+# Quick demonstration of the plateau logic with synthetic val losses:
+val_losses = [0.90, 0.55, 0.40, 0.32, 0.31, 0.305, 0.304, 0.305, 0.306,
+              0.304, 0.304, 0.304]
+print(f&quot;{&#x27;epoch&#x27;:&gt;5}  {&#x27;val_loss&#x27;:&gt;9}  {&#x27;lr&#x27;:&gt;10}&quot;)
+for ep, vl in enumerate(val_losses):
+    scheduler.step(vl)
+    lr = optimizer.param_groups[0][&quot;lr&quot;]
+    print(f&quot;{ep:&gt;5}  {vl:&gt;9.4f}  {lr:&gt;10.6f}&quot;)
+</pre></div>
+</section>
+
+<section id="section-9">
+  <h2>9. One Cycle Policy</h2>
+  <p>The One Cycle Policy (Smith &amp; Topin 2017) is the most aggressive schedule on this list. Instead of decaying from a high LR to a low LR, One Cycle does a full cycle: warm <em>up</em> from a small initial LR to a peak <code>max_lr</code> over the first ~30% of training, then anneal <em>down</em> to a tiny final LR over the remaining ~70%. The peak <code>max_lr</code> is found beforehand with the LR range test (Smith 2015): start at a tiny LR, exponentially increase it over a few hundred batches, and pick the LR at which loss is dropping fastest.</p>
+  <div class="math-block">$$ \eta_t = \begin{cases} \eta_{\min} + (\eta_{\max} - \eta_{\min}) \cdot \dfrac{t}{0.3 \cdot T} & t < 0.3 T \\[6pt] \eta_{\max} \cdot \left(1 - \dfrac{t - 0.3 T}{0.7 T}\right)^{p} & t \geq 0.3 T \end{cases} $$ <div class="math-label">Eq. 8 — One Cycle Policy (cosine variant). η_max is found by the LR range test. The first 30% ramps LR up to η_max; the last 70% anneals down to ~0. Annealing is typically cosine (p varies) or linear.</div></div>
+  <p>The empirical claim is dramatic: One Cycle often matches or beats the accuracy of a 100-epoch cosine-annealing run in only 20-30 epochs. The mechanism is that the high-LR phase pushes the model into a wide, flat basin (the kind that generalizes well, per the flat-minima literature), and the annealing phase lets it settle to the bottom of that basin. Combined with super-convergence — the observation that you can train at very high LRs for short periods without diverging if you ramp up and down smoothly — One Cycle is the schedule of choice when training time is the binding constraint.</p>
+  <p>In PyTorch, One Cycle is <code>torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr, total_steps, pct_start=0.3, anneal_strategy='cos')</code>. Two important details: (1) <code>OneCycleLR</code> steps per-batch, not per-epoch — you must call <code>scheduler.step()</code> inside the inner training loop, not the outer epoch loop. (2) <code>OneCycleLR</code> also cycles momentum by default (<code>cycle_momentum=True</code>): momentum goes from 0.85 at the start up to 0.95 at the LR peak, then back down to 0.85 at the end. The intuition is that high momentum stabilizes the high-LR phase; the inverse relationship between LR and momentum is empirically well-supported.</p>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">onecycle_policy.py</span></div><pre># ─── onecycle_policy.py ────────────────────────────────────────────────────────
+# Leslie Smith&#x27;s One Cycle Policy: aggressive single cycle that rises to
+# max_lr over the first 30% of training, then decays to near-zero over the
+# remaining 70%. Often reaches high accuracy in fewer epochs than any other
+# schedule.
+
+import torch
+import torch.nn as nn
+from torch.optim.lr_scheduler import OneCycleLR
+
+# ─── Step 0: find max_lr with the LR finder (Smith 2015) ─────────────────────
+# Run a dummy LR range test: start at 1e-7, exponentially increase to 10 over
+# a few hundred batches, plot loss vs LR. The &quot;steepest descent&quot; point (where
+# loss is dropping fastest) is your max_lr. TorchVision has a built-in helper:
+#
+#   from torch.optim.lr_scheduler import StepLR
+#   from torchvision.models import resnet18
+#   # ... use torchtnt&#x27;s LR finder or fast.ai&#x27;s lr_find ...
+#
+# For this example, assume the LR finder told us max_lr = 3e-3.
+
+model = nn.Sequential(
+    nn.Flatten(),
+    nn.Linear(28 * 28, 128), nn.ReLU(),
+    nn.Linear(128, 64),     nn.ReLU(),
+    nn.Linear(64, 10),
+)
+EPOCHS = 8
+BATCHES_PER_EPOCH = 600     # Fashion-MNIST: 60k / 100 ≈ 600
+TOTAL_STEPS = EPOCHS * BATCHES_PER_EPOCH
+
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+scheduler = OneCycleLR(
+    optimizer,
+    max_lr=3e-3,                  # found by LR finder
+    total_steps=TOTAL_STEPS,
+    pct_start=0.3,                # 30% warmup, 70% anneal
+    anneal_strategy=&quot;cos&quot;,        # cosine anneal (vs &quot;linear&quot;)
+    cycle_momentum=True,          # also cycle momentum: 0.85 -&gt; 0.95 -&gt; 0.85
+    base_momentum=0.85,
+    max_momentum=0.95,
+    div_factor=25.0,              # initial_lr = max_lr / div_factor = 1.2e-4
+    final_div_factor=1e4,         # final_lr = initial_lr / final_div_factor
+)
+
+# ─── Training loop ────────────────────────────────────────────────────────────
+# for epoch in range(EPOCHS):
+#     for batch in train_loader:
+#         loss = forward_batch(model, batch)
+#         loss.backward()
+#         optimizer.step()
+#         scheduler.step()              # NB: OneCycleLR steps per BATCH, not epoch
+#         optimizer.zero_grad()
+
+# ─── Sanity-check the schedule shape ─────────────────────────────────────────
+lrs = []
+for _ in range(TOTAL_STEPS):
+    lrs.append(optimizer.param_groups[0][&quot;lr&quot;])
+    optimizer.step()
+    scheduler.step()
+
+print(f&quot;Initial LR: {lrs[0]:.2e} (should be ~ max_lr/div_factor)&quot;)
+print(f&quot;Peak LR:    {max(lrs):.2e} (should be ~ max_lr)&quot;)
+print(f&quot;Final LR:   {lrs[-1]:.2e} (should be ~ initial/final_div_factor)&quot;)
+print(f&quot;Step of peak: {lrs.index(max(lrs))} (should be ~ 0.3 * TOTAL_STEPS)&quot;)
+</pre></div>
+</section>
+
+<section id="section-10">
+  <h2>10. All Seven Schedules Overlaid</h2>
+  <p>Now that you have seen each schedule in isolation, here they are together. The figure below plots the LR over 50 epochs for all seven schedules, all starting from the same peak LR of 1.0 (with One Cycle peaking at 1.25 by design). The visual differences are striking and instructive.</p>
+  <div class="figure">
+<svg viewBox="0 0 640 380" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;font-family:Inter;">
+  <text x="320" y="22" text-anchor="middle" fill="#f0f6fc" font-size="14" font-weight="700">Seven LR schedules overlaid (50 epochs, peak LR = 1.0)</text>
+
+  <!-- Axes -->
+  <line x1="60" y1="320" x2="600" y2="320" stroke="#8899aa" stroke-width="1.5"/>
+  <line x1="60" y1="40" x2="60" y2="320" stroke="#8899aa" stroke-width="1.5"/>
+  <text x="330" y="355" fill="#8899aa" font-size="12" text-anchor="middle">Step / epoch</text>
+  <text x="22" y="180" fill="#8899aa" font-size="12" text-anchor="middle" transform="rotate(-90 22 180)">Learning rate</text>
+  <!-- y-axis ticks -->
+  <text x="55" y="324" fill="#64748b" font-size="10" text-anchor="end">0.0</text>
+  <text x="55" y="244" fill="#64748b" font-size="10" text-anchor="end">0.25</text>
+  <text x="55" y="164" fill="#64748b" font-size="10" text-anchor="end">0.50</text>
+  <text x="55" y="84" fill="#64748b" font-size="10" text-anchor="end">0.75</text>
+  <text x="55" y="44" fill="#64748b" font-size="10" text-anchor="end">1.0</text>
+  <!-- x-axis ticks -->
+  <text x="60"  y="335" fill="#64748b" font-size="10" text-anchor="middle">0</text>
+  <text x="168" y="335" fill="#64748b" font-size="10" text-anchor="middle">10</text>
+  <text x="276" y="335" fill="#64748b" font-size="10" text-anchor="middle">20</text>
+  <text x="384" y="335" fill="#64748b" font-size="10" text-anchor="middle">30</text>
+  <text x="492" y="335" fill="#64748b" font-size="10" text-anchor="middle">40</text>
+  <text x="600" y="335" fill="#64748b" font-size="10" text-anchor="middle">50</text>
+
+  <!-- 1. Fixed LR (flat line at 1.0) -->
+  <line x1="60" y1="40" x2="600" y2="40" stroke="#64748b" stroke-width="2" stroke-dasharray="4 3"/>
+  <text x="608" y="44" fill="#64748b" font-size="10">fixed</text>
+
+  <!-- 2. Step decay: 1.0 until 15, 0.25 until 30, 0.0625 until 45, 0.0156 until 50 -->
+  <path d="M 60 40 L 222 40 L 222 200 L 384 200 L 384 280 L 546 280 L 546 312 L 600 312"
+        stroke="#f59e0b" stroke-width="2" fill="none"/>
+  <text x="608" y="316" fill="#f59e0b" font-size="10">step</text>
+
+  <!-- 3. Exponential decay: lr=1.0 * 0.95^t -->
+  <path d="M 60 40 Q 168 90 276 200 Q 384 270 492 305 L 600 314"
+        stroke="#34d399" stroke-width="2" fill="none"/>
+  <text x="608" y="306" fill="#34d399" font-size="10">exp</text>
+
+  <!-- 4. Polynomial decay (p=2): lr = (1 - t/50)^2 -->
+  <path d="M 60 40 C 168 60 222 130 276 200 S 438 295 600 320"
+        stroke="#818cf8" stroke-width="2" fill="none"/>
+  <text x="608" y="298" fill="#818cf8" font-size="10">poly</text>
+
+  <!-- 5. Cosine annealing: 0.5*(1+cos(pi*t/50)) -->
+  <path d="M 60 40 Q 168 320 276 280 Q 384 240 438 220 Q 546 320 600 320"
+        stroke="#f472b6" stroke-width="2.5" fill="none"/>
+  <text x="608" y="320" fill="#f472b6" font-size="10">cosine</text>
+
+  <!-- 6. SGDR: cosine with restarts at t=20 and t=40 (T_mult=1 for clarity) -->
+  <path d="M 60 40 Q 114 320 168 280 Q 222 240 250 220 Q 304 320 358 280 Q 412 240 440 220 Q 494 320 548 280 L 600 250"
+        stroke="#38bdf8" stroke-width="2" fill="none" stroke-dasharray="2 0"/>
+  <text x="608" y="252" fill="#38bdf8" font-size="10">SGDR</text>
+
+  <!-- 7. One cycle: rises to 1.25 by t=15, then decays to ~0 -->
+  <path d="M 60 220 C 114 80 168 20 222 25 C 276 30 330 200 384 280 C 438 310 492 318 600 320"
+        stroke="#a78bfa" stroke-width="2.5" fill="none"/>
+  <text x="608" y="40" fill="#a78bfa" font-size="10">1cycle</text>
+
+  <!-- Legend panel -->
+  <rect x="80" y="50" width="200" height="120" fill="#0d1117" stroke="#1a2640" stroke-width="1" rx="6"/>
+  <text x="92" y="68" fill="#f0f6fc" font-size="11" font-weight="700">Legend</text>
+  <line x1="92" y1="80" x2="112" y2="80" stroke="#64748b" stroke-width="2" stroke-dasharray="4 3"/>
+  <text x="118" y="84" fill="#8899aa" font-size="10">Fixed (baseline)</text>
+  <line x1="92" y1="95" x2="112" y2="95" stroke="#f59e0b" stroke-width="2"/>
+  <text x="118" y="99" fill="#8899aa" font-size="10">Step decay (γ=0.25, k=15)</text>
+  <line x1="92" y1="110" x2="112" y2="110" stroke="#34d399" stroke-width="2"/>
+  <text x="118" y="114" fill="#8899aa" font-size="10">Exponential (γ=0.95/epoch)</text>
+  <line x1="92" y1="125" x2="112" y2="125" stroke="#818cf8" stroke-width="2"/>
+  <text x="118" y="129" fill="#8899aa" font-size="10">Polynomial (p=2)</text>
+  <line x1="92" y1="140" x2="112" y2="140" stroke="#f472b6" stroke-width="2.5"/>
+  <text x="118" y="144" fill="#8899aa" font-size="10">Cosine annealing</text>
+  <line x1="92" y1="155" x2="112" y2="155" stroke="#38bdf8" stroke-width="2"/>
+  <text x="118" y="159" fill="#8899aa" font-size="10">SGDR (warm restarts)</text>
+  <line x1="252" y1="80" x2="272" y2="80" stroke="#a78bfa" stroke-width="2.5"/>
+  <text x="278" y="84" fill="#8899aa" font-size="10">One Cycle</text>
+</svg>
+<div class="figure-caption">Figure 1 — All seven schedules overlaid. Notice: Fixed LR is a flat line (the baseline). Step decay has visible plateaus. Exponential decay is smooth but constantly dropping. Polynomial decay (p=2) stays high then crashes. Cosine annealing is the smoothest single-cycle curve. SGDR has visible restarts at t=20 and t=40. One Cycle peaks at 1.25 (above the others&#x27; 1.0) and ends near zero.</div></div>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">all_schedules_pytorch.py</span></div><pre># ─── all_schedules_pytorch.py ──────────────────────────────────────────────────
+# Implements all 7 schedules from this article as torch.optim.lr_scheduler
+# objects, plus a plotting routine that produces the overlay figure.
+
+import torch
+import torch.nn as nn
+import numpy as np
+import matplotlib.pyplot as plt
+
+# A throwaway 1-parameter model so the schedulers have something to schedule.
+model = nn.Linear(1, 1)
+optim = torch.optim.SGD(model.parameters(), lr=1.0)
+N_STEPS = 50
+
+def track_lrs(scheduler, steps=N_STEPS, optimizer=optim):
+    &quot;&quot;&quot;Step the scheduler `steps` times and return the LR trajectory.&quot;&quot;&quot;
+    lrs = []
+    for _ in range(steps):
+        lrs.append(optimizer.param_groups[0][&quot;lr&quot;])
+        optimizer.step()              # fake step (gradients don&#x27;t matter)
+        if hasattr(scheduler, &quot;step&quot;) and not isinstance(scheduler,
+                  torch.optim.lr_scheduler.ReduceLROnPlateau):
+            scheduler.step()
+    return lrs
+
+schedules = {}
+
+# ─── 1. Step decay: every k steps, multiply LR by gamma ───────────────────────
+schedules[&quot;Step Decay&quot;] = track_lrs(
+    torch.optim.lr_scheduler.StepLR(optim, step_size=15, gamma=0.25)
+)
+optim.param_groups[0][&quot;lr&quot;] = 1.0
+
+# ─── 2. Exponential decay: lr_t = lr_0 * gamma^t ─────────────────────────────
+schedules[&quot;Exponential&quot;] = track_lrs(
+    torch.optim.lr_scheduler.ExponentialLR(optim, gamma=0.95)
+)
+optim.param_groups[0][&quot;lr&quot;] = 1.0
+
+# ─── 3. Polynomial decay: lr_t = lr_0 * (1 - t/T)^p ──────────────────────────
+def poly_fn(t):
+    return max(0.0, (1.0 - t / N_STEPS) ** 2)
+schedules[&quot;Polynomial (p=2)&quot;] = track_lrs(
+    torch.optim.lr_scheduler.LambdaLR(optim, lr_lambda=poly_fn)
+)
+optim.param_groups[0][&quot;lr&quot;] = 1.0
+
+# ─── 4. Cosine annealing: lr_min + 0.5*(lr_max - lr_min)*(1 + cos(pi t/T)) ──
+schedules[&quot;Cosine Annealing&quot;] = track_lrs(
+    torch.optim.lr_scheduler.CosineAnnealingLR(optim, T_max=N_STEPS, eta_min=0.0)
+)
+optim.param_groups[0][&quot;lr&quot;] = 1.0
+
+# ─── 5. Cosine warm restarts (SGDR): restart at t=20, 40 with T_mult=1 ───────
+schedules[&quot;SGDR (Warm Restarts)&quot;] = track_lrs(
+    torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+        optim, T_0=20, T_mult=1, eta_min=0.0
+    )
+)
+optim.param_groups[0][&quot;lr&quot;] = 1.0
+
+# ─── 6. Linear warmup (5 steps) + cosine decay ───────────────────────────────
+WARMUP = 5
+def warmup_cosine_fn(t):
+    if t &lt; WARMUP:
+        return t / WARMUP                # linear ramp 0 -&gt; 1
+    progress = (t - WARMUP) / (N_STEPS - WARMUP)
+    return 0.5 * (1 + np.cos(np.pi * progress))   # cosine decay 1 -&gt; 0
+schedules[&quot;Warmup + Cosine&quot;] = track_lrs(
+    torch.optim.lr_scheduler.LambdaLR(optim, lr_lambda=warmup_cosine_fn)
+)
+optim.param_groups[0][&quot;lr&quot;] = 1.0
+
+# ─── 7. One Cycle: rises to max_lr (1.25) by 30% then decays to ~0 ───────────
+schedules[&quot;One Cycle&quot;] = track_lrs(
+    torch.optim.lr_scheduler.OneCycleLR(
+        optim, max_lr=1.25, total_steps=N_STEPS,
+        pct_start=0.3, anneal_strategy=&quot;cos&quot;,
+    )
+)
+
+# ─── Plot all schedules overlaid ─────────────────────────────────────────────
+plt.figure(figsize=(11, 6), constrained_layout=True)
+colors = [&quot;#f59e0b&quot;, &quot;#34d399&quot;, &quot;#818cf8&quot;, &quot;#f472b6&quot;, &quot;#38bdf8&quot;,
+          &quot;#22d3ee&quot;, &quot;#a78bfa&quot;]
+for (name, lrs), color in zip(schedules.items(), colors):
+    plt.plot(lrs, label=name, color=color, linewidth=2.2)
+plt.xlabel(&quot;Step / epoch&quot;); plt.ylabel(&quot;Learning rate&quot;)
+plt.title(&quot;Seven LR schedules overlaid (peak LR = 1.0)&quot;)
+plt.legend(loc=&quot;upper right&quot;, fontsize=10, ncol=2)
+plt.grid(alpha=0.2)
+plt.savefig(&quot;lr_schedules_overlay.png&quot;, dpi=120)
+plt.show()
+</pre></div>
+  <p>Run the code above and you will reproduce the figure. The two things to notice: (1) the area under each curve is roughly comparable (they all integrate to similar total "LR-budget" over 50 epochs), which is why the final accuracies are usually within a few percent of each other; (2) the <em>shape</em> of the curve, not the area, is what matters — the same total budget spent on the right shape (cosine, One Cycle) gets you meaningfully better accuracy than the same budget spent on the wrong shape (exponential).</p>
+  <div class="callout tip"><div class="callout-icon">💡</div><div class="callout-body"><div class="callout-title">Which schedule should I use?</div><p>For Transformers (BERT, GPT, ViT, T5): linear warmup + cosine decay (Section 7). For CNNs on image classification: cosine annealing (Section 5) or One Cycle (Section 9) if training time is the binding constraint. For tabular gradient boosting: not applicable (those are not gradient-descent-trained in the same sense). For RL or GANs: ReduceLROnPlateau (Section 8), because the loss landscape is unpredictable. For quick prototyping: step decay (Section 2), because it is the simplest to reason about. Avoid: pure exponential decay (Section 3) unless you have a specific reason; it is dominated by cosine annealing in almost every setting.</p></div></div>
+</section>
+
+<section id="section-11">
+  <h2>11. Practical Recommendations</h2>
+  <table class="data-table">
+    <thead><tr><th>Schedule</th><th>Best for</th><th>Key params</th><th>Common pitfalls</th></tr></thead>
+    <tbody>
+      <tr><td>Step decay</td><td>Reproducing classic papers (AlexNet, ResNet)</td><td><code>k</code>, <code>γ</code></td><td>Plateaus waste epochs; need to tune <code>k</code> per problem.</td></tr>
+      <tr><td>Exponential</td><td>Baselines / debugging</td><td><code>γ</code> per step</td><td>Constant fractional drop is wrong shape — too aggressive early, too gentle late.</td></tr>
+      <tr><td>Polynomial</td><td>BERT-style pretraining</td><td><code>T</code>, <code>p</code>, <code>η_min</code></td><td>Linear (p=1) is the safe default; higher p can crash too fast.</td></tr>
+      <tr><td>Cosine annealing</td><td>CNNs, RNNs, general-purpose DL</td><td><code>T_max</code>, <code>η_min</code></td><td>Make sure <code>T_max</code> matches your total step count; off-by-one is a common bug.</td></tr>
+      <tr><td>SGDR (warm restarts)</td><td>Snapshot ensembles; escaping sharp minima</td><td><code>T_0</code>, <code>T_mult</code></td><td>Restart can briefly spike val loss; don't early-stop based on a single restart's worst epoch.</td></tr>
+      <tr><td>Warmup + Cosine</td><td>Transformers (BERT/GPT/ViT)</td><td><code>T_warmup</code>, <code>T</code></td><td>Warmup too short → diverge; too long → waste training budget.</td></tr>
+      <tr><td>ReduceLROnPlateau</td><td>Unknown training length, GANs, RL</td><td><code>factor</code>, <code>patience</code></td><td>Reactive, not proactive — wastes <code>patience</code> epochs per plateau.</td></tr>
+      <tr><td>One Cycle</td><td>Fast convergence, limited compute</td><td><code>max_lr</code>, <code>pct_start</code></td><td>Must find <code>max_lr</code> via LR finder; steps per-batch not per-epoch.</td></tr>
+    </tbody>
+  </table>
+  <div class="callout important"><div class="callout-icon">🔥</div><div class="callout-body"><div class="callout-title">The linear scaling rule (Goyal et al. 2017)</div><p>When you change batch size by a factor of <code>k</code>, scale the LR by the same factor: <code>lr_new = lr_old * k</code>. This rule lets you reuse a known-good LR when you move from a batch size of 256 to a batch size of 8192 (typical for large-scale image training). It is empirically accurate for batch sizes up to ~8k; above that, warmup becomes necessary to avoid divergence. The combination of linear scaling + warmup + cosine decay is the standard recipe for training ResNet and friends at scale.</p></div></div>
+</section>
+
+<div class="summary-box"><h3>🎯 Key Takeaways</h3><ul><li><strong>Fixed LR is suboptimal</strong> because the right LR changes character over training: large early for fast progress, small late for fine convergence.</li><li><strong>Step decay</strong> (Eq. 1) is the oldest schedule, simple but requires manual tuning of <code>k</code> and <code>γ</code>; plateaus waste epochs.</li><li><strong>Cosine annealing</strong> (Eq. 4) is the modern default for CNNs/RNNs — smooth, single-parameter (<code>T_max</code>), gives the right shape for free.</li><li><strong>SGDR</strong> (Eq. 5) adds warm restarts to cosine; useful for snapshot ensembles and escaping sharp minima.</li><li><strong>Linear warmup + cosine decay</strong> (Eq. 6) is the Transformer standard — BERT, GPT, ViT all use it; warmup is essential because Adam's variance estimate is uncalibrated in the first few hundred steps.</li><li><strong>ReduceLROnPlateau</strong> (Eq. 7) is reactive — reduces LR only after a plateau has cost you epochs. Useful for unknown training length and GAN/RL work.</li><li><strong>One Cycle</strong> (Eq. 8) is the aggressive schedule: warm up to a high <code>max_lr</code> found by the LR range test, then anneal. Often 3-5x faster convergence than cosine annealing.</li><li><strong>The linear scaling rule</strong>: when you multiply batch size by <code>k</code>, multiply LR by <code>k</code> too. Combine with warmup at very large batch sizes.</li></ul></div>
+
+<section id="resources"><h2>Useful Resources</h2><ul class="resource-list"><li><a href="https://arxiv.org/abs/1506.01186">Smith (2015) — Cyclical Learning Rates for Training Neural Networks (LR range test)</a></li><li><a href="https://arxiv.org/abs/1708.07120">Smith &amp; Topin (2017) — Super-Convergence: Very Fast Training of Neural Networks Using Large Learning Rates (One Cycle)</a></li><li><a href="https://arxiv.org/abs/1608.03983">Loshchilov &amp; Hutter (2017) — SGDR: Stochastic Gradient Descent with Warm Restarts</a></li><li><a href="https://arxiv.org/abs/1706.02677">Goyal et al. (2017) — Accurate, Large Minibatch SGD: Training ImageNet in 1 Hour (linear scaling rule)</a></li><li><a href="https://arxiv.org/abs/1810.04805">Devlin et al. (2018) — BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding</a></li><li><a href="https://arxiv.org/abs/1704.00109">Huang et al. (2017) — Snapshot Ensembles: Train 1, Get M for Free (cycle-based ensembles)</a></li><li><a href="https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate">PyTorch documentation — torch.optim.lr_scheduler</a></li><li><a href="https://huggingface.co/docs/transformers/main_classes/optimizer_schedules">HuggingFace Transformers — schedule implementations (reference)</a></li></ul></section>
+
+  </article>
+</div>
+<div class="page-nav"><a href="intro.html" class="page-nav-btn prev"><span class="nav-dir">← Previous</span><span class="nav-title">Module 08</span></a><a href="assignment_task.html" class="page-nav-btn next"><span class="nav-dir">Next →</span><span class="nav-title">Assignment 08</span></a></div>
+<footer>
+  <div class="container">
+    <div style="font-size:1.5rem;font-weight:800;font-family:var(--display);color:var(--accent);margin-bottom:0.5rem">HyperTune</div>
+    <p style="color:var(--muted2);font-size:0.85rem;max-width:500px;margin:0 auto">The complete hyperparameter tuning reference for ML &amp; DL engineers. Covers scikit-learn, XGBoost, LightGBM, PyTorch, Optuna, Ray Tune, and beyond — from first principles to production.</p>
+    <div style="margin-top:2rem;font-size:0.78rem;color:var(--muted2)">Built for learning · Python 3.10+ · scikit-learn 1.4+ · Optuna 3.0+</div>
+  </div>
+</footer>
+<script>
+(function() {
+  const links = Array.from(document.querySelectorAll('.toc-link'));
+  const sections = links
+    .map(l => document.querySelector(l.getAttribute('href')))
+    .filter(Boolean);
+  if (!('IntersectionObserver' in window) || sections.length === 0) return;
+  const setActive = id => {
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+  };
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  sections.forEach(s => observer.observe(s));
+})();
+</script>
+</body>
+</html>

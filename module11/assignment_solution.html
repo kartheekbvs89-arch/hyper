@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assignment 11 Solution — HyperTune</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script>
+MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<style>
+
+:root {
+  --bg: #070b14; --bg2: #0c1220; --bg3: #111827;
+  --card: #131d2e; --card2: #1a2640;
+  --border: rgba(99,179,237,0.12); --border2: rgba(99,179,237,0.22);
+  --accent: #38bdf8; --accent2: #818cf8; --accent3: #34d399;
+  --accent4: #f59e0b; --accent5: #f472b6;
+  --text: #f0f6fc; --muted: #8899aa; --muted2: #64748b;
+  --code-bg: #0d1117;
+  --ff: 'Inter', sans-serif; --mono: 'JetBrains Mono', monospace;
+  --display: 'Sora', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--ff);line-height:1.7;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(7,11,20,0.85);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-family:var(--display);font-weight:800;font-size:1.25rem;color:var(--accent);letter-spacing:-0.03em;text-decoration:none}
+.logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:1.5rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;font-weight:500;transition:color 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#000;padding:7px 18px;border-radius:8px;font-size:0.82rem;font-weight:700;text-decoration:none;transition:opacity 0.2s}
+.nav-cta:hover{opacity:0.85}
+
+/* LAYOUT */
+.page-layout { display: grid; grid-template-columns: 280px 1fr; gap: 3rem; max-width: 1200px; margin: 0 auto; padding: 5rem 2rem 5rem; padding-top: 80px; }
+@media(max-width: 900px) { .page-layout { grid-template-columns: 1fr; } .toc-sidebar { display: none; } }
+
+/* TOC SIDEBAR */
+.toc-sidebar { position: sticky; top: 80px; height: fit-content; max-height: calc(100vh - 100px); overflow-y: auto; }
+.toc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.75rem; }
+.toc-nav { display: flex; flex-direction: column; gap: 2px; }
+.toc-link { color: var(--muted); font-size: 0.82rem; text-decoration: none; padding: 4px 10px; border-left: 2px solid transparent; transition: all 0.15s; border-radius: 0 4px 4px 0; }
+.toc-link:hover, .toc-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(56,189,248,0.05); }
+.toc-link.toc-sub { font-size: 0.78rem; padding-left: 22px; }
+
+/* ARTICLE BODY */
+.article-body { min-width: 0; }
+.breadcrumb { font-size: 0.78rem; color: var(--muted2); margin-bottom: 1.5rem; }
+.breadcrumb a { color: var(--muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--accent); }
+.module-badge { display: inline-block; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: var(--accent); padding: 4px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 1rem; }
+.article-title { font-family: var(--display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
+.article-meta { font-size: 0.83rem; color: var(--muted); margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+
+/* OUTLINE BOX */
+.outline-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 3rem; }
+.outline-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.75rem; color: var(--text); }
+.outline-list { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.85rem; }
+.outline-list a { color: var(--accent); text-decoration: none; }
+.outline-list a:hover { text-decoration: underline; }
+.outline-list li { margin: 4px 0; }
+.outline-list ul { margin: 4px 0; padding-left: 1rem; }
+
+/* ARTICLE PROSE */
+.article-body h2 { font-family: var(--display); font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; margin: 3rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--text); scroll-margin-top: 80px; }
+.article-body h3 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--text); scroll-margin-top: 80px; }
+.article-body h4 { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.article-body p { margin-bottom: 1.25rem; color: var(--muted); font-size: 0.97rem; line-height: 1.85; }
+.article-body strong { color: var(--text); font-weight: 600; }
+.article-body em { color: var(--accent3); font-style: italic; }
+.article-body ul, .article-body ol { margin: 0 0 1.25rem 1.5rem; color: var(--muted); font-size: 0.95rem; }
+.article-body li { margin-bottom: 6px; line-height: 1.75; }
+.article-body code { font-family: var(--mono); font-size: 0.82em; background: rgba(56,189,248,0.08); color: var(--accent); padding: 2px 6px; border-radius: 4px; }
+.article-body a { color: var(--accent2); text-decoration: none; }
+.article-body a:hover { text-decoration: underline; }
+
+/* CODE BLOCKS */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+.code-block-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); }
+.code-dots { display: flex; gap: 6px; }
+.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot.r { background: #ff5f57; } .code-dot.y { background: #ffbd2e; } .code-dot.g { background: #28c840; }
+.code-filename { font-family: var(--mono); font-size: 0.73rem; color: var(--muted2); margin-left: 8px; }
+.code-block pre { padding: 1.5rem; overflow-x: auto; margin: 0; font-family: var(--mono); font-size: 0.82rem; line-height: 1.8; color: #e2e8f0; }
+/* Syntax colors */
+.kw { color: #c792ea; } .fn { color: #82aaff; } .str { color: #c3e88d; }
+.num { color: #f78c6c; } .cm { color: #546e7a; font-style: italic; }
+.cls { color: #ffcb6b; } .imp { color: #89ddff; } .op { color: #89ddff; }
+
+/* CALLOUT BOXES */
+.callout { display: flex; gap: 1rem; border-radius: 12px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; border-width: 1px; border-style: solid; }
+.callout-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+.callout-body { font-size: 0.88rem; line-height: 1.75; }
+.callout-body strong { font-weight: 600; }
+.callout-title { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+.callout.note { background: rgba(56,189,248,0.06); border-color: rgba(56,189,248,0.22); color: var(--muted); }
+.callout.note .callout-title, .callout.note strong { color: var(--accent); }
+.callout.warning { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.22); color: var(--muted); }
+.callout.warning .callout-title, .callout.warning strong { color: var(--accent4); }
+.callout.tip { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.22); color: var(--muted); }
+.callout.tip .callout-title, .callout.tip strong { color: var(--accent3); }
+.callout.important { background: rgba(244,114,182,0.06); border-color: rgba(244,114,182,0.22); color: var(--muted); }
+.callout.important .callout-title, .callout.important strong { color: var(--accent5); }
+
+/* MATH DISPLAY */
+.math-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.75rem; margin: 1.25rem 0; overflow-x: auto; font-size: 1.05rem; text-align: center; }
+.math-label { font-size: 0.72rem; color: var(--muted2); font-family: var(--mono); margin-top: 0.5rem; text-align: right; }
+
+/* INLINE FIGURE / DIAGRAM */
+.figure { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; margin: 2rem 0; text-align: center; }
+.figure-caption { font-size: 0.8rem; color: var(--muted2); margin-top: 1rem; font-style: italic; }
+
+/* DATA TABLE */
+.data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.85rem; }
+.data-table th { padding: 10px 14px; background: var(--card2); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); text-align: left; }
+.data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(99,179,237,0.03); }
+
+/* SUMMARY BOX */
+.summary-box { background: linear-gradient(135deg, rgba(56,189,248,0.07), rgba(129,140,248,0.07)); border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 1.75rem 2rem; margin: 3rem 0 2rem; }
+.summary-box h3 { font-family: var(--display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+.summary-box ul { margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: 0.88rem; }
+.summary-box li { margin-bottom: 6px; line-height: 1.7; }
+
+/* RESOURCE LIST */
+.resource-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.resource-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.resource-list li::before { content: '\2192'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.resource-list a { color: var(--accent2); }
+
+/* PREV/NEXT NAV */
+.page-nav { display: flex; justify-content: space-between; gap: 1rem; padding: 2rem; max-width: 1200px; margin: 0 auto; border-top: 1px solid var(--border); }
+.page-nav-btn { display: flex; flex-direction: column; gap: 4px; padding: 1rem 1.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; transition: all 0.2s; max-width: 45%; }
+.page-nav-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.page-nav-btn .nav-dir { font-size: 0.72rem; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; }
+.page-nav-btn .nav-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.page-nav-btn.next { text-align: right; margin-left: auto; }
+
+/* QUIZ/EXERCISE BOX */
+.exercise-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin: 2rem 0; }
+.exercise-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent4); margin-bottom: 0.5rem; }
+.exercise-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; }
+.exercise-body { font-size: 0.88rem; color: var(--muted); line-height: 1.75; }
+
+/* QUIZ BOX */
+.quiz-box { background: rgba(129,140,248,0.06); border: 1px solid rgba(129,140,248,0.22); border-radius: 14px; padding: 1.5rem; margin: 1.5rem 0; }
+.quiz-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent2); margin-bottom: 0.5rem; }
+.quiz-question { font-size: 0.93rem; color: var(--text); margin-bottom: 0.75rem; font-weight: 500; }
+.quiz-answer { margin-top: 0.5rem; }
+.quiz-answer summary { cursor: pointer; font-size: 0.82rem; color: var(--accent2); font-weight: 600; }
+.quiz-answer p { margin-top: 0.5rem; font-size: 0.86rem; color: var(--muted); }
+
+/* CELL (for assignment files - jupyter style) */
+.jupyter-cell { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin: 1.5rem 0; overflow: hidden; }
+.cell-header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted2); font-family: var(--mono); }
+.cell-input-label { color: var(--accent4); font-weight: 600; }
+.cell-body { padding: 1rem 1.25rem; }
+.jupyter-cell pre { padding: 1rem 1.25rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; background: var(--code-bg); margin: 0; }
+.cell-prompt { color: var(--accent3); font-weight: 700; }
+
+/* GRADING RUBRIC */
+.rubric-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+.rubric-table th { background: var(--card2); padding: 10px 14px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid var(--border); }
+.rubric-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+
+/* DETAILS (collapsible hints) */
+details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; }
+details summary { cursor: pointer; font-size: 0.85rem; color: var(--accent2); font-weight: 600; }
+details[open] summary { margin-bottom: 0.5rem; }
+details p { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2rem;text-align:center;color:var(--muted2);font-size:0.85rem}
+
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">Hyper<span>Tune</span></a>
+    <ul class="nav-links">
+
+    </ul>
+    <a href="../index.html#curriculum" class="nav-cta">Start Learning</a>
+  </div>
+</nav>
+<div class="page-layout">
+  <aside class="toc-sidebar">
+    <div class="toc-label">On this page</div>
+    <nav class="toc-nav">
+<a href="#intro" class="toc-link">Solution Walkthrough</a>
+<a href="#sol-task1" class="toc-link">Task 1 Solution — Run Study</a>
+<a href="#sol-task2" class="toc-link">Task 2 Solution — Visualizations</a>
+<a href="#sol-task3" class="toc-link">Task 3 Solution — Analysis</a>
+<a href="#sol-task4" class="toc-link">Task 4 Solution — Overfitting Check</a>
+<a href="#sol-task5" class="toc-link">Task 5 Solution — fANOVA Comparison</a>
+<a href="#resources" class="toc-link">Resources</a>
+    </nav>
+  </aside>
+  <article class="article-body">
+    <div class="breadcrumb"><a href="../index.html">HyperTune</a> › <a href="intro.html">Module 11</a> › Assignment 11 Solution</div>
+    <div class="article-header">
+      <div class="module-badge">Module 11 · Assignment Solution</div>
+      <h1 class="article-title">Assignment 11 — Solution Walkthrough</h1>
+      <div class="article-meta">Solution · Difficulty: ★★★☆☆ · Run time: ~10 minutes total</div>
+    </div>
+    <div class="outline-box">
+      <div class="outline-title">📋 Article Outline</div>
+      <ol class="outline-list">
+
+<li><a href="#intro">Solution Walkthrough</a></li>
+<li><a href="#sol-task1">Task 1 — Run the Optuna Study</a></li>
+<li><a href="#sol-task2">Task 2 — Five Visualizations</a></li>
+<li><a href="#sol-task3">Task 3 — 1-Page Analysis</a></li>
+<li><a href="#sol-task4">Task 4 — Overfitting Check</a></li>
+<li><a href="#sol-task5">Task 5 — fANOVA Cross-Evaluator</a></li>
+<li><a href="#resources">Useful Resources</a></li>
+      </ol>
+    </div>
+
+<section id="intro">
+  <h2>Solution Walkthrough</h2>
+  <p>Below are reference solutions for Assignment 11. The solutions are written to be readable, not minimally clever — each step is annotated so you can follow the reasoning even if you got stuck. Run them in order in a fresh kernel; the entire notebook should finish in under 10 minutes.</p>
+  <div class="callout warning"><div class="callout-icon">⚠️</div><div class="callout-body"><div class="callout-title">Use the solution ethically</div><p>If you are taking this course for credit, do not submit this solution as your own work. Use it to unstick yourself when you are blocked, or to compare your approach after you have attempted the task. The learning happens when you struggle with the problem; copying the answer short-circuits the learning entirely.</p></div></div>
+</section>
+
+<section id="sol-task1">
+  <h2>Task 1 — Run the Optuna Study</h2>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── sol_task1_run_study.py ────────────────────────────────────────────────────
+import optuna
+import numpy as np
+from xgboost import XGBClassifier
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import StratifiedKFold, cross_validate
+
+X, y = load_breast_cancer(return_X_y=True)
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+
+def objective(trial):
+    params = {
+        &quot;learning_rate&quot;:     trial.suggest_float(&quot;learning_rate&quot;, 1e-3, 1.0, log=True),
+        &quot;max_depth&quot;:         trial.suggest_int(&quot;max_depth&quot;, 3, 12),
+        &quot;n_estimators&quot;:      trial.suggest_int(&quot;n_estimators&quot;, 50, 500),
+        &quot;subsample&quot;:         trial.suggest_float(&quot;subsample&quot;, 0.5, 1.0),
+        &quot;colsample_bytree&quot;:  trial.suggest_float(&quot;colsample_bytree&quot;, 0.5, 1.0),
+        &quot;min_child_weight&quot;:  trial.suggest_int(&quot;min_child_weight&quot;, 1, 10),
+        &quot;n_jobs&quot;:            -1,
+        &quot;eval_metric&quot;:       &quot;logloss&quot;,
+        &quot;random_state&quot;:      42,
+        &quot;tree_method&quot;:       &quot;hist&quot;,
+    }
+    model = XGBClassifier(**params)
+    result = cross_validate(
+        model, X, y, cv=cv, scoring=&quot;accuracy&quot;,
+        return_train_score=True, n_jobs=-1,
+    )
+    val_score = float(result[&quot;test_score&quot;].mean())
+    train_score = float(result[&quot;train_score&quot;].mean())
+    trial.set_user_attr(&quot;train_score&quot;, train_score)
+    return val_score
+
+
+# Create or load the study
+study = optuna.create_study(
+    direction=&quot;maximize&quot;,
+    sampler=optuna.samplers.TPESampler(seed=42),
+    storage=&quot;sqlite:///assign11.db&quot;,
+    study_name=&quot;assign11_xgb&quot;,
+    load_if_exists=True,
+)
+study.optimize(objective, n_trials=100, show_progress_bar=False)
+
+print(f&quot;Best value:      {study.best_value:.4f}&quot;)
+print(f&quot;Best trial:      #{study.best_trial.number}&quot;)
+print(f&quot;Best parameters: {study.best_params}&quot;)
+print(f&quot;Train score at best trial: {study.best_trial.user_attrs[&#x27;train_score&#x27;]:.4f}&quot;)
+</pre></div>
+  <p>Typical output: best validation accuracy ≈ 0.978–0.983. Best parameters typically look like <code>learning_rate ≈ 0.05</code>, <code>max_depth ≈ 5</code>, <code>n_estimators ≈ 300</code>, <code>subsample ≈ 0.85</code>, <code>colsample_bytree ≈ 0.75</code>, <code>min_child_weight ≈ 2</code>. Train score at the best trial is typically 1.000 — a 2–3% train-val gap, well within the "not overfit to validation" range.</p>
+</section>
+
+<section id="sol-task2">
+  <h2>Task 2 — Generate the Five Visualizations</h2>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── sol_task2_visualizations.py ───────────────────────────────────────────────
+import optuna
+from optuna.importance import get_param_importances
+from pathlib import Path
+
+OUT = Path(&quot;assign11_plots&quot;); OUT.mkdir(exist_ok=True)
+study = optuna.load_study(study_name=&quot;assign11_xgb&quot;, storage=&quot;sqlite:///assign11.db&quot;)
+
+# 1. Optimization history (convergence)
+fig1 = optuna.visualization.plot_optimization_history(study)
+fig1.write_html(OUT / &quot;01_optimization_history.html&quot;)
+
+# 2. Parallel coordinates
+fig2 = optuna.visualization.plot_parallel_coordinate(study)
+fig2.write_html(OUT / &quot;02_parallel_coords.html&quot;)
+
+# 3. Parameter importances
+fig3 = optuna.visualization.plot_param_importances(study)
+fig3.write_html(OUT / &quot;03_param_importances.html&quot;)
+
+# 4. Contour plot for the 2 most important params
+importances = get_param_importances(study)
+top2 = list(importances.keys())[:2]
+print(f&quot;Top-2 most important params: {top2}&quot;)
+print(&quot;Full importance ranking:&quot;)
+for name, imp in importances.items():
+    print(f&quot;  {name:25s} {imp:.3f}&quot;)
+
+fig4 = optuna.visualization.plot_contour(study, params=top2)
+fig4.write_html(OUT / &quot;04_contour_top2.html&quot;)
+
+# 5. Slice plots
+fig5 = optuna.visualization.plot_slice(study)
+fig5.write_html(OUT / &quot;05_slice_all.html&quot;)
+
+print(f&quot;\nAll 5 plots saved to {OUT.resolve()}&quot;)
+</pre></div>
+  <p>Expected importance ranking (will vary slightly with seed, but the pattern is robust): <code>learning_rate</code> (40–55%), <code>max_depth</code> (20–30%), <code>n_estimators</code> (5–15%), then <code>subsample</code>, <code>colsample_bytree</code>, <code>min_child_weight</code> all under 10%. The contour plot of <code>learning_rate × max_depth</code> should show a clear diagonal ridge of good scores in the (low-LR, mid-depth) region.</p>
+</section>
+
+<section id="sol-task3">
+  <h2>Task 3 — Sample 1-Page Analysis</h2>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── sol_task3_analysis.md ─────────────────────────────────────────────────────
+# Sample 1-page analysis (~500 words). Your analysis will differ in details
+# but should follow the same structure: 4 sub-sections, each citing evidence.
+
+# ## Which hyperparameters matter most?
+#
+# The fANOVA importance ranking for this 100-trial TPE study on XGBoost +
+# breast_cancer shows:
+#   - learning_rate:        0.512  (51.2% of variance explained)
+#   - max_depth:            0.238  (23.8%)
+#   - n_estimators:         0.108
+#   - subsample:            0.062
+#   - colsample_bytree:     0.041
+#   - min_child_weight:     0.018
+#
+# `learning_rate` and `max_depth` together explain ~75% of the variance in
+# validation accuracy, which matches the theoretical expectations from
+# Module 5 (gradient boosting) and Module 6 (tree ensembles). The remaining
+# 4 hyperparameters split ~25%, with `n_estimators` being the most impactful
+# of the secondary group.
+#
+# ## What regions of the hyperparameter space are good?
+#
+# From the parallel-coordinates plot (filtered to top-20% trials), the best
+# trials cluster in:
+#   - learning_rate ∈ [0.02, 0.15]  (low end of the search range)
+#   - max_depth ∈ [4, 7]
+#   - n_estimators ∈ [200, 500]
+#   - subsample ∈ [0.75, 0.95]
+#   - colsample_bytree ∈ [0.6, 0.9]
+#   - min_child_weight ∈ [1, 4]
+#
+# The good region is consistent with the XGBoost &quot;triad&quot; intuition: low LR
+# + many trees + moderate depth. The top-20% filter is essential — on the
+# full parallel-coordinates plot, the good region is invisible behind the
+# noise of the worse trials.
+#
+# ## Are there interactions?
+#
+# The contour plot of `learning_rate × max_depth` shows a clear diagonal
+# ridge running from (low LR, low depth) to (mid LR, mid depth). The best
+# validation scores live along this ridge; off the ridge, scores drop
+# sharply. This is a textbook interaction signature: the optimal
+# `max_depth` depends on the `learning_rate` — high LR requires shallow
+# trees (the model fits fast and overfits if given too much capacity), low
+# LR can afford deeper trees.
+#
+# The contour is not perfectly diagonal (it has a slight vertical
+# component in the high-LR region), which means the interaction is strong
+# but not the only effect. fANOVA&#x27;s `V_ij` term would quantify the
+# interaction strength directly, but the visual is clear enough.
+#
+# ## Has the search converged?
+#
+# From the optimization history, the best-so-far curve rises sharply in
+# the first 12 trials (from ~0.92 to ~0.975), then climbs slowly to ~0.978
+# by trial ~40, then is flat for the remaining 60 trials. The last
+# improvement was at trial 43; the search ran 57 more trials without
+# improvement.
+#
+# Verdict: converged. Running another 100 trials is unlikely to beat the
+# incumbent by more than ~0.1% (within Monte Carlo noise from the 5-fold
+# CV). I would stop here and either (a) accept the current best parameters,
+# or (b) switch to a finer-grained local search (CMA-ES) initialized at the
+# current best.
+</pre></div>
+</section>
+
+<section id="sol-task4">
+  <h2>Task 4 — Overfitting Check</h2>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── sol_task4_overfitting_check.py ─────────────────────────────────────────────
+import numpy as np
+import matplotlib.pyplot as plt
+import optuna
+
+study = optuna.load_study(study_name=&quot;assign11_xgb&quot;, storage=&quot;sqlite:///assign11.db&quot;)
+trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
+
+val_scores = np.array([t.value for t in trials])
+train_scores = np.array([t.user_attrs[&quot;train_score&quot;] for t in trials])
+gaps = train_scores - val_scores
+
+# Scatter: train (x) vs val (y), colored by val score
+fig, ax = plt.subplots(figsize=(7.5, 6), constrained_layout=True)
+sc = ax.scatter(train_scores, val_scores, c=val_scores, cmap=&quot;viridis&quot;,
+                s=50, edgecolors=&quot;white&quot;, linewidth=0.6)
+ax.plot([0.90, 1.005], [0.90, 1.005], &quot;--&quot;, color=&quot;#8899aa&quot;,
+        label=&quot;train = val (no gap)&quot;)
+fig.colorbar(sc, label=&quot;Validation accuracy&quot;)
+ax.set_xlabel(&quot;Mean train accuracy (5-fold)&quot;)
+ax.set_ylabel(&quot;Mean validation accuracy (5-fold)&quot;)
+ax.set_title(&quot;Train vs validation: overfitting check&quot;)
+ax.legend(loc=&quot;lower right&quot;)
+ax.set_xlim(0.95, 1.005)
+ax.set_ylim(0.92, 1.00)
+plt.savefig(&quot;assign11_task4_train_vs_val.png&quot;, dpi=120)
+plt.show()
+
+# Quantitative overfit check
+top10_idx = np.argsort(val_scores)[-10:]
+top10_gap = float(gaps[top10_idx].mean())
+overall_gap = float(gaps.mean())
+ratio = top10_gap / overall_gap
+
+print(f&quot;Top-10 trials by val score:&quot;)
+print(f&quot;  mean train score: {train_scores[top10_idx].mean():.4f}&quot;)
+print(f&quot;  mean val score:   {val_scores[top10_idx].mean():.4f}&quot;)
+print(f&quot;  mean gap:         {top10_gap:.4f}&quot;)
+print(f&quot;\nAll trials:&quot;)
+print(f&quot;  mean gap:         {overall_gap:.4f}&quot;)
+print(f&quot;\nRatio (top10 / overall): {ratio:.2f}&quot;)
+if top10_gap &gt; 1.5 * overall_gap:
+    print(&quot;⚠️  Overfitting signal: top-val trials have a larger train-val gap.&quot;)
+else:
+    print(&quot;✓  No overfitting signal in top-val trials.&quot;)
+</pre></div>
+  <p>Typical output: top-10 mean gap ≈ 0.022, overall mean gap ≈ 0.018, ratio ≈ 1.2. Since 1.2 < 1.5, the check concludes "no overfitting signal." This is the expected result for XGBoost on breast_cancer — the dataset is small but well-behaved, and the implicit regularization (low LR + shallow trees) prevents the search from finding trials that exploit noise in the validation folds.</p>
+</section>
+
+<section id="sol-task5">
+  <h2>Task 5 — fANOVA Cross-Evaluator Comparison</h2>
+  <div class="code-block"><div class="code-block-header"><div class="code-dots"><span class="code-dot r"></span><span class="code-dot y"></span><span class="code-dot g"></span></div><span class="code-filename">snippet.py</span></div><pre># ─── sol_task5_fanova_evaluators.py ─────────────────────────────────────────────
+import optuna
+from optuna.importance import (
+    FanovaImportanceEvaluator,
+    MeanDecreaseImpurityImportanceEvaluator,
+    get_param_importances,
+)
+from scipy.stats import spearmanr
+
+study = optuna.load_study(study_name=&quot;assign11_xgb&quot;, storage=&quot;sqlite:///assign11.db&quot;)
+
+imps_fanova = get_param_importances(
+    study, evaluator=FanovaImportanceEvaluator(seed=42)
+)
+imps_mdi = get_param_importances(
+    study, evaluator=MeanDecreaseImpurityImportanceEvaluator(seed=42)
+)
+
+print(f&quot;{&#x27;Hyperparameter&#x27;:25s}  {&#x27;fANOVA&#x27;:&gt;8s}  {&#x27;MDI&#x27;:&gt;8s}&quot;)
+print(&quot;-&quot; * 50)
+all_params = list(imps_fanova.keys())
+for p in all_params:
+    f = imps_fanova.get(p, 0.0)
+    m = imps_mdi.get(p, 0.0)
+    print(f&quot;{p:25s}  {f:&gt;8.3f}  {m:&gt;8.3f}&quot;)
+
+# Spearman rank correlation between the two rankings
+fanova_ranks = [list(imps_fanova.keys()).index(p) for p in all_params]
+mdi_ranks    = [list(imps_mdi.keys()).index(p)    for p in all_params]
+rho, pval = spearmanr(fanova_ranks, mdi_ranks)
+print(f&quot;\nSpearman rank correlation: rho = {rho:.3f} (p = {pval:.3f})&quot;)
+
+top2_agree = list(imps_fanova.keys())[:2] == list(imps_mdi.keys())[:2]
+print(f&quot;Top-2 agree? {&#x27;yes&#x27; if top2_agree else &#x27;no&#x27;}&quot;)
+print(f&quot;  fANOVA top-2: {list(imps_fanova.keys())[:2]}&quot;)
+print(f&quot;  MDI top-2:    {list(imps_mdi.keys())[:2]}&quot;)
+</pre></div>
+  <p>Typical output: fANOVA and MDI agree on the top-2 (<code>learning_rate</code> and <code>max_depth</code>), though possibly in different orders. Spearman rank correlation across all 6 hyperparameters is typically 0.7–0.85 — high but not perfect. The most common disagreement is on <code>n_estimators</code>: MDI tends to rank it higher than fANOVA does, because MDI is biased toward continuous high-cardinality features (and <code>n_estimators</code> ranges over 50–500, giving it high cardinality). fANOVA's decomposition is theoretically better founded for hyperparameter importance; MDI is faster but noisier.</p>
+</section>
+
+<div class="summary-box"><h3>🎯 What This Assignment Teaches</h3><ul><li>Running a 100-trial TPE search is fast (5–10 min on a laptop) and produces enough data for a meaningful analysis.</li><li>The five standard Optuna visualizations together give a complete picture of what the search found — convergence, joint structure, importances, interactions, marginal effects.</li><li>For XGBoost on tabular classification, `learning_rate` and `max_depth` typically explain 70%+ of variance, exactly as predicted by the theory in Modules 5–6.</li><li>The train-vs-val scatter plot is the cheapest overfitting diagnostic — and on a well-behaved dataset, it usually shows no signal.</li><li>fANOVA and MDI evaluators agree on the top-2 but diverge on the long tail — pick fANOVA for principled rankings, MDI for speed.</li></ul></div>
+
+<section id="resources"><h2>Useful Resources</h2><ul class="resource-list"><li><a href="https://optuna.readthedocs.io/en/stable/tutorial/10_key_features.html#key-features-005-visualization">Optuna — Visualization Tutorial</a></li><li><a href="https://optuna.readthedocs.io/en/stable/reference/generated/optuna.importance.FanovaImportanceEvaluator.html">Optuna — Importance evaluators (FanovaImportanceEvaluator)</a></li><li><a href="https://ml.informatik.uni-freiburg.de/papers/14-NIPS-ANOVA.pdf">Hutter et al. (2014) — fANOVA paper</a></li><li><a href="https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.cross_validate.html">scikit-learn — cross_validate with return_train_score</a></li><li><a href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.spearmanr.html">scipy.stats.spearmanr documentation</a></li></ul></section>
+
+  </article>
+</div>
+<div class="page-nav"><a href="assignment_task.html" class="page-nav-btn prev"><span class="nav-dir">← Previous</span><span class="nav-title">Assignment 11</span></a><a href="../module12/intro.html" class="page-nav-btn next"><span class="nav-dir">Next →</span><span class="nav-title">Module 12 — Production-Grade Tuning</span></a></div>
+<footer>
+  <div class="container">
+    <div style="font-size:1.5rem;font-weight:800;font-family:var(--display);color:var(--accent);margin-bottom:0.5rem">HyperTune</div>
+    <p style="color:var(--muted2);font-size:0.85rem;max-width:500px;margin:0 auto">The complete hyperparameter tuning reference for ML &amp; DL engineers. Covers scikit-learn, XGBoost, LightGBM, PyTorch, Optuna, Ray Tune, and beyond — from first principles to production.</p>
+    <div style="margin-top:2rem;font-size:0.78rem;color:var(--muted2)">Built for learning · Python 3.10+ · scikit-learn 1.4+ · Optuna 3.0+</div>
+  </div>
+</footer>
+<script>
+(function() {
+  const links = Array.from(document.querySelectorAll('.toc-link'));
+  const sections = links
+    .map(l => document.querySelector(l.getAttribute('href')))
+    .filter(Boolean);
+  if (!('IntersectionObserver' in window) || sections.length === 0) return;
+  const setActive = id => {
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+  };
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  sections.forEach(s => observer.observe(s));
+})();
+</script>
+</body>
+</html>
