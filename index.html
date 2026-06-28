@@ -211,6 +211,23 @@ footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2re
 /* TWO COL */
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start}
 @media(max-width:768px){.two-col{grid-template-columns:1fr}.nav-links{display:none}.search-viz{grid-template-columns:1fr 1fr}}
+
+/* LESSON LINKS (added to make curriculum navigable) */
+.lesson-link { color: inherit; text-decoration: none; display: inline; }
+.lesson-link:hover { color: var(--accent); text-decoration: underline; }
+.lesson-item:hover { background: rgba(56,189,248,0.08); }
+.lesson-item:hover .lesson-dot { background: var(--accent); transform: scale(1.4); }
+.lesson-dot { transition: all 0.2s; }
+.lesson-item-assign { border-top: 1px dashed var(--border); margin-top: 6px; padding-top: 12px !important; }
+.lesson-tag-assign { font-size: 0.72rem; color: var(--accent4); font-family: var(--mono); margin-left: 6px; }
+.module-title-link { color: inherit; text-decoration: none; }
+.module-title-link:hover { color: var(--accent); }
+.module-header:hover .module-title { color: var(--accent); }
+.module-header { transition: background 0.2s; }
+.module-header:hover { background: rgba(99,179,237,0.04); }
+/* Add a "Start this module" CTA in each module header */
+.module-cta { font-size: 0.72rem; color: var(--accent); font-family: var(--mono); padding: 4px 10px; background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.2); border-radius: 6px; margin-left: auto; text-decoration: none; white-space: nowrap; }
+.module-cta:hover { background: rgba(56,189,248,0.15); }
 </style>
 </head>
 <body>
@@ -351,19 +368,21 @@ footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2re
         <span class="module-num">01</span>
         <div class="module-icon" style="background:rgba(52,211,153,0.12)">🌱</div>
         <div class="module-info">
-          <div class="module-title">Foundations of Hyperparameter Tuning</div>
+          <div class="module-title"><a href="module01/intro.html" class="module-title-link">Foundations of Hyperparameter Tuning</a></div>
           <div class="module-meta">5 lessons · ~45 min</div>
         </div>
         <span class="module-tag tag-basics">Basics</span>
-        <span class="module-toggle">▾</span>
+        <a href="module01/intro.html" class="module-cta">Start →</a><span class="module-toggle">▾</span>
       </div>
       <div class="module-body">
         <ul class="lesson-list">
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">1.1</span>Parameters vs Hyperparameters — the core distinction with examples from 5 models</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">1.2</span>The bias-variance tradeoff and how hyperparameters control it</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">1.3</span>Why overfitting happens and what hyperparameters prevent it</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">1.4</span>Cross-validation — k-fold, stratified, time-series — the foundation of reliable evaluation</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">1.5</span>Setting up your tuning environment: scikit-learn, pandas, matplotlib</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">1.1</span><a href="module01/part1_params_vs_hyperparams.html" class="lesson-link">Parameters vs Hyperparameters — the core distinction with examples from 5 models</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">1.2</span><a href="module01/part2_bias_variance.html" class="lesson-link">The bias-variance tradeoff and how hyperparameters control it</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">1.3</span><a href="module01/part2_bias_variance.html" class="lesson-link">Why overfitting happens and what hyperparameters prevent it</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">1.4</span><a href="module01/part3_cross_validation.html" class="lesson-link">Cross-validation — k-fold, stratified, time-series — the foundation of reliable evaluation</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">1.5</span><a href="module01/intro.html" class="lesson-link">Setting up your tuning environment: scikit-learn, pandas, matplotlib</a></li>
+        
+          <li class="lesson-item lesson-item-assign"><div class="lesson-dot"></div><span class="lesson-num">★</span><a href="module01/assignment_task.html" class="lesson-link"><strong>Assignment 01 — hands-on practice</strong> <span class="lesson-tag-assign">open →</span></a></li>
         </ul>
       </div>
     </div>
@@ -374,18 +393,20 @@ footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2re
         <span class="module-num">02</span>
         <div class="module-icon" style="background:rgba(56,189,248,0.12)">🔬</div>
         <div class="module-info">
-          <div class="module-title">Grid Search — Exhaustive Tuning</div>
+          <div class="module-title"><a href="module02/intro.html" class="module-title-link">Grid Search — Exhaustive Tuning</a></div>
           <div class="module-meta">4 lessons · ~35 min</div>
         </div>
         <span class="module-tag tag-ml">ML</span>
-        <span class="module-toggle">▾</span>
+        <a href="module02/intro.html" class="module-cta">Start →</a><span class="module-toggle">▾</span>
       </div>
       <div class="module-body">
         <ul class="lesson-list">
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">2.1</span>How GridSearchCV works internally — the cross product explained visually</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">2.2</span>Implementing GridSearchCV on SVM, Random Forest, Logistic Regression</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">2.3</span>Extracting results: cv_results_, best_params_, best_score_</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">2.4</span>When Grid Search makes sense (and when it's too slow)</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">2.1</span><a href="module02/part1_grid_search_deep_dive.html" class="lesson-link">How GridSearchCV works internally — the cross product explained visually</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">2.2</span><a href="module02/part1_grid_search_deep_dive.html" class="lesson-link">Implementing GridSearchCV on SVM, Random Forest, Logistic Regression</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">2.3</span><a href="module02/part2_gridsearchcv_internals.html" class="lesson-link">Extracting results: cv_results_, best_params_, best_score_</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">2.4</span><a href="module02/part1_grid_search_deep_dive.html" class="lesson-link">When Grid Search makes sense (and when it's too slow)</a></li>
+        
+          <li class="lesson-item lesson-item-assign"><div class="lesson-dot"></div><span class="lesson-num">★</span><a href="module02/assignment_task.html" class="lesson-link"><strong>Assignment 02 — hands-on practice</strong> <span class="lesson-tag-assign">open →</span></a></li>
         </ul>
       </div>
     </div>
@@ -396,18 +417,20 @@ footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2re
         <span class="module-num">03</span>
         <div class="module-icon" style="background:rgba(56,189,248,0.12)">🎲</div>
         <div class="module-info">
-          <div class="module-title">Random Search — Smart Sampling</div>
+          <div class="module-title"><a href="module03/intro.html" class="module-title-link">Random Search — Smart Sampling</a></div>
           <div class="module-meta">4 lessons · ~30 min</div>
         </div>
         <span class="module-tag tag-ml">ML</span>
-        <span class="module-toggle">▾</span>
+        <a href="module03/intro.html" class="module-cta">Start →</a><span class="module-toggle">▾</span>
       </div>
       <div class="module-body">
         <ul class="lesson-list">
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">3.1</span>Why Random Search beats Grid Search (Bergstra & Bengio, 2012 paper explained)</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">3.2</span>RandomizedSearchCV with scipy distributions — uniform, loguniform, randint</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">3.3</span>Setting n_iter, n_jobs=-1 for parallel execution</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">3.4</span>Visualizing the search space coverage — Grid vs Random</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">3.1</span><a href="module03/part1_random_search.html" class="lesson-link">Why Random Search beats Grid Search (Bergstra & Bengio, 2012 paper explained)</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">3.2</span><a href="module03/part1_random_search.html" class="lesson-link">RandomizedSearchCV with scipy distributions — uniform, loguniform, randint</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">3.3</span><a href="module03/part1_random_search.html" class="lesson-link">Setting n_iter, n_jobs=-1 for parallel execution</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">3.4</span><a href="module03/part1_random_search.html" class="lesson-link">Visualizing the search space coverage — Grid vs Random</a></li>
+        
+          <li class="lesson-item lesson-item-assign"><div class="lesson-dot"></div><span class="lesson-num">★</span><a href="module03/assignment_task.html" class="lesson-link"><strong>Assignment 03 — hands-on practice</strong> <span class="lesson-tag-assign">open →</span></a></li>
         </ul>
       </div>
     </div>
@@ -418,22 +441,24 @@ footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2re
         <span class="module-num">04</span>
         <div class="module-icon" style="background:rgba(56,189,248,0.12)">🌲</div>
         <div class="module-info">
-          <div class="module-title">Hyperparameters by Model Type — ML Deep Dive</div>
+          <div class="module-title"><a href="module04/intro.html" class="module-title-link">Hyperparameters by Model Type — ML Deep Dive</a></div>
           <div class="module-meta">8 lessons · ~90 min</div>
         </div>
         <span class="module-tag tag-ml">ML</span>
-        <span class="module-toggle">▾</span>
+        <a href="module04/intro.html" class="module-cta">Start →</a><span class="module-toggle">▾</span>
       </div>
       <div class="module-body">
         <ul class="lesson-list">
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">4.1</span>Decision Trees: max_depth, min_samples_split, min_samples_leaf, max_features</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">4.2</span>Random Forests: n_estimators, max_features, bootstrap — what each really does</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">4.3</span>Gradient Boosting (sklearn): n_estimators, learning_rate, subsample — the triad</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">4.4</span>XGBoost hyperparams: colsample_bytree, gamma, reg_alpha, reg_lambda, scale_pos_weight</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">4.5</span>LightGBM: num_leaves, min_child_samples, feature_fraction, bagging_fraction</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">4.6</span>SVM: C, gamma, kernel — the geometric interpretation</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">4.7</span>Logistic Regression: C, penalty, solver compatibility matrix</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">4.8</span>KNN: n_neighbors, weights, metric — distance function matters</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">4.1</span><a href="module04/part1_decision_trees.html" class="lesson-link">Decision Trees: max_depth, min_samples_split, min_samples_leaf, max_features</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">4.2</span><a href="module04/part2_random_forest.html" class="lesson-link">Random Forests: n_estimators, max_features, bootstrap — what each really does</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">4.3</span><a href="module04/part3_xgboost_lightgbm.html" class="lesson-link">Gradient Boosting (sklearn): n_estimators, learning_rate, subsample — the triad</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">4.4</span><a href="module04/part3_xgboost_lightgbm.html" class="lesson-link">XGBoost hyperparams: colsample_bytree, gamma, reg_alpha, reg_lambda, scale_pos_weight</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">4.5</span><a href="module04/part3_xgboost_lightgbm.html" class="lesson-link">LightGBM: num_leaves, min_child_samples, feature_fraction, bagging_fraction</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">4.6</span><a href="module04/part4_svm_logistic.html" class="lesson-link">SVM: C, gamma, kernel — the geometric interpretation</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">4.7</span><a href="module04/part4_svm_logistic.html" class="lesson-link">Logistic Regression: C, penalty, solver compatibility matrix</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">4.8</span><a href="module04/part4_svm_logistic.html" class="lesson-link">KNN: n_neighbors, weights, metric — distance function matters</a></li>
+        
+          <li class="lesson-item lesson-item-assign"><div class="lesson-dot"></div><span class="lesson-num">★</span><a href="module04/assignment_task.html" class="lesson-link"><strong>Assignment 04 — hands-on practice</strong> <span class="lesson-tag-assign">open →</span></a></li>
         </ul>
       </div>
     </div>
@@ -444,23 +469,25 @@ footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2re
         <span class="module-num">05</span>
         <div class="module-icon" style="background:rgba(129,140,248,0.12)">🧠</div>
         <div class="module-info">
-          <div class="module-title">Deep Learning Hyperparameters — Neural Networks</div>
+          <div class="module-title"><a href="module05/intro.html" class="module-title-link">Deep Learning Hyperparameters — Neural Networks</a></div>
           <div class="module-meta">9 lessons · ~120 min</div>
         </div>
         <span class="module-tag tag-dl">DL</span>
-        <span class="module-toggle">▾</span>
+        <a href="module05/intro.html" class="module-cta">Start →</a><span class="module-toggle">▾</span>
       </div>
       <div class="module-body">
         <ul class="lesson-list">
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">5.1</span>Learning rate — the most critical DL hyperparameter and learning rate schedules</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">5.2</span>Batch size — its effect on gradient noise, memory, and generalization</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">5.3</span>Network depth and width — how to choose hidden layers and units</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">5.4</span>Activation functions: ReLU, LeakyReLU, GELU, SiLU — when to use which</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">5.5</span>Dropout rate: theory and practical values (0.1–0.5)</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">5.6</span>Weight initialization: glorot, he, orthogonal — why initialization matters</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">5.7</span>Optimizer hyperparams: Adam beta1/beta2/epsilon, SGD momentum, weight decay</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">5.8</span>Batch normalization and layer normalization hyperparameters</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">5.9</span>Early stopping: patience, min_delta, restore_best_weights</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">5.1</span><a href="module05/part1_learning_rate.html" class="lesson-link">Learning rate — the most critical DL hyperparameter and learning rate schedules</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">5.2</span><a href="module05/part2_architecture_regularization.html" class="lesson-link">Batch size — its effect on gradient noise, memory, and generalization</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">5.3</span><a href="module05/part2_architecture_regularization.html" class="lesson-link">Network depth and width — how to choose hidden layers and units</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">5.4</span><a href="module05/part2_architecture_regularization.html" class="lesson-link">Activation functions: ReLU, LeakyReLU, GELU, SiLU — when to use which</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">5.5</span><a href="module05/part2_architecture_regularization.html" class="lesson-link">Dropout rate: theory and practical values (0.1–0.5)</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">5.6</span><a href="module05/part2_architecture_regularization.html" class="lesson-link">Weight initialization: glorot, he, orthogonal — why initialization matters</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">5.7</span><a href="module05/part2_architecture_regularization.html" class="lesson-link">Optimizer hyperparams: Adam beta1/beta2/epsilon, SGD momentum, weight decay</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">5.8</span><a href="module05/part2_architecture_regularization.html" class="lesson-link">Batch normalization and layer normalization hyperparameters</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">5.9</span><a href="module05/part1_learning_rate.html" class="lesson-link">Early stopping: patience, min_delta, restore_best_weights</a></li>
+        
+          <li class="lesson-item lesson-item-assign"><div class="lesson-dot"></div><span class="lesson-num">★</span><a href="module05/assignment_task.html" class="lesson-link"><strong>Assignment 05 — hands-on practice</strong> <span class="lesson-tag-assign">open →</span></a></li>
         </ul>
       </div>
     </div>
@@ -471,20 +498,22 @@ footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2re
         <span class="module-num">06</span>
         <div class="module-icon" style="background:rgba(129,140,248,0.12)">🔵</div>
         <div class="module-info">
-          <div class="module-title">Bayesian Optimization — Intelligent Search</div>
+          <div class="module-title"><a href="module06/intro.html" class="module-title-link">Bayesian Optimization — Intelligent Search</a></div>
           <div class="module-meta">6 lessons · ~75 min</div>
         </div>
         <span class="module-tag tag-dl">DL</span>
-        <span class="module-toggle">▾</span>
+        <a href="module06/intro.html" class="module-cta">Start →</a><span class="module-toggle">▾</span>
       </div>
       <div class="module-body">
         <ul class="lesson-list">
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">6.1</span>Gaussian Processes for function approximation — the math made intuitive</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">6.2</span>Acquisition functions: EI (Expected Improvement), UCB, PI — what they optimize</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">6.3</span>scikit-optimize (skopt) — BayesSearchCV in practice</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">6.4</span>Optuna: define-by-run API, trial.suggest_float / suggest_int / suggest_categorical</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">6.5</span>Optuna samplers: TPE, CMA-ES, NSGA-II for multi-objective</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">6.6</span>Hyperopt: Tree-structured Parzen Estimator (TPE) from scratch</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">6.1</span><a href="module06/part1_bayesian_intuition.html" class="lesson-link">Gaussian Processes for function approximation — the math made intuitive</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">6.2</span><a href="module06/part1_bayesian_intuition.html" class="lesson-link">Acquisition functions: EI (Expected Improvement), UCB, PI — what they optimize</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">6.3</span><a href="module06/part1_bayesian_intuition.html" class="lesson-link">scikit-optimize (skopt) — BayesSearchCV in practice</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">6.4</span><a href="module06/part2_optuna.html" class="lesson-link">Optuna: define-by-run API, trial.suggest_float / suggest_int / suggest_categorical</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">6.5</span><a href="module06/part2_optuna.html" class="lesson-link">Optuna samplers: TPE, CMA-ES, NSGA-II for multi-objective</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">6.6</span><a href="module06/part2_optuna.html" class="lesson-link">Hyperopt: Tree-structured Parzen Estimator (TPE) from scratch</a></li>
+        
+          <li class="lesson-item lesson-item-assign"><div class="lesson-dot"></div><span class="lesson-num">★</span><a href="module06/assignment_task.html" class="lesson-link"><strong>Assignment 06 — hands-on practice</strong> <span class="lesson-tag-assign">open →</span></a></li>
         </ul>
       </div>
     </div>
@@ -495,20 +524,22 @@ footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2re
         <span class="module-num">07</span>
         <div class="module-icon" style="background:rgba(244,114,182,0.12)">🚀</div>
         <div class="module-info">
-          <div class="module-title">Advanced Search Strategies</div>
+          <div class="module-title"><a href="module07/intro.html" class="module-title-link">Advanced Search Strategies</a></div>
           <div class="module-meta">6 lessons · ~80 min</div>
         </div>
         <span class="module-tag tag-adv">Advanced</span>
-        <span class="module-toggle">▾</span>
+        <a href="module07/intro.html" class="module-cta">Start →</a><span class="module-toggle">▾</span>
       </div>
       <div class="module-body">
         <ul class="lesson-list">
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">7.1</span>Hyperband: multi-fidelity optimization — early stopping meets random search</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">7.2</span>BOHB (Bayesian Optimization + HyperBand) — the best of both worlds</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">7.3</span>Successive Halving and SuccessiveHalvingCV in sklearn</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">7.4</span>Evolutionary algorithms (CMA-ES) for hyperparameter optimization</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">7.5</span>Population-Based Training (PBT) for deep learning</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">7.6</span>Quasi-random sequences: Sobol, Halton — better coverage than random</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">7.1</span><a href="module07/part1_hyperband.html" class="lesson-link">Hyperband: multi-fidelity optimization — early stopping meets random search</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">7.2</span><a href="module07/part1_hyperband.html" class="lesson-link">BOHB (Bayesian Optimization + HyperBand) — the best of both worlds</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">7.3</span><a href="module07/part1_hyperband.html" class="lesson-link">Successive Halving and SuccessiveHalvingCV in sklearn</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">7.4</span><a href="module07/part1_hyperband.html" class="lesson-link">Evolutionary algorithms (CMA-ES) for hyperparameter optimization</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">7.5</span><a href="module07/part1_hyperband.html" class="lesson-link">Population-Based Training (PBT) for deep learning</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">7.6</span><a href="module07/part1_hyperband.html" class="lesson-link">Quasi-random sequences: Sobol, Halton — better coverage than random</a></li>
+        
+          <li class="lesson-item lesson-item-assign"><div class="lesson-dot"></div><span class="lesson-num">★</span><a href="module07/assignment_task.html" class="lesson-link"><strong>Assignment 07 — hands-on practice</strong> <span class="lesson-tag-assign">open →</span></a></li>
         </ul>
       </div>
     </div>
@@ -519,19 +550,21 @@ footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2re
         <span class="module-num">08</span>
         <div class="module-icon" style="background:rgba(56,189,248,0.12)">📊</div>
         <div class="module-info">
-          <div class="module-title">Learning Rate Scheduling Mastery</div>
+          <div class="module-title"><a href="module08/intro.html" class="module-title-link">Learning Rate Scheduling Mastery</a></div>
           <div class="module-meta">5 lessons · ~50 min</div>
         </div>
         <span class="module-tag tag-dl">DL</span>
-        <span class="module-toggle">▾</span>
+        <a href="module08/intro.html" class="module-cta">Start →</a><span class="module-toggle">▾</span>
       </div>
       <div class="module-body">
         <ul class="lesson-list">
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">8.1</span>Learning rate range test (LR finder) — find the optimal LR in 5 minutes</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">8.2</span>Step decay, exponential decay, polynomial decay schedulers</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">8.3</span>Cosine annealing and warm restarts (SGDR) — cyclical LR schedules</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">8.4</span>Linear warmup + cosine decay (used in BERT, GPT, ViT)</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">8.5</span>ReduceLROnPlateau — adaptive scheduling based on validation loss</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">8.1</span><a href="module08/part1_lr_scheduling.html" class="lesson-link">Learning rate range test (LR finder) — find the optimal LR in 5 minutes</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">8.2</span><a href="module08/part1_lr_scheduling.html" class="lesson-link">Step decay, exponential decay, polynomial decay schedulers</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">8.3</span><a href="module08/part1_lr_scheduling.html" class="lesson-link">Cosine annealing and warm restarts (SGDR) — cyclical LR schedules</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">8.4</span><a href="module08/part1_lr_scheduling.html" class="lesson-link">Linear warmup + cosine decay (used in BERT, GPT, ViT)</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">8.5</span><a href="module08/part1_lr_scheduling.html" class="lesson-link">ReduceLROnPlateau — adaptive scheduling based on validation loss</a></li>
+        
+          <li class="lesson-item lesson-item-assign"><div class="lesson-dot"></div><span class="lesson-num">★</span><a href="module08/assignment_task.html" class="lesson-link"><strong>Assignment 08 — hands-on practice</strong> <span class="lesson-tag-assign">open →</span></a></li>
         </ul>
       </div>
     </div>
@@ -542,19 +575,21 @@ footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2re
         <span class="module-num">09</span>
         <div class="module-icon" style="background:rgba(244,114,182,0.12)">🤖</div>
         <div class="module-info">
-          <div class="module-title">AutoML & Neural Architecture Search</div>
+          <div class="module-title"><a href="module09/intro.html" class="module-title-link">AutoML & Neural Architecture Search</a></div>
           <div class="module-meta">5 lessons · ~70 min</div>
         </div>
         <span class="module-tag tag-adv">Advanced</span>
-        <span class="module-toggle">▾</span>
+        <a href="module09/intro.html" class="module-cta">Start →</a><span class="module-toggle">▾</span>
       </div>
       <div class="module-body">
         <ul class="lesson-list">
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">9.1</span>Auto-sklearn: automated algorithm selection + hyperparameter optimization</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">9.2</span>FLAML: fast lightweight AutoML by Microsoft — practical usage</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">9.3</span>KerasTuner for neural architecture search with Keras/TensorFlow</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">9.4</span>Optuna + PyTorch — full DL tuning pipeline end-to-end</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">9.5</span>NAS concepts: differentiable NAS (DARTS), one-shot models</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">9.1</span><a href="module09/part1_automl.html" class="lesson-link">Auto-sklearn: automated algorithm selection + hyperparameter optimization</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">9.2</span><a href="module09/part1_automl.html" class="lesson-link">FLAML: fast lightweight AutoML by Microsoft — practical usage</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">9.3</span><a href="module09/part1_automl.html" class="lesson-link">KerasTuner for neural architecture search with Keras/TensorFlow</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">9.4</span><a href="module09/part1_automl.html" class="lesson-link">Optuna + PyTorch — full DL tuning pipeline end-to-end</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">9.5</span><a href="module09/part1_automl.html" class="lesson-link">NAS concepts: differentiable NAS (DARTS), one-shot models</a></li>
+        
+          <li class="lesson-item lesson-item-assign"><div class="lesson-dot"></div><span class="lesson-num">★</span><a href="module09/assignment_task.html" class="lesson-link"><strong>Assignment 09 — hands-on practice</strong> <span class="lesson-tag-assign">open →</span></a></li>
         </ul>
       </div>
     </div>
@@ -565,19 +600,21 @@ footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2re
         <span class="module-num">10</span>
         <div class="module-icon" style="background:rgba(245,158,11,0.12)">🔧</div>
         <div class="module-info">
-          <div class="module-title">Pipeline Integration & Best Practices</div>
+          <div class="module-title"><a href="module10/intro.html" class="module-title-link">Pipeline Integration & Best Practices</a></div>
           <div class="module-meta">5 lessons · ~55 min</div>
         </div>
         <span class="module-tag tag-prod">Production</span>
-        <span class="module-toggle">▾</span>
+        <a href="module10/intro.html" class="module-cta">Start →</a><span class="module-toggle">▾</span>
       </div>
       <div class="module-body">
         <ul class="lesson-list">
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">10.1</span>Tuning inside sklearn Pipelines: preprocessing + model in one search</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">10.2</span>Nested cross-validation: inner loop for tuning, outer for evaluation</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">10.3</span>Avoiding data leakage in hyperparameter tuning — the subtle traps</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">10.4</span>Feature selection as a hyperparameter: SelectKBest, RFE in the search</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">10.5</span>Caching with Memory() to speed up repeated pipeline fits</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">10.1</span><a href="module10/part1_pipeline_tuning.html" class="lesson-link">Tuning inside sklearn Pipelines: preprocessing + model in one search</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">10.2</span><a href="module10/part1_pipeline_tuning.html" class="lesson-link">Nested cross-validation: inner loop for tuning, outer for evaluation</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">10.3</span><a href="module10/part1_pipeline_tuning.html" class="lesson-link">Avoiding data leakage in hyperparameter tuning — the subtle traps</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">10.4</span><a href="module10/part1_pipeline_tuning.html" class="lesson-link">Feature selection as a hyperparameter: SelectKBest, RFE in the search</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">10.5</span><a href="module10/part1_pipeline_tuning.html" class="lesson-link">Caching with Memory() to speed up repeated pipeline fits</a></li>
+        
+          <li class="lesson-item lesson-item-assign"><div class="lesson-dot"></div><span class="lesson-num">★</span><a href="module10/assignment_task.html" class="lesson-link"><strong>Assignment 10 — hands-on practice</strong> <span class="lesson-tag-assign">open →</span></a></li>
         </ul>
       </div>
     </div>
@@ -588,18 +625,20 @@ footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2re
         <span class="module-num">11</span>
         <div class="module-icon" style="background:rgba(244,114,182,0.12)">📈</div>
         <div class="module-info">
-          <div class="module-title">Analysis & Visualization of Tuning Results</div>
+          <div class="module-title"><a href="module11/intro.html" class="module-title-link">Analysis & Visualization of Tuning Results</a></div>
           <div class="module-meta">4 lessons · ~40 min</div>
         </div>
         <span class="module-tag tag-adv">Advanced</span>
-        <span class="module-toggle">▾</span>
+        <a href="module11/intro.html" class="module-cta">Start →</a><span class="module-toggle">▾</span>
       </div>
       <div class="module-body">
         <ul class="lesson-list">
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">11.1</span>Plotting parallel coordinates for hyperparameter importance</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">11.2</span>Hyperparameter importance with fANOVA and Optuna's importance plot</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">11.3</span>Contour plots: 2D interaction between hyperparameters</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">11.4</span>Convergence plots — when to stop tuning</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">11.1</span><a href="module11/part1_analysis.html" class="lesson-link">Plotting parallel coordinates for hyperparameter importance</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">11.2</span><a href="module11/part1_analysis.html" class="lesson-link">Hyperparameter importance with fANOVA and Optuna's importance plot</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">11.3</span><a href="module11/part1_analysis.html" class="lesson-link">Contour plots: 2D interaction between hyperparameters</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">11.4</span><a href="module11/part1_analysis.html" class="lesson-link">Convergence plots — when to stop tuning</a></li>
+        
+          <li class="lesson-item lesson-item-assign"><div class="lesson-dot"></div><span class="lesson-num">★</span><a href="module11/assignment_task.html" class="lesson-link"><strong>Assignment 11 — hands-on practice</strong> <span class="lesson-tag-assign">open →</span></a></li>
         </ul>
       </div>
     </div>
@@ -610,19 +649,21 @@ footer{background:var(--bg2);border-top:1px solid var(--border);padding:3rem 2re
         <span class="module-num">12</span>
         <div class="module-icon" style="background:rgba(245,158,11,0.12)">🏭</div>
         <div class="module-info">
-          <div class="module-title">Production-Grade Tuning at Scale</div>
+          <div class="module-title"><a href="module12/intro.html" class="module-title-link">Production-Grade Tuning at Scale</a></div>
           <div class="module-meta">5 lessons · ~65 min</div>
         </div>
         <span class="module-tag tag-prod">Production</span>
-        <span class="module-toggle">▾</span>
+        <a href="module12/intro.html" class="module-cta">Start →</a><span class="module-toggle">▾</span>
       </div>
       <div class="module-body">
         <ul class="lesson-list">
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">12.1</span>MLflow + Optuna: experiment tracking for hyperparameter runs</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">12.2</span>Ray Tune: distributed hyperparameter tuning on clusters</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">12.3</span>W&B Sweeps: Bayesian + random + grid with real-time dashboard</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">12.4</span>Cost-aware hyperparameter optimization: balancing accuracy vs inference speed</li>
-          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">12.5</span>Reproducing tuning results: seeds, determinism, and experiment logging</li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">12.1</span><a href="module12/part1_tracking.html" class="lesson-link">MLflow + Optuna: experiment tracking for hyperparameter runs</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">12.2</span><a href="module12/part1_tracking.html" class="lesson-link">Ray Tune: distributed hyperparameter tuning on clusters</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">12.3</span><a href="module12/part1_tracking.html" class="lesson-link">W&B Sweeps: Bayesian + random + grid with real-time dashboard</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">12.4</span><a href="module12/part1_tracking.html" class="lesson-link">Cost-aware hyperparameter optimization: balancing accuracy vs inference speed</a></li>
+          <li class="lesson-item"><div class="lesson-dot"></div><span class="lesson-num">12.5</span><a href="module12/part1_tracking.html" class="lesson-link">Reproducing tuning results: seeds, determinism, and experiment logging</a></li>
+        
+          <li class="lesson-item lesson-item-assign"><div class="lesson-dot"></div><span class="lesson-num">★</span><a href="module12/assignment_task.html" class="lesson-link"><strong>Assignment 12 — hands-on practice</strong> <span class="lesson-tag-assign">open →</span></a></li>
         </ul>
       </div>
     </div>
